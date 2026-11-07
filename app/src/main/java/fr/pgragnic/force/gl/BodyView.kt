@@ -265,8 +265,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         fun rotTo(d: V3): FloatArray { val q = Q4.fromUnit(V3(1f, 0f, 0f), d.copy().norm()).mat(); return floatArrayOf(q[0], q[1], q[2], 0f, q[3], q[4], q[5], 0f, q[6], q[7], q[8], 0f, 0f, 0f, 0f, 1f) }
         /** Segment cylindrique entre deux points (élastique, pieds de chaise…). */
         fun seg(a: V3, c: V3, r: Float, col: FloatArray) { val d = c - a; val L = d.len(); if (L < .5f) return; objs += Triple(cyl, mat(a.lerp(c, .5f), L, r, r, rotTo(d)), col) }
-        val E = s.ex?.let { Prog.EX[it] }
-        val tool = E?.tool ?: (if (s.nodb) "" else "db")
+        val exo = s.ex?.let { Prog.EX[it] }
+        val tool = exo?.tool ?: (if (s.nodb) "" else "db")
         fun inHand(w: String): V3 { val g = b.grip(if (w == "W1") "R" else "L"); g.x *= sx; return g }
         fun jt(n: String): V3 { val v = J[n]!!; return V3(v.x * sx, v.y, v.z) }
         val handle = rgb(0x2A2F35); val dbc = rgb(s.db)
@@ -300,15 +300,15 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             }
         }
         // élastiques
-        if (!s.map && E != null && E.band.isNotEmpty()) {
-            val bc = rgb(s.band); val mini = E.tool == "mini"
+        if (!s.map && exo != null && exo.band.isNotEmpty()) {
+            val bc = rgb(s.band); val mini = exo.tool == "mini"
             fun pt(n: String): V3 = when (n) {
                 "W1", "W2" -> inHand(n)
                 "A1", "A2" -> jt(n).also { it.y = 1.2f }
                 "K1", "K2" -> jt(n).lerp(jt("Pc"), .18f)
                 else -> jt(n)
             }
-            E.band.forEach { (a, c) -> seg(pt(a), pt(c), if (mini) 2.4f else .8f, bc) }
+            exo.band.forEach { (a, c) -> seg(pt(a), pt(c), if (mini) 2.4f else .8f, bc) }
         }
         // accessoires de la pose
         if (!s.map) b.propOf(id)?.let { (t, x) ->
