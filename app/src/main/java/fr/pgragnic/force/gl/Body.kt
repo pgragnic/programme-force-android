@@ -126,7 +126,7 @@ class Body(ctx: Context) {
     fun isStat(id: String) = pFlag(id, "stat")?.jsonPrimitive?.booleanOrNull == true
 
     fun build(id: String, k: Double): HashMap<String, V3> {
-        val p = Poses.raw(id, k) ?: Poses.raw("calf", 0.0)!!
+        val p = Poses.at(id, k) ?: Poses.at("calf", 0.0)!!
         val front = isFront(id); val two = id in TWOHAND
         fun sv(q: DoubleArray, lat: Float = 0f) = if (front) V3((q[0] - 100).toFloat(), (180 - q[1]).toFloat(), 0f) else V3(lat, (180 - q[1]).toFloat(), (q[0] - 100).toFloat())
         fun pt(n: String) = p[n] ?: p["N"]!!
