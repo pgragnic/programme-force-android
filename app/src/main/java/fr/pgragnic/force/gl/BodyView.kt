@@ -266,7 +266,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         /** Segment cylindrique entre deux points (élastique, pieds de chaise…). */
         fun seg(a: V3, c: V3, r: Float, col: FloatArray) { val d = c - a; val L = d.len(); if (L < .5f) return; objs += Triple(cyl, mat(a.lerp(c, .5f), L, r, r, rotTo(d)), col) }
         val exo = s.ex?.let { Prog.EX[it] }
-        val tool = exo?.tool ?: (if (s.nodb) "" else "db")
+        val tool = exo?.tool ?: b.poseTool(id) ?: (if (s.nodb) "" else "db")
         fun inHand(w: String): V3 { val g = b.grip(if (w == "W1") "R" else "L"); g.x *= sx; return g }
         fun jt(n: String): V3 { val v = J[n]!!; return V3(v.x * sx, v.y, v.z) }
         val handle = rgb(0x2A2F35); val dbc = rgb(s.db)
@@ -311,9 +311,15 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 seg(c - ax * 14f, c + ax * 14f, 1.3f, handle)
             }
         }
+        // medicine ball, bâton
+        if (!s.map && (tool == "medball" || tool == "pvc")) {
+            val gr = inHand("W1"); val gl = inHand("W2"); val c = gr.lerp(gl, .5f)
+            if (tool == "medball") objs += Triple(ball, mat(c + V3(0f, 0f, 0f), 11f, 11f, 11f), rgb(0x8A5A3C))
+            else { var ax = gr - gl; if (ax.len() < 2f) ax = V3(1f, 0f, 0f); ax.norm(); seg(c - ax * 75f, c + ax * 75f, 1.2f, rgb(0xC9B48A)) }
+        }
         // élastiques
         if (!s.map && exo != null && exo.band.isNotEmpty()) {
-            val bc = rgb(s.band); val mini = exo.tool == "mini"
+            val bc = if (exo.tool == "towel") rgb(0xF2EFE8) else rgb(s.band); val mini = exo.tool == "mini" || exo.tool == "towel"
             fun pt(n: String): V3 = when (n) {
                 "W1", "W2" -> inHand(n)
                 "A1", "A2" -> jt(n).also { it.y = 1.2f }
@@ -351,6 +357,15 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     objs += Triple(box, mat(V3(0f, 66f, z - 22f), 28f, 6f, 70f, floatArrayOf(back[0], back[1], back[2], 0f, back[3], back[4], back[5], 0f, back[6], back[7], back[8], 0f, 0f, 0f, 0f, 1f)), pc)
                     listOf(-10f, 40f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
                 }
+                "door" -> {
+                    objs += Triple(box, mat(V3(0f, 100f, z + 3f), 82f, 200f, 4f), pc)
+                    val gr = b.grip("R"); val gl = b.grip("L"); val h = (gr.y + gl.y) / 2
+                    objs += Triple(ball, mat(V3(-30f, h, z - 1f), 2.5f, 2.5f, 2.5f), handle)
+                    seg(gr.lerp(gl, .5f).also { it.x *= sx }, V3(-30f, h, z - 1f), 1.8f, rgb(0xF2EFE8))
+                }
+                "swissball" -> { val a = jt("A1").lerp(jt("A2"), .5f); objs += Triple(ball, mat(V3(0f, maxOf(30f, a.y - 26f), a.z + 6f), 30f, 30f, 30f), rgb(0x5E93F2)) }
+                "bosu" -> { val a = jt("A1").lerp(jt("A2"), .5f); objs += Triple(ball, mat(V3(0f, 0f, a.z), 32f, 13f, 32f), rgb(0x4B5563)) }
+                "rollball" -> { val a = jt("A1"); objs += Triple(ball, mat(V3(a.x, 3.5f, a.z + 4f), 3.5f, 3.5f, 3.5f), rgb(0xE66AAE)) }
                 "roller" -> { val n = jt("Nc"); objs += Triple(cyl, mat(V3(0f, 7.5f, n.z), 45f, 7.5f, 7.5f), rgb(0x3B82C4)) }
                 "wall" -> objs += Triple(box, mat(V3(0f, 85f, z + (if (x < 100f) -2f else 2f)), 110f, 170f, 3f), pc)
             }

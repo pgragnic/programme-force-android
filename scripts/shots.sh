@@ -13,9 +13,8 @@ adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > 
 shot bw0 --es gear bw --ei tab 0
 adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/bw0b.png
 shot kbplay --es gear kb --ei play 5
-shot gym0 --es gear gym --ei tab 0
-adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/gym0b.png
-shot bw0c --es gear bw --ei tab 0
+shot acc0 --es gear acc --ei tab 0
+adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/acc0b.png
 for p in $POSES; do shot pose-$p --es demo $p --ef k 0.5; done
 adb logcat -d -b crash > shots/crash.txt || true
 exit 0
