@@ -130,7 +130,7 @@ def lift(pts):  # allongé sur un banc de 43 cm : buste et bras montent, pieds a
     o['P'] = [118, 127]; o['K1'] = [150, 132]; o['A1'] = [154, 178]; o['K2'] = [148, 132]; o['A2'] = [152, 178]
     return o
 PO['benchpress'] = {'cam': 1.15, 'prop': {'t': 'bench', 'x': 70}, 'a': lift(fl['a']), 'b': lift(fl['b']), 'db': ['W1', 'W2'], '__d': 1}
-for k in ('superman', 'pike'): 
+for k in ('superman', 'pike', 'kbrdl'): 
     if k not in d['FLIPX']: d['FLIPX'].append(k)
 for k in ('kbrdl', 'kblunge'):
     if k not in d['TWOHAND']: d['TWOHAND'].append(k)

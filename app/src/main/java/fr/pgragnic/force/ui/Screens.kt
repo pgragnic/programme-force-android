@@ -305,6 +305,7 @@ fun InfosScreen() {
                 msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
             }
         }
+        FeedbackPanel()
         RappelPanel()
         ThemePanel()
         LegalPanel()
@@ -447,5 +448,30 @@ fun LegalPanel() {
             Spacer(Modifier.width(16.dp))
             TextButton(onClick = { open(SITE + "suppression.html") }, contentPadding = PaddingValues(0.dp)) { Text("Supprimer mon compte") }
         }
+    }
+}
+
+/** Avis et idées d'amélioration envoyés au développeur. */
+@Composable
+fun FeedbackPanel() {
+    val user by Store.user.collectAsState(); val scope = rememberCoroutineScope()
+    var kind by remember { mutableStateOf("idee") }; var txt by remember { mutableStateOf("") }
+    var contact by remember(user) { mutableStateOf(user ?: "") }; var msg by remember { mutableStateOf<String?>(null) }; var busy by remember { mutableStateOf(false) }
+    Panel {
+        Text("Ton avis compte", color = C.ink, fontWeight = FontWeight.Bold)
+        Text("Une idée d'amélioration, un problème, un exercice qui manque ? Écris-le ici : chaque message est lu.", color = C.muted, fontSize = 13.sp)
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("idee" to "Idée", "probleme" to "Problème", "avis" to "Commentaire").forEach { (k, t) ->
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (kind == k) C.ink else C.bg).clickable { kind = k }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
+                    Text(t, color = if (kind == k) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+        OutlinedTextField(txt, { if (it.length <= 2000) txt = it }, label = { Text("Ton message") }, minLines = 3, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+        OutlinedTextField(contact, { contact = it }, label = { Text("E-mail pour te répondre (facultatif)") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+        Button(onClick = { busy = true; scope.launch { msg = Store.sendFeedback(kind, txt, contact) ?: "Merci ! Ton message est bien arrivé.".also { txt = "" }; busy = false } },
+            enabled = !busy && txt.trim().length >= 3, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(if (busy) "Envoi…" else "Envoyer") }
+        msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
     }
 }

@@ -324,7 +324,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     objs += Triple(box, mat(V3(0f, 40f, z), 28f, 6f, 115f), pc)
                     listOf(-45f, 45f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
                 }
-                "wall" -> objs += Triple(box, mat(V3(0f, 110f, z + (if (x < 100f) -2f else 2f)), 200f, 220f, 4f), pc)
+                "wall" -> objs += Triple(box, mat(V3(0f, 85f, z + (if (x < 100f) -2f else 2f)), 110f, 170f, 3f), pc)
             }
         }
 

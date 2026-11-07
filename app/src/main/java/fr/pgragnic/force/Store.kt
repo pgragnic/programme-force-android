@@ -33,6 +33,9 @@ data class BilanRow(val data: JsonObject, val created_at: String? = null)
 data class ProgRow(val id: Long, val data: JsonObject, val note: String? = null)
 
 @Serializable
+data class RetourRow(val kind: String, val texte: String, val contact: String? = null, val appli: String? = null)
+
+@Serializable
 data class DayRow(val date: String, val data: JsonObject)
 
 /** Stockage : copie locale sur le téléphone + synchronisation Supabase quand on est connecté. */
@@ -225,6 +228,16 @@ object Store {
     }
 
     suspend fun signOut() { runCatching { sb?.auth?.signOut() }; user.value = null }
+
+    /** Envoie un avis ou une idée d'amélioration (possible sans compte). */
+    suspend fun sendFeedback(kind: String, txt: String, contact: String?): String? {
+        val c = sb ?: return "Envoi impossible : base non configurée"
+        return try {
+            c.from("retours").insert(RetourRow(kind, txt.trim().take(2000), contact?.trim()?.takeIf { it.isNotBlank() }?.take(200),
+                "Programme Force ${BuildConfig.VERSION_NAME} · Android ${android.os.Build.VERSION.RELEASE}"))
+            null
+        } catch (t: Throwable) { "Envoi impossible pour l'instant : vérifie ta connexion et réessaie." }
+    }
 
     /** Supprime définitivement le compte et toutes ses données en ligne, puis les données du téléphone. */
     suspend fun deleteAccount(): String? {
