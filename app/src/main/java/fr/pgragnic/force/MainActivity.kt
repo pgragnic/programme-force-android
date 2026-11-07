@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("theme")?.let { C.mode = it }
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
+        if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { Store.autoSync() }
