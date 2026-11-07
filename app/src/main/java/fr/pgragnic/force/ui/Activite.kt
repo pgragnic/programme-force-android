@@ -83,10 +83,9 @@ fun ActiviteScreen() {
     val last7 = last14.drop(7).mapNotNull { byD[it.toString()]?.steps?.takeIf { s -> s > 0 } }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
+        Column {
             Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Spacer(Modifier.weight(1f))
-            Text(if (last7.isNotEmpty()) "Moy. 7 j : " + String.format(Locale.FRANCE, "%,d", last7.average().roundToInt()) + " pas" else "Aucune journée", color = C.muted, fontSize = 13.sp)
+            Text(if (last7.isNotEmpty()) "Moyenne sur 7 jours : " + String.format(Locale.FRANCE, "%,d", last7.average().roundToInt()) + " pas par jour" else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
         // Health Connect
@@ -118,7 +117,7 @@ fun ActiviteScreen() {
                     val r = byD[d.toString()]; val v = r?.steps ?: 0; val on = d == sel
                     Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(6.dp)).background(if (on) C.line else C.surface).clickable { sel = d },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
-                        Text(if (v >= 1000) Prog.fk((v / 100) / 10.0) + "k" else if (v > 0) "$v" else "", color = C.muted, fontSize = 9.sp, maxLines = 1)
+                        Text(if (v >= 1000) "${(v / 1000.0).roundToInt()}k" else if (v > 0) "<1k" else "", color = if (on) C.ink else C.muted, fontSize = 9.sp, maxLines = 1, softWrap = false)
                         val col = if (r?.act != null) C.warm else if (d == today) C.effort else C.rest
                         Canvas(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 3.dp)) {
                             val h = if (v > 0) max(3f, size.height * v / mx) else 0f
@@ -143,7 +142,7 @@ fun ActiviteScreen() {
                     color = C.ink, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, "Jour suivant", tint = if (sel < today) C.ink else C.line) }
             }
-            if (cur?.src == "hc") Text("Pas importés depuis Health Connect", color = C.muted, fontSize = 12.sp)
+            if (cur?.src == "hc") Text("${String.format(Locale.FRANCE, "%,d", cur.steps ?: 0)} pas importés depuis Health Connect", color = C.muted, fontSize = 12.sp)
             val num = KeyboardOptions(keyboardType = KeyboardType.Number); val dec = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             OutlinedTextField(steps, { steps = it.filter { c -> c.isDigit() } }, label = { Text("Pas") }, placeholder = { Text("ex. 7000") }, singleLine = true, keyboardOptions = num, modifier = Modifier.fillMaxWidth())
             Text("Activité", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
