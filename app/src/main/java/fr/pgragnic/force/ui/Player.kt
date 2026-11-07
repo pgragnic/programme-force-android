@@ -130,7 +130,7 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
     val (k, mir, mv) = ses.anim()
     Column(Modifier.fillMaxSize().background(C.bg).padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(PLAB[p.k] ?: "", color = Color(0xFF06261A), fontWeight = FontWeight.Black, letterSpacing = 2.sp,
+            Text(PLAB[p.k] ?: "", color = C.onColor, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
                 modifier = Modifier.clip(RoundedCornerShape(50)).background(col).padding(horizontal = 14.dp, vertical = 6.dp))
             Spacer(Modifier.weight(1f))
             Text(p.blk, color = C.muted, fontSize = 12.sp, letterSpacing = 1.sp, textAlign = TextAlign.End, modifier = Modifier.padding(end = 8.dp).weight(2f))
@@ -142,7 +142,7 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         if (p.det.isNotBlank()) Text(p.det, color = C.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp))) {
             val ghost = p.k in listOf("prep", "rest", "switch")
-            Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else p.pose), Modifier.fillMaxSize())
+            Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else p.pose).th(), Modifier.fillMaxSize())
             if (mv.isNotBlank()) Text(mv, color = col, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         }
         val prevW = ses.P.getOrNull(ses.pi - 1)

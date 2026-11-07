@@ -29,14 +29,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Prog.load(this); Store.init(this)
-        SessionService.channels(this); Reminder.schedule(this)
+        C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { Store.autoSync() }
             })
         }
-        setContent { ForceTheme { App() } }
+        setContent {
+            val dk = C.dark
+            LaunchedEffect(dk) { androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).run { isAppearanceLightStatusBars = !dk; isAppearanceLightNavigationBars = !dk } }
+            ForceTheme { App() }
+        }
     }
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); Store.handleLink(intent) }

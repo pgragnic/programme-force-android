@@ -204,8 +204,10 @@ fun SuiviScreen() {
             Text("Suivi", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
             val wk = log.count { it.d > System.currentTimeMillis() - 7 * 86400000L }
             Text("${log.size} séances au total · $wk ces 7 derniers jours", color = C.muted, modifier = Modifier.padding(bottom = 6.dp))
-            Eyebrow("Historique")
         }
+        item { BilanPanel() }
+        item { ProgressPanel() }
+        item { Box(Modifier.padding(top = 8.dp)) { Eyebrow("Historique") } }
         items(log.sortedByDescending { it.d }, key = { it.d }) { e ->
             Panel {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
@@ -254,6 +256,7 @@ fun InfosScreen() {
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+        NewsPanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
@@ -292,6 +295,7 @@ fun InfosScreen() {
             }
         }
         RappelPanel()
+        ThemePanel()
         Panel {
             Text("Matériel", color = C.ink, fontWeight = FontWeight.Bold)
             Text("Barre d'haltère ${Prog.fk(st.bar)} kg · disques : ${st.n2} × 2 kg, ${st.n05} × 0,5 kg · charge max ${Prog.fk(Prog.maxKg(st))} kg par haltère", color = C.muted)
@@ -353,5 +357,53 @@ fun RappelPanel() {
             }
             Text("Touche les minutes pour avancer de 15 min.", color = C.muted, fontSize = 11.sp)
         }
+    }
+}
+
+@Composable
+fun ThemePanel() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    Panel {
+        Text("Apparence", color = C.ink, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("auto" to "Comme le téléphone", "light" to "Clair", "dark" to "Sombre").forEach { (m, t) ->
+                val on = C.mode == m
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { C.save(ctx, m) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                    Text(t, color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                }
+            }
+        }
+    }
+}
+
+/** Nouveautés de l'appli, la plus récente en premier. */
+val NEWS = listOf(
+    "7 novembre 2026, soir" to listOf(
+        "Personnage 3D réaliste pendant la séance, avec les muscles travaillés en rouge ; fais-le tourner du doigt.",
+        "Onglet Corps : récupération de chaque muscle, de face et de dos, et le détail par muscle.",
+        "Onglet Activité : pas importés automatiquement via Health Connect, saisie des marches lestées, randos et trails, graphique sur 14 jours et dépense estimée.",
+        "Notification de séance avec le minuteur et les boutons Précédent, Pause, Suivant, aussi sur l'écran verrouillé ; la séance continue écran éteint.",
+        "Rappel de séance les jours et à l'heure de ton choix.",
+        "Suivi : bilan de la semaine, courbes de poids et de charges, volume par semaine.",
+        "Thème clair, sombre ou comme le téléphone.",
+        "Semaines S1 à S8 sur une seule ligne, avec les points de séances."),
+    "7 novembre 2026, 18 h 55" to listOf(
+        "Création de compte : mot de passe visible et à confirmer.",
+        "Le lien de confirmation par e-mail ouvre l'appli.",
+        "Synchronisation automatique."),
+    "7 novembre 2026" to listOf("Première version de l'appli : séance guidée avec voix, bips et vibrations, historique synchronisé en ligne."),
+)
+
+@Composable
+fun NewsPanel() {
+    var all by remember { mutableStateOf(false) }
+    Panel {
+        Text("Nouveautés", color = C.ink, fontWeight = FontWeight.Bold)
+        (if (all) NEWS else NEWS.take(1)).forEach { (d, items) ->
+            Text(d, color = C.effort, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+            items.forEach { Text("• $it", color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp, start = 4.dp)) }
+        }
+        if (NEWS.size > 1) TextButton(onClick = { all = !all }, contentPadding = PaddingValues(0.dp)) { Text(if (all) "Moins" else "Versions précédentes") }
+        Text("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME}", color = C.muted, fontSize = 12.sp)
     }
 }

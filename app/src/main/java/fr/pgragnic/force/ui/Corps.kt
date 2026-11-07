@@ -31,7 +31,7 @@ fun CorpsScreen() {
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(10 * 60_000L); tick++ } }
     val MU = remember(log, days, tick) { Recovery.muscles(log, days) }
-    val colors = remember(MU) { Recovery.MUS.associateWith { Recovery.recCol(MU.R[it]!!) } }
+    val colors = remember(MU, C.dark) { Recovery.MUS.associateWith { Recovery.recCol(MU.R[it]!!, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort)) } }
     var open by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -41,7 +41,7 @@ fun CorpsScreen() {
         Row(Modifier.fillMaxWidth().height(330.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Face" to 0f, "Dos" to PI.toFloat()).forEach { (t, az) ->
                 Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(C.stage)) {
-                    Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = az, map = true), Modifier.fillMaxWidth().weight(1f))
+                    Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = az, map = true).th(), Modifier.fillMaxWidth().weight(1f))
                     Text(t, color = C.muted, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(6.dp))
                 }
             }
@@ -75,3 +75,6 @@ fun CorpsScreen() {
         }
     }
 }
+
+/** Couleurs de la scène 3D selon le thème. */
+fun BodyState.th() = copy(bg = C.rgb(C.stage), ground = C.rgb(C.stage2), mat = C.rgb(C.stage3), db = C.rgb(C.effort), base = C.rgb(C.mrest), acc = C.rgb(C.mhot))

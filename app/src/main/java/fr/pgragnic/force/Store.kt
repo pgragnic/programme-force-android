@@ -25,6 +25,9 @@ data class SessRow(val id: String? = null, val d: Long, val data: JsonObject)
 data class StateRow(val data: JsonObject)
 
 @Serializable
+data class BilanRow(val data: JsonObject, val created_at: String? = null)
+
+@Serializable
 data class DayRow(val date: String, val data: JsonObject)
 
 /** Stockage : copie locale sur le téléphone + synchronisation Supabase quand on est connecté. */
@@ -37,6 +40,8 @@ object Store {
     val user = MutableStateFlow<String?>(null)
     val ver = MutableStateFlow(0)
     val days = MutableStateFlow<List<DayRec>>(emptyList())
+    /** Dernier bilan de la semaine écrit dans la base (table bilans), s'il y en a un. */
+    val bilan = MutableStateFlow<JsonObject?>(null)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val sb: SupabaseClient? by lazy {
@@ -48,6 +53,7 @@ object Store {
         if (::prefs.isInitialized) return
         prefs = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
+        runCatching { prefs.getString("bilan", null)?.let { bilan.value = json.parseToJsonElement(it).jsonObject } }
         runCatching { days.value = json.decodeFromString<List<DayRec>>(prefs.getString("days", "[]")!!) }
         runCatching { prefs.getString("st", null)?.let { st.value = stFrom(json.parseToJsonElement(it).jsonObject) } }
         if (sb == null) { sync.value = "Base en ligne non configurée : données gardées sur ce téléphone"; return }
@@ -138,6 +144,10 @@ object Store {
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { st.value = stFrom(it.data) } }
+                runCatching {
+                    bilan.value = c.from("bilans").select { order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<BilanRow>().firstOrNull()?.data
+                    bilan.value?.let { prefs.edit().putString("bilan", it.toString()).apply() }
+                }
                 runCatching {
                     val todo = days.value.filter { it.date in dPending }
                     if (todo.isNotEmpty()) { c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }; dPending.clear() }
