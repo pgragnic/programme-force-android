@@ -266,7 +266,16 @@ fun InfosScreen() {
                     Text(Store.sync.collectAsState().value, color = C.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     TextButton(onClick = { Store.pull() }) { Text("Actualiser", fontSize = 12.sp) }
                 }
-                TextButton(onClick = { scope.launch { Store.signOut() } }, contentPadding = PaddingValues(0.dp)) { Text("Se déconnecter", color = C.muted) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { scope.launch { Store.signOut() } }, contentPadding = PaddingValues(0.dp)) { Text("Se déconnecter", color = C.muted) }
+                    Spacer(Modifier.weight(1f))
+                    var armDel by remember { mutableStateOf(false) }
+                    TextButton(onClick = { if (!armDel) armDel = true else scope.launch { msg = Store.deleteAccount(); armDel = false } }, contentPadding = PaddingValues(0.dp)) {
+                        Text(if (armDel) "Confirmer : tout effacer" else "Supprimer mon compte", color = C.danger)
+                    }
+                }
+                Text("La suppression efface définitivement ton compte et toutes tes données, en ligne et sur ce téléphone.", color = C.muted, fontSize = 11.sp)
+                msg?.let { Text(it, color = C.danger, fontSize = 13.sp) }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     PChip("J'ai un compte", !create) { create = false; msg = null }
@@ -297,6 +306,7 @@ fun InfosScreen() {
         }
         RappelPanel()
         ThemePanel()
+        LegalPanel()
         Panel {
             Text("Matériel", color = C.ink, fontWeight = FontWeight.Bold)
             Text("Barre d'haltère ${Prog.fk(st.bar)} kg · disques : ${st.n2} × 2 kg, ${st.n05} × 0,5 kg · charge max ${Prog.fk(Prog.maxKg(st))} kg par haltère", color = C.muted)
@@ -382,7 +392,7 @@ val NEWS = listOf(
     "7 novembre 2026, 21 h 40" to listOf(
         "Pendant la séance, les exercices sont regroupés par poids d'haltères pour changer les disques le moins possible.",
         "Le programme (exercices, séries, consignes) se met à jour tout seul depuis ta base en ligne, sans réinstaller l'appli.",
-        "Le bilan de Claude du dimanche s'affiche dans l'onglet Suivi."),
+        "Avertissement santé au premier lancement, politique de confidentialité et suppression du compte depuis l'appli."),
     "7 novembre 2026, soir" to listOf(
         "Personnage 3D réaliste pendant la séance, avec les muscles travaillés en rouge ; fais-le tourner du doigt.",
         "Onglet Corps : récupération de chaque muscle, de face et de dos, et le détail par muscle.",
@@ -410,5 +420,40 @@ fun NewsPanel() {
         }
         if (NEWS.size > 1) TextButton(onClick = { all = !all }, contentPadding = PaddingValues(0.dp)) { Text(if (all) "Moins" else "Versions précédentes") }
         Text("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme " + if (Prog.version > 0) "n° ${Prog.version} (en ligne)" else "d'origine", color = C.muted, fontSize = 12.sp)
+    }
+}
+
+const val SITE = "https://pgragnic.github.io/programme-force-android/"
+
+/** Avertissement santé, à accepter au premier lancement. */
+@Composable
+fun HealthNotice() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val p = remember { ctx.getSharedPreferences("force", android.content.Context.MODE_PRIVATE) }
+    var ok by remember { mutableStateOf(p.getBoolean("avert", false)) }
+    if (ok) return
+    AlertDialog(onDismissRequest = {}, containerColor = C.surface,
+        title = { Text("Avant de commencer", color = C.ink, fontWeight = FontWeight.Bold) },
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+            Text("Programme Force propose des exercices de renforcement musculaire. Ce n'est pas un dispositif médical et elle ne remplace pas l'avis d'un médecin.", color = C.ink)
+            Text("Demande l'avis d'un médecin avant de commencer si tu as un problème cardiaque, une tension élevée, une blessure, des douleurs articulaires ou dorsales, si tu es enceinte, ou si tu reprends le sport après une longue pause.", color = C.ink, modifier = Modifier.padding(top = 8.dp))
+            Text("Arrête immédiatement en cas de douleur, de vertige, d'essoufflement inhabituel ou de malaise. Choisis des charges que tu maîtrises et garde une bonne technique.", color = C.ink, modifier = Modifier.padding(top = 8.dp))
+            Text("Appli réservée aux personnes de 16 ans et plus.", color = C.muted, modifier = Modifier.padding(top = 8.dp))
+        } },
+        confirmButton = { Button(onClick = { p.edit().putBoolean("avert", true).apply(); ok = true }) { Text("J'ai compris") } })
+}
+
+@Composable
+fun LegalPanel() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    fun open(u: String) = runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u))) }
+    Panel {
+        Text("Santé et confidentialité", color = C.ink, fontWeight = FontWeight.Bold)
+        Text("Programme Force n'est pas un dispositif médical. En cas de doute sur ta santé, demande l'avis d'un médecin avant de t'entraîner, et arrête en cas de douleur ou de malaise.", color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Row {
+            TextButton(onClick = { open(SITE + "confidentialite.html") }, contentPadding = PaddingValues(0.dp)) { Text("Politique de confidentialité") }
+            Spacer(Modifier.width(16.dp))
+            TextButton(onClick = { open(SITE + "suppression.html") }, contentPadding = PaddingValues(0.dp)) { Text("Supprimer mon compte") }
+        }
     }
 }

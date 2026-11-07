@@ -95,7 +95,7 @@ fun ProgressPanel() {
     Panel {
         Text("Progression", color = C.ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
         Text("Poids du jour (kg)", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
-        LineChart(L.filter { it.bw != null }.map { Pt(it.d, it.bw!!) }, "Note ton poids à la fin d'au moins deux séances pour voir la courbe.", target = 74.0)
+        LineChart(L.filter { it.bw != null }.map { Pt(it.d, it.bw!!) }, "Note ton poids à la fin d'au moins deux séances pour voir la courbe.")
 
         val ids = remember(L) { val a = ArrayList<String>(); L.forEach { e -> e.ex.forEach { x -> if (x.kg > 0 && x.id !in a) a += x.id } }; a }
         var cur by remember(ids) { mutableStateOf(if ("squat" in ids) "squat" else ids.firstOrNull()) }

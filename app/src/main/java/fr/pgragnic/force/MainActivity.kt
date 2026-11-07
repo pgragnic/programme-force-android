@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dk = C.dark
             LaunchedEffect(dk) { androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).run { isAppearanceLightStatusBars = !dk; isAppearanceLightNavigationBars = !dk } }
-            ForceTheme { App() }
+            ForceTheme { App(); HealthNotice() }
         }
     }
 

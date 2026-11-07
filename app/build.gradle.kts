@@ -19,8 +19,8 @@ android {
         applicationId = "fr.pgragnic.force"
         minSdk = 28
         targetSdk = 35
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        versionCode = (System.getenv("VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: ("0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0"))
         buildConfigField("String", "SUPABASE_URL", "\"" + (cfg.getProperty("url") ?: "") + "\"")
         buildConfigField("String", "SUPABASE_KEY", "\"" + (cfg.getProperty("key") ?: "") + "\"")
     }
@@ -31,8 +31,19 @@ android {
             if (ks.exists()) { storeFile = ks; storePassword = "android"; keyAlias = "androiddebugkey"; keyPassword = "android" }
         }
     }
+    signingConfigs {
+        create("upload") {
+            // clé de publication Google Play : déchiffrée par la CI à partir de keystore/upload.jks.gpg (mot de passe dans le secret UPLOAD_PASS)
+            val ks = file(System.getenv("UPLOAD_KS") ?: "/nonexistent")
+            if (ks.exists()) { storeFile = ks; storePassword = System.getenv("UPLOAD_PASS"); keyAlias = "upload"; keyPassword = System.getenv("UPLOAD_PASS") }
+        }
+    }
     buildTypes {
         getByName("debug") { signingConfig = signingConfigs.getByName("debug") }
+        getByName("release") {
+            isMinifyEnabled = false
+            if (System.getenv("UPLOAD_KS") != null) signingConfig = signingConfigs.getByName("upload")
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

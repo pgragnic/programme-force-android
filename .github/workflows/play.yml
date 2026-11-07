@@ -1,0 +1,38 @@
+name: Google Play
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de version affiché (ex. 1.0.0)"
+        default: "1.0.0"
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Numéro de version Google Play
+        run: echo "VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Déchiffrer la clé de publication
+        env: { UPLOAD_PASS: "${{ secrets.UPLOAD_PASS }}" }
+        run: |
+          test -n "$UPLOAD_PASS" || { echo "Secret UPLOAD_PASS manquant (Settings → Secrets and variables → Actions)"; exit 1; }
+          gpg --batch --pinentry-mode loopback --passphrase "$UPLOAD_PASS" -d -o "$RUNNER_TEMP/upload.jks" keystore/upload.jks.gpg
+      - name: Paquet Google Play (AAB)
+        env: { UPLOAD_PASS: "${{ secrets.UPLOAD_PASS }}", UPLOAD_KS: "${{ runner.temp }}/upload.jks" }
+        run: gradle :app:bundleRelease --stacktrace && cp app/build/outputs/bundle/release/app-release.aab ProgrammeForce-${{ inputs.version }}.aab
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: play-${{ inputs.version }}-${{ github.run_number }}
+          name: Google Play ${{ inputs.version }} (code ${{ env.VERSION_CODE }})
+          body: Paquet à envoyer dans la Play Console (Tests → Test fermé → Créer une version).
+          files: ProgrammeForce-${{ inputs.version }}.aab
+          prerelease: true
+          make_latest: false

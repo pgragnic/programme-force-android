@@ -12,6 +12,8 @@ import android.content.Intent
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
@@ -210,4 +212,19 @@ object Store {
     }
 
     suspend fun signOut() { runCatching { sb?.auth?.signOut() }; user.value = null }
+
+    /** Supprime définitivement le compte et toutes ses données en ligne, puis les données du téléphone. */
+    suspend fun deleteAccount(): String? {
+        val c = sb ?: return "Base non configurée"
+        return try {
+            c.postgrest.rpc("supprimer_mon_compte")
+            runCatching { c.auth.signOut() }
+            user.value = null
+            log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); st.value = Settings()
+            prefs.edit().remove("log").remove("days").remove("dpend").remove("bilan").remove("st").apply()
+            ver.value++
+            sync.value = "Compte supprimé"
+            null
+        } catch (t: Throwable) { "Suppression impossible : " + (t.message ?: "base injoignable") }
+    }
 }
