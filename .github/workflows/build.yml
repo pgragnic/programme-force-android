@@ -3,6 +3,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publier:
+        description: Publier une version installable
+        type: boolean
+        default: true
 permissions:
   contents: write
 jobs:
@@ -21,6 +26,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: ProgrammeForce, path: ProgrammeForce.apk }
       - name: Publier la version
+        if: github.event_name == 'workflow_dispatch' && inputs.publier
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}

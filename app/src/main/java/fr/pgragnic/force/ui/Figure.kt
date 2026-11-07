@@ -35,15 +35,22 @@ object Poses {
     }
 
     fun at(id: String, k: Double): Map<String, DoubleArray>? {
+        val out = raw(id, k) ?: return null
+        return if (id in flip) out.mapValues { (_, v) -> doubleArrayOf(200 - v[0], v[1]) } else out
+    }
+
+    /** Pose sans le retournement gauche-droite (le personnage 3D l'applique lui-même). */
+    fun raw(id: String, k: Double): Map<String, DoubleArray>? {
         val ks = keys(id) ?: return null
         var i = 0; while (i < ks.size - 2 && k > ks[i + 1].first) i++
         val a = ks[i]; val b = ks[i + 1]; val z = ks[maxOf(0, i - 1)]; val c = ks[minOf(ks.size - 1, i + 2)]
         val u = ((k - a.first) / ((b.first - a.first).takeIf { it != 0.0 } ?: 1.0)).coerceIn(0.0, 1.0)
+        if (ks.size == 2) return a.second.mapValues { (n, v) -> val w = b.second[n] ?: v; doubleArrayOf(v[0] + (w[0] - v[0]) * k, v[1] + (w[1] - v[1]) * k) }
         val out = a.second.mapValues { (n, v) ->
             fun g(q: Pair<Double, Map<String, DoubleArray>>, j: Int) = (q.second[n] ?: v)[j]
             doubleArrayOf(cr(g(z, 0), g(a, 0), g(b, 0), g(c, 0), u), cr(g(z, 1), g(a, 1), g(b, 1), g(c, 1), u))
         }
-        return if (id in flip) out.mapValues { (_, v) -> doubleArrayOf(200 - v[0], v[1]) } else out
+        return out
     }
 
     fun dbs(id: String): List<String> = Prog.raw["POSES"]!!.jsonObject[id]?.jsonObject?.get("db")?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()

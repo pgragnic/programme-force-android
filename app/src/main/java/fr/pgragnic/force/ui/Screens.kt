@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +49,19 @@ fun PChip(label: String, on: Boolean, sub: String? = null, onClick: () -> Unit) 
     }
 }
 
+/** Pastille de semaine compacte : « S1 » sur une ligne, puis 4 points (séances faites) sur une ligne. */
+@Composable
+fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.surface).border(1.dp, C.line, RoundedCornerShape(10.dp))
+        .clickable(onClick = onClick).padding(vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("S${w + 1}", color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
+        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            val c = if (on) C.bg else C.effort
+            repeat(4) { i -> Box(Modifier.size(5.dp).clip(CircleShape).then(if (i < n) Modifier.background(c) else Modifier.border(1.dp, c, CircleShape))) }
+        }
+    }
+}
+
 // ---------------- Séance ----------------
 @Composable
 fun SeanceScreen(onStart: () -> Unit) {
@@ -66,7 +80,7 @@ fun SeanceScreen(onStart: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             (0 until 8).forEach { w ->
                 val n = listOf("A", "B", "C", "D").count { "${st.c}-$w-$it" in done }
-                Box(Modifier.weight(1f)) { PChip("S${w + 1}", st.w == w, "●".repeat(n) + "○".repeat(4 - n)) { Store.setSettings { it.w = w } } }
+                WeekChip(w, n, st.w == w, Modifier.weight(1f)) { Store.setSettings { it.w = w } }
             }
         }
         Eyebrow("Cycle ${st.c} · semaine ${st.w + 1} · ${W.t}")
