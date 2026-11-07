@@ -172,7 +172,7 @@ object Prog {
         fun perm(a: List<String>, pre: List<String>) {
             if (a.isEmpty()) {
                 val o = pre + core
-                var cost = simDb(o, w, st).ch * 10.0
+                var cost = simDb(o, w, st).ch * 100.0 // regroupement par poids prioritaire (demande de Philippe)
                 for (i in 1 until o.size) { val p = prim(o[i - 1]); if (prim(o[i]).any { it in p }) cost += 8 }
                 for (i in pre.indices) for (j in i + 1 until pre.size) if (pre[i] !in BIG && pre[j] in BIG) cost += 3
                 pre.forEachIndexed { i, x -> cost += abs(ex.indexOf(x) - i) * .01 }
