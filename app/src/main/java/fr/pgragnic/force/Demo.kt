@@ -8,6 +8,7 @@ object Demo {
     fun gear(code: String) {
         GearStore.g.value = when (code) {
             "kb" -> Gear(items = setOf("kb", "band", "mini", "chair", "wall", "mat", "bench"), kbs = listOf(8.0, 12.0, 16.0), level = 1, bw = 75.0, obj = "muscle", zones = setOf("bras"), done = true)
+            "gym" -> Gear(items = setOf("barbell", "pullup", "dips", "incbench", "bench", "abwheel", "rope", "roller", "mat", "db"), dbMode = "fixed", fixed = listOf(4.0, 6.0, 8.0, 10.0, 12.0), level = 2, bw = 80.0, obj = "muscle", done = true)
             "bw" -> Gear(items = setOf("chair", "wall", "mat"), level = 0, bw = 80.0, obj = "poids", limits = setOf("genou"), done = true)
             "new" -> Gear(done = false)
             else -> Gear(done = true)

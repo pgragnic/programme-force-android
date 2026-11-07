@@ -99,12 +99,18 @@ object Prog {
         HEAVY = raw.list("HEAVY").toSet(); BIG = raw.list("BIG").toSet(); CORE = raw.list("CORE").toSet()
         raw["METP"]!!.jsonObject.forEach { (k, v) -> METP[k] = v.jsonPrimitive.double }
         raw["FEF"]!!.jsonObject.forEach { (k, v) -> FEF[k] = v.jsonPrimitive.double }
-        UP.clear(); ALT.clear()
+        UP.clear(); ALT.clear(); WARM_UP.clear(); COOL_UP.clear()
+        raw["WARMUP_UP"]?.jsonObject?.forEach { (k, v) -> WARM_UP[k] = v.jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }
+        raw["COOL_UP"]?.jsonObject?.forEach { (k, v) -> COOL_UP[k] = v.jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }
         raw["UP"]?.jsonObject?.forEach { (k, v) -> UP[k] = v.jsonArray.map { it.jsonPrimitive.content } }
         raw["ALT"]?.jsonObject?.forEach { (k, v) -> ALT[k] = v.jsonArray.map { it.jsonPrimitive.content } }
     }
 
     val UP = HashMap<String, List<String>>()
+    /** échauffement / retour au calme remplacés quand on a le matériel (corde à sauter, rouleau) */
+    val WARM_UP = HashMap<String, List<Pair<String, String>>>()
+    val COOL_UP = HashMap<String, List<Pair<String, String>>>()
+    private fun upg(m: Map<String, List<Pair<String, String>>>, id: String) = m[id]?.firstOrNull { gear.has(it.second) }?.first ?: id
     val ALT = HashMap<String, List<String>>()
     private val gear get() = GearStore.g.value
 
@@ -154,7 +160,7 @@ object Prog {
         if (e.lt == "band") return st[min(st.size - 1, g.level ?: 0)]
         if (g.bw == null) { val k = e.kg0 ?: 4.8; return st.lastOrNull { it <= k + 1e-6 } ?: st.first() }
         val one = e.l.startsWith("1")
-        val f = e.f0 ?: if (e.tool == "kb") (if (e.l.contains("2 mains")) .14 else .09) else if (one) .08 else .06
+        val f = e.f0 ?: if (e.tool == "bb") (if (e.id == "bbcurl") .2 else if (e.id == "bbpress") .25 else .35) else if (e.tool == "kb") (if (e.l.contains("2 mains")) .14 else .09) else if (one) .08 else .06
         val target = g.bw * f * listOf(1.0, 1.5, 2.0)[(g.level ?: 0).coerceIn(0, 2)]
         return st.lastOrNull { it <= target + 1e-6 } ?: st.first()
     }
@@ -201,6 +207,14 @@ object Prog {
         return (parts.joinToString(" + ").ifEmpty { "barre seule" }) + " par côté" + (if (rem > 0) " (incomplet)" else "")
     }
 
+    /** Disques de chaque côté de la barre longue. */
+    fun bbPlates(kg: Double): String {
+        val g = gear; var rem = r1((kg - g.bbBar) / 2); if (rem <= 0) return "barre seule"
+        val parts = ArrayList<String>()
+        g.bbPlates.sortedByDescending { it.kg }.forEach { p -> val n = min(p.n / 2, floor(rem / p.kg + 1e-6).toInt()); if (n > 0) { parts += (if (n > 1) "$n × " else "") + fk(p.kg) + " kg"; rem = r1(rem - n * p.kg) } }
+        return parts.joinToString(" + ") + " par côté"
+    }
+
     fun nDb(id: String) = if (EX[id]!!.l.startsWith("1")) 1 else 2
     fun load(id: String, w: Int, st: Settings): String {
         val e = EX[id]!!
@@ -208,6 +222,7 @@ object Prog {
         val v = kgOf(id, w, st); val kg = fk(v)
         return when (e.tool) {
             "kb" -> e.l.replace("1 kettlebell", "1 kettlebell de $kg kg")
+            "bb" -> "barre chargée à $kg kg"
             "band", "mini" -> e.l + " · résistance " + loadTxt(id, v)
             else -> if (e.l.startsWith("1")) e.l.replace("1 haltère", "1 haltère de $kg kg") else "2 × $kg kg"
         }
@@ -269,12 +284,14 @@ object Prog {
         val adj = gear.dbMode != "fixed"
         val need = exo.mapNotNull { EX[it]?.eq }.flatten().flatMap { it.split("|").take(1) }.toSet()
         val tools = listOfNotNull(if ("kb" in need) "ta kettlebell" else null, if ("band" in need) "ta bande à poignées" else null, if ("mini" in need) "ta mini-bande" else null,
-            if (exo.any { EX[it]?.eq?.any { q -> "chair" in q } == true }) "une chaise stable" else null, if ("bench" in need) "ton banc" else null)
+            if (exo.any { EX[it]?.eq?.any { q -> "chair" in q } == true }) "une chaise stable" else null, if ("bench" in need || "incbench" in need) "ton banc" else null,
+            exo.firstOrNull { toolOf(it) == "bb" }?.let { "la barre à ${fk(kgOf(it, w, st))} kg (${bbPlates(kgOf(it, w, st))})" },
+            if ("abwheel" in need) "ta roue abdominale" else null)
         P += Phase("prep", blk = "Préparation", n = "Prépare ton matériel",
             tip = (if (first != null) (if (adj) "Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}" else "Prends les haltères de ${fk(kgOf(first, w, st))} kg") else "Un tapis au sol") +
                 (if (tools.isNotEmpty()) " · Prévois aussi " + tools.joinToString(", ") else ""),
             dur = if (first != null) 20.0 else 10.0, pose = "circle")
-        S.warm.forEachIndexed { i, k ->
+        S.warm.map { upg(WARM_UP, it) }.forEachIndexed { i, k ->
             val x = WU[k]!!
             P += Phase("warm", blk = "Échauffement", n = x[1].jsonPrimitive.content, det = "${i + 1}/3 · 1 min", tip = x[2].jsonPrimitive.content,
                 dur = 60.0, pose = x[0].jsonPrimitive.content, nodb = x.size > 3, tp = listOf(1.0, 0.0, 1.2, 0.0))
@@ -304,7 +321,7 @@ object Prog {
                 else P += Phase("switch", ei = ei + 1, set = 0, blk = "Exercice ${ei + 1}/${exo.size} terminé", dur = max(45, restS + extra).toDouble())
             }
         }
-        S.cool.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
+        S.cool.map { upg(COOL_UP, it) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
         P += Phase("end")
         P.forEachIndexed { i, p ->
             if (p.k == "rest" || p.k == "prep" || p.k == "switch") {

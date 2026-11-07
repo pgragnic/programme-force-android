@@ -20,6 +20,9 @@ data class Gear(
     val plates: List<Plate> = listOf(Plate(2.0, 2), Plate(0.5, 6)),
     val fixed: List<Double> = emptyList(),
     val kbs: List<Double> = emptyList(),
+    /** barre longue : poids de la barre et disques disponibles (nombre total de disques de chaque poids) */
+    val bbBar: Double = 20.0,
+    val bbPlates: List<Plate> = listOf(Plate(10.0, 2), Plate(5.0, 2), Plate(2.5, 2), Plate(1.25, 2)),
     /** nombre de niveaux de résistance des bandes à poignées */
     val bands: Int = 3,
     /** 0 = débutant, 1 = intermédiaire, 2 = confirmé ; null = profil non renseigné (premières versions) */
@@ -52,10 +55,17 @@ data class Gear(
         return s.map { Prog.r1(bar + it) }.sorted()
     }
 
+    fun bbWeights(): List<Double> {
+        var s = setOf(0.0)
+        bbPlates.forEach { p -> val per = p.n / 2; val nx = HashSet<Double>(); s.forEach { b -> for (c in 0..per) nx += Prog.r1(b + 2 * c * p.kg) }; s = nx }
+        return s.map { Prog.r1(bbBar + it) }.sorted()
+    }
+
     /** Charges possibles pour un exercice selon l'outil. */
     fun steps(tool: String): List<Double> = when (tool) {
         "db" -> if (dbMode == "fixed") fixed.sorted() else dbWeights()
         "kb" -> kbs.sorted()
+        "bb" -> bbWeights()
         "band", "mini" -> (1..max(1, bands)).map { it.toDouble() }
         else -> emptyList()
     }

@@ -64,7 +64,7 @@ fun SetupScreen(onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     var consent by remember { mutableStateOf(cur.limits.isNotEmpty()) }
     val eqList = remember { Prog.raw["EQ"]?.jsonArray?.map { s -> s.jsonArray[0].jsonPrimitive.content to s.jsonArray[1].jsonArray.map { it.jsonArray } } ?: emptyList() }
-    val needDetail = "db" in g.items || "kb" in g.items || "band" in g.items
+    val needDetail = "db" in g.items || "kb" in g.items || "band" in g.items || "barbell" in g.items
     val steps = listOf("Ton matériel", "Tes charges", "Ta santé", "Ton profil")
     fun go(d: Int) {
         var n = step + d; if (n == 1 && !needDetail) n += d; if (n < 0) return
@@ -129,6 +129,23 @@ fun SetupScreen(onDone: () -> Unit) {
                         var t by remember { mutableStateOf(numTxt(g.kbs)) }
                         OutlinedTextField(t, { t = it; g = g.copy(kbs = nums(it)) }, label = { Text("Poids de tes kettlebells (kg)") }, placeholder = { Text("ex. 8 ; 12 ; 16") },
                             supportingText = { Text("Sépare les poids par des points-virgules.") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    }
+                    if ("barbell" in g.items) Panel {
+                        Text("Barre et disques", color = C.ink, fontWeight = FontWeight.Bold)
+                        var bar by remember { mutableStateOf(Prog.fk(g.bbBar)) }
+                        OutlinedTextField(bar, { bar = it; it.replace(',', '.').toDoubleOrNull()?.let { v -> g = g.copy(bbBar = v) } }, label = { Text("Poids de la barre (kg)") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                        Text("Nombre total de disques de chaque poids", color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                        listOf(20.0, 15.0, 10.0, 5.0, 2.5, 1.25).forEach { kg ->
+                            val n = g.bbPlates.firstOrNull { it.kg == kg }?.n ?: 0
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${Prog.fk(kg)} kg", color = C.ink, modifier = Modifier.weight(1f))
+                                OutlinedButton(onClick = { g = g.copy(bbPlates = (g.bbPlates.filter { it.kg != kg } + Plate(kg, maxOf(0, n - 2))).filter { it.n > 0 }) }) { Text("−") }
+                                Text("$n", color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.width(40.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                OutlinedButton(onClick = { g = g.copy(bbPlates = g.bbPlates.filter { it.kg != kg } + Plate(kg, n + 2)) }) { Text("+") }
+                            }
+                        }
+                        Text("Charge maximale : ${Prog.fk(g.bbWeights().last())} kg.", color = C.muted, fontSize = 12.sp)
                     }
                     if ("band" in g.items) Panel {
                         Text("Bandes à poignées", color = C.ink, fontWeight = FontWeight.Bold)
@@ -198,6 +215,7 @@ fun GearPanel() {
         Text(g.items.mapNotNull { names[it] }.ifEmpty { listOf("Poids du corps seulement") }.joinToString(" · "), color = C.muted, fontSize = 13.sp)
         if ("db" in g.items) Text(if (g.dbMode == "fixed") "Haltères fixes : " + g.fixed.joinToString(", ") { Prog.fk(it) } + " kg"
             else "Haltères réglables : barre ${Prog.fk(g.bar)} kg, charge max ${Prog.fk(g.dbWeights().last())} kg", color = C.muted, fontSize = 13.sp)
+        if ("barbell" in g.items) Text("Barre : ${Prog.fk(g.bbBar)} kg, charge max ${Prog.fk(g.bbWeights().last())} kg", color = C.muted, fontSize = 13.sp)
         if ("kb" in g.items) Text("Kettlebells : " + g.kbs.joinToString(", ") { Prog.fk(it) } + " kg", color = C.muted, fontSize = 13.sp)
         if (g.limits.isNotEmpty()) Text("À ménager : " + Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { it.second }, color = C.muted, fontSize = 13.sp)
         OutlinedButton(onClick = { setupOpen.value = true }, modifier = Modifier.padding(top = 6.dp)) { Text("Modifier") }

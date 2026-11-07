@@ -299,6 +299,18 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 else dumbbell(inHand(w), if (id == "hammer") rotTo(fore(w)) else null)
             }
         }
+        // barre longue et roue abdominale (tenues à deux mains)
+        if (!s.map && (tool == "bb" || tool == "wheel")) {
+            val gr = inHand("W1"); val gl = inHand("W2"); val c = gr.lerp(gl, .5f)
+            var ax = gr - gl; if (ax.len() < 2f) ax = V3(1f, 0f, 0f); ax.norm()
+            if (tool == "bb") {
+                seg(c - ax * 75f, c + ax * 75f, 1.4f, handle)
+                listOf(1f, -1f).forEach { sg -> objs += Triple(cyl, mat(c + ax * (52f * sg), 5f, 19f, 19f, rotTo(ax)), dbc); objs += Triple(cyl, mat(c + ax * (46f * sg), 1.5f, 3f, 3f, rotTo(ax)), handle) }
+            } else {
+                objs += Triple(cyl, mat(c + V3(0f, 0f, 0f), 6f, 9f, 9f, rotTo(ax)), dbc)
+                seg(c - ax * 14f, c + ax * 14f, 1.3f, handle)
+            }
+        }
         // élastiques
         if (!s.map && exo != null && exo.band.isNotEmpty()) {
             val bc = rgb(s.band); val mini = exo.tool == "mini"
@@ -324,6 +336,22 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     objs += Triple(box, mat(V3(0f, 40f, z), 28f, 6f, 115f), pc)
                     listOf(-45f, 45f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
                 }
+                "pullbar" -> {
+                    val gr = b.grip("R"); val gl = b.grip("L"); val y = (gr.y + gl.y) / 2 + 1.5f; val zz = (gr.z + gl.z) / 2
+                    seg(V3(-60f, y, zz), V3(60f, y, zz), 1.6f, handle)
+                    listOf(-60f, 60f).forEach { xx -> seg(V3(xx, 0f, zz), V3(xx, y, zz), 2.5f, pc) }
+                }
+                "dipbars" -> {
+                    val gr = b.grip("R"); val gl = b.grip("L"); val y = (gr.y + gl.y) / 2 - 2f; val zz = (gr.z + gl.z) / 2
+                    listOf(gr.x * sx, gl.x * sx).forEach { xx -> seg(V3(xx, y, zz - 30f), V3(xx, y, zz + 30f), 2f, handle); listOf(-26f, 26f).forEach { dz -> seg(V3(xx, 0f, zz + dz), V3(xx, y, zz + dz), 2.5f, pc) } }
+                }
+                "incbench" -> {
+                    objs += Triple(box, mat(V3(0f, 40f, z + 20f), 28f, 6f, 45f), pc)
+                    val back = Q4.fromUnit(V3(0f, 0f, 1f), V3(0f, .7f, -.71f)).mat()
+                    objs += Triple(box, mat(V3(0f, 66f, z - 22f), 28f, 6f, 70f, floatArrayOf(back[0], back[1], back[2], 0f, back[3], back[4], back[5], 0f, back[6], back[7], back[8], 0f, 0f, 0f, 0f, 1f)), pc)
+                    listOf(-10f, 40f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
+                }
+                "roller" -> { val n = jt("Nc"); objs += Triple(cyl, mat(V3(0f, 7.5f, n.z), 45f, 7.5f, 7.5f), rgb(0x3B82C4)) }
                 "wall" -> objs += Triple(box, mat(V3(0f, 85f, z + (if (x < 100f) -2f else 2f)), 110f, 170f, 3f), pc)
             }
         }
