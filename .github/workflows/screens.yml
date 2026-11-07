@@ -34,6 +34,7 @@ jobs:
             mkdir -p shots
             A="adb shell am start -S -n fr.pgragnic.force/.MainActivity --ez seed true"
             adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
+            adb shell am start -W -n fr.pgragnic.force/.MainActivity > shots/start.txt 2>&1; sleep 8; adb exec-out screencap -p > shots/plain.png
             for t in 0 1 2 3 4; do $A --ei tab $t; sleep 12; adb exec-out screencap -p > shots/tab$t.png; done
             for t in 0 2 3; do $A --ei tab $t --es theme light; sleep 12; adb exec-out screencap -p > shots/light$t.png; done
             $A --ei tab 3; sleep 10; adb shell input swipe 160 500 160 120 600; sleep 3; adb exec-out screencap -p > shots/tab3b.png
@@ -43,6 +44,7 @@ jobs:
             $A --ei play 6; sleep 12; adb exec-out screencap -p > shots/play6.png
             for p in ${{ inputs.poses }}; do adb shell am start -S -n fr.pgragnic.force/.MainActivity --es demo $p --ef k 0.5; sleep 10; adb exec-out screencap -p > shots/pose-$p.png; done
             adb logcat -d -b crash > shots/crash.txt || true
+            adb logcat -d -b all > shots/full.txt || true
             adb logcat -d | grep -iE "AndroidRuntime|fr.pgragnic|GLSurface|libEGL|shader" | tail -150 > shots/logcat.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
