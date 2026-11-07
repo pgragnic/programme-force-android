@@ -379,6 +379,10 @@ fun ThemePanel() {
 
 /** Nouveautés de l'appli, la plus récente en premier. */
 val NEWS = listOf(
+    "7 novembre 2026, 21 h 40" to listOf(
+        "Pendant la séance, les exercices sont regroupés par poids d'haltères pour changer les disques le moins possible.",
+        "Le programme (exercices, séries, consignes) se met à jour tout seul depuis ta base en ligne, sans réinstaller l'appli.",
+        "Le bilan de Claude du dimanche s'affiche dans l'onglet Suivi."),
     "7 novembre 2026, soir" to listOf(
         "Personnage 3D réaliste pendant la séance, avec les muscles travaillés en rouge ; fais-le tourner du doigt.",
         "Onglet Corps : récupération de chaque muscle, de face et de dos, et le détail par muscle.",
