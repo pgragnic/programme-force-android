@@ -20,15 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import fr.pgragnic.force.ui.*
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private lateinit var voice: Voice
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Prog.load(this); Store.init(this)
-        voice = Voice(this)
+        SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
@@ -40,9 +41,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); Store.handleLink(intent) }
 
-    override fun onResume() { super.onResume(); Store.autoSync() }
+    override fun onResume() { super.onResume(); Store.autoSync(); lifecycleScope.launch { if (Health.check(this@MainActivity)) Health.importSteps(this@MainActivity) } }
 
-    override fun onDestroy() { voice.close(); super.onDestroy() }
 
     private fun keepOn(on: Boolean) {
         if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -64,15 +64,16 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        var ses by remember { mutableStateOf<fr.pgragnic.force.ui.Session?>(null) }
         var ending by remember { mutableStateOf(false) }
-        val cur = ses
+        val cur = Live.ses
+        val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+        LaunchedEffect(cur) { keepOn(cur != null) }
         Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
             when {
-                cur != null && ending -> EndScreen(cur) { ses = null; ending = false; keepOn(false) }
+                cur != null && (ending || cur.done) -> EndScreen(cur) { Live.end(this@MainActivity); ending = false }
                 cur != null -> {
-                    BackHandler { ses = null; keepOn(false) }
-                    PlayerScreen(cur, onClose = { ses = null; keepOn(false) }, onEnd = { ending = true })
+                    BackHandler { Live.end(this@MainActivity) }
+                    PlayerScreen(cur, onClose = { Live.end(this@MainActivity) }, onEnd = { ending = true })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
                     NavigationBar(containerColor = C.surface) {
@@ -89,10 +90,11 @@ class MainActivity : ComponentActivity() {
                             0 -> SeanceScreen(onStart = {
                                 val st = Store.st.value
                                 val P = Prog.phases(st.c, st.w, st.s, st.rest, st, Store.log.value)
-                                ses = fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, voice); keepOn(true)
+                                if (android.os.Build.VERSION.SDK_INT >= 33) runCatching { notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+                                Live.begin(this@MainActivity, fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)))
                             })
                             1 -> CorpsScreen()
-                            2 -> Soon("Activité", "Les pas, les activités et les calories arrivent à l'étape 3, avec l'import automatique des pas via Health Connect.")
+                            2 -> ActiviteScreen()
                             3 -> SuiviScreen()
                             else -> InfosScreen()
                         }

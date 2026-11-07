@@ -24,6 +24,9 @@ data class SessRow(val id: String? = null, val d: Long, val data: JsonObject)
 @Serializable
 data class StateRow(val data: JsonObject)
 
+@Serializable
+data class DayRow(val date: String, val data: JsonObject)
+
 /** Stockage : copie locale sur le téléphone + synchronisation Supabase quand on est connecté. */
 object Store {
     val json = Json { ignoreUnknownKeys = true; encodeDefaults = false; explicitNulls = false; coerceInputValues = true }
@@ -42,8 +45,10 @@ object Store {
     }
 
     fun init(ctx: Context) {
+        if (::prefs.isInitialized) return
         prefs = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
+        runCatching { days.value = json.decodeFromString<List<DayRec>>(prefs.getString("days", "[]")!!) }
         runCatching { prefs.getString("st", null)?.let { st.value = stFrom(json.parseToJsonElement(it).jsonObject) } }
         if (sb == null) { sync.value = "Base en ligne non configurée : données gardées sur ce téléphone"; return }
         scope.launch {
@@ -67,7 +72,8 @@ object Store {
         o["n2"]?.jsonPrimitive?.intOrNull ?: 2, o["n05"]?.jsonPrimitive?.intOrNull ?: 6)
 
     private fun saveLocal() {
-        prefs.edit().putString("log", json.encodeToString(log.value)).putString("st", stTo(st.value).toString()).apply()
+        prefs.edit().putString("log", json.encodeToString(log.value)).putString("st", stTo(st.value).toString())
+            .putString("days", json.encodeToString(days.value)).putString("dpend", json.encodeToString(dPending.toList())).apply()
         ver.value++
     }
 
@@ -83,11 +89,33 @@ object Store {
         return JsonObject(o.filterKeys { it != "_id" })
     }
 
+    private val dPending: MutableSet<String> by lazy { runCatching { json.decodeFromString<List<String>>(prefs.getString("dpend", "[]")!!).toMutableSet() }.getOrElse { mutableSetOf() } }
+
+    /** Enregistre (ou remplace) une journée d'activité. */
+    fun saveDay(d: DayRec) = saveDays(listOf(d))
+    fun saveDays(ds: List<DayRec>) {
+        if (ds.isEmpty()) return
+        val keys = ds.map { it.date }.toSet()
+        days.value = (days.value.filter { it.date !in keys } + ds).sortedBy { it.date }
+        dPending += keys; saveLocal()
+        pushDays()
+    }
+    private fun pushDays() {
+        val c = sb ?: return; if (user.value == null) return
+        val todo = days.value.filter { it.date in dPending }; if (todo.isEmpty()) return
+        scope.launch {
+            try {
+                c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }
+                dPending -= todo.map { it.date }.toSet(); saveLocal()
+            } catch (t: Throwable) { sync.value = "Journée gardée sur le téléphone, envoi plus tard" }
+        }
+    }
+
     private var lastPull = 0L
     /** Synchronisation automatique : retour dans l'appli, réseau retrouvé. */
     fun autoSync(force: Boolean = false) {
         if (sb == null || user.value == null) return
-        val pending = log.value.any { it._id == null }
+        val pending = log.value.any { it._id == null } || dPending.isNotEmpty()
         if (force || pending || System.currentTimeMillis() - lastPull > 60_000) pull()
     }
 
@@ -110,6 +138,11 @@ object Store {
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { st.value = stFrom(it.data) } }
+                runCatching {
+                    val todo = days.value.filter { it.date in dPending }
+                    if (todo.isNotEmpty()) { c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }; dPending.clear() }
+                    days.value = c.from("days").select().decodeList<DayRow>().mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
+                }
                 saveLocal()
                 sync.value = "Synchronisé · ${log.value.size} séances"
             } catch (t: Throwable) {

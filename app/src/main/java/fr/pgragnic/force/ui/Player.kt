@@ -42,7 +42,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     var elapsed by mutableDoubleStateOf(0.0)
     val totalDur = P.sumOf { it.dur }
 
-    fun start() { enter(0) }
+    var started = false; private set
+    fun start() { if (started) return; started = true; last = SystemClock.elapsedRealtime(); enter(0) }
 
     fun enter(i: Int) {
         pi = i.coerceIn(0, P.size - 1); pt = 0.0

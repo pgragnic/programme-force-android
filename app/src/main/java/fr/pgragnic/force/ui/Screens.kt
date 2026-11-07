@@ -291,6 +291,7 @@ fun InfosScreen() {
                 msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
             }
         }
+        RappelPanel()
         Panel {
             Text("Matériel", color = C.ink, fontWeight = FontWeight.Bold)
             Text("Barre d'haltère ${Prog.fk(st.bar)} kg · disques : ${st.n2} × 2 kg, ${st.n05} × 0,5 kg · charge max ${Prog.fk(Prog.maxKg(st))} kg par haltère", color = C.muted)
@@ -314,5 +315,43 @@ fun Soon(title: String, txt: String) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text(title, fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
         Panel(Modifier.padding(top = 12.dp)) { Text(txt, color = C.muted) }
+    }
+}
+
+/** Rappel de séance : jours et heure. */
+@Composable
+fun RappelPanel() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var c by remember { mutableStateOf(Reminder.get(ctx)) }
+    val perm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    fun upd(n: Reminder.Cfg) { c = n; Reminder.set(ctx, n) }
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Rappel de séance", color = C.ink, fontWeight = FontWeight.Bold)
+                Text(if (c.on) "Notification à ${c.h} h ${c.m.toString().padStart(2, '0')} les jours cochés, sauf si tu t'es déjà entraîné ce jour-là" else "Désactivé", color = C.muted, fontSize = 12.sp)
+            }
+            Switch(c.on, { on ->
+                if (on && android.os.Build.VERSION.SDK_INT >= 33) runCatching { perm.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+                upd(c.copy(on = on))
+            })
+        }
+        if (c.on) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                "LMMJVSD".forEachIndexed { i, l ->
+                    val on = (c.days shr i) and 1 == 1
+                    Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { upd(c.copy(days = c.days xor (1 shl i))) }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
+                        Text(l.toString(), color = if (on) C.bg else C.muted, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Heure", color = C.muted, modifier = Modifier.weight(1f))
+                OutlinedButton(onClick = { upd(c.copy(h = (c.h + 23) % 24)) }) { Text("−") }
+                Text("${c.h} h ${c.m.toString().padStart(2, '0')}", color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp).clickable { upd(c.copy(m = (c.m + 15) % 60)) })
+                OutlinedButton(onClick = { upd(c.copy(h = (c.h + 1) % 24)) }) { Text("+") }
+            }
+            Text("Touche les minutes pour avancer de 15 min.", color = C.muted, fontSize = 11.sp)
+        }
     }
 }
