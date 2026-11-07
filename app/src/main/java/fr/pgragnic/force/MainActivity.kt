@@ -1,5 +1,8 @@
 package fr.pgragnic.force
 
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -25,8 +28,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Prog.load(this); Store.init(this)
         voice = Voice(this)
+        Store.handleLink(intent)
+        runCatching {
+            getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) { Store.autoSync() }
+            })
+        }
         setContent { ForceTheme { App() } }
     }
+
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); Store.handleLink(intent) }
+
+    override fun onResume() { super.onResume(); Store.autoSync() }
 
     override fun onDestroy() { voice.close(); super.onDestroy() }
 

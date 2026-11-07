@@ -6,6 +6,9 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.handleDeeplinks
+import android.content.Intent
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -34,7 +37,7 @@ object Store {
 
     val sb: SupabaseClient? by lazy {
         if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_KEY.isBlank()) null
-        else createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY) { install(Auth); install(Postgrest) }
+        else createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY) { install(Auth) { scheme = "fr.pgragnic.force"; host = "login" }; install(Postgrest) }
     }
 
     fun init(ctx: Context) {
@@ -44,8 +47,13 @@ object Store {
         if (sb == null) { sync.value = "Base en ligne non configurée : données gardées sur ce téléphone"; return }
         scope.launch {
             runCatching { sb!!.auth.awaitInitialization() }
-            user.value = sb!!.auth.currentUserOrNull()?.email
-            if (user.value != null) pull() else sync.value = "Connecte-toi (onglet Infos) pour sauvegarder en ligne"
+            sb!!.auth.sessionStatus.collect { s ->
+                when (s) {
+                    is SessionStatus.Authenticated -> { val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) pull() }
+                    is SessionStatus.NotAuthenticated -> { user.value = null; sync.value = "Connecte-toi (onglet Infos) pour sauvegarder en ligne" }
+                    else -> {}
+                }
+            }
         }
     }
 
@@ -74,11 +82,27 @@ object Store {
         return JsonObject(o.filterKeys { it != "_id" })
     }
 
+    private var lastPull = 0L
+    /** Synchronisation automatique : retour dans l'appli, réseau retrouvé. */
+    fun autoSync(force: Boolean = false) {
+        if (sb == null || user.value == null) return
+        val pending = log.value.any { it._id == null }
+        if (force || pending || System.currentTimeMillis() - lastPull > 60_000) pull()
+    }
+
+    /** Lien de confirmation d'e-mail ou de connexion reçu par l'appli. */
+    fun handleLink(intent: Intent?) {
+        val c = sb ?: return; val i = intent ?: return
+        if (i.data?.scheme != "fr.pgragnic.force") return
+        runCatching { c.handleDeeplinks(i) { sync.value = "Adresse confirmée, connecté" } }
+    }
+
     /** Récupère tout depuis Supabase, en envoyant d'abord les séances restées sur le téléphone. */
     fun pull() {
         val c = sb ?: return
         scope.launch {
             try {
+                lastPull = System.currentTimeMillis()
                 sync.value = "Synchronisation…"
                 val pending = log.value.filter { it._id == null }
                 pending.forEach { e -> c.from("sessions").insert(SessRow(d = e.d, data = entryJson(e))) }
@@ -121,10 +145,10 @@ object Store {
     suspend fun signIn(email: String, pw: String, create: Boolean): String? {
         val c = sb ?: return "Base non configurée"
         return try {
-            if (create) c.auth.signUpWith(Email) { this.email = email; password = pw }
+            if (create) c.auth.signUpWith(Email, redirectUrl = "fr.pgragnic.force://login") { this.email = email; password = pw }
             else c.auth.signInWith(Email) { this.email = email; password = pw }
             user.value = c.auth.currentUserOrNull()?.email
-            if (user.value == null) "Compte créé : confirme ton adresse depuis l'e-mail reçu, puis connecte-toi."
+            if (user.value == null) "Compte créé : ouvre l'e-mail reçu sur ce téléphone et touche le lien, l'appli s'ouvrira connectée."
             else { pull(); null }
         } catch (t: Throwable) { t.message ?: "Erreur de connexion" }
     }

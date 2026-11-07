@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,7 +84,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             }
         }
         val order = remember(st.c, st.w, st.s, log) { Prog.orderEx(st.c, st.s, st.w, st) }
-        Card {
+        Panel {
             order.forEachIndexed { i, id ->
                 val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -192,7 +193,7 @@ fun SuiviScreen() {
             Eyebrow("Historique")
         }
         items(log.sortedByDescending { it.d }, key = { it.d }) { e ->
-            Card {
+            Panel {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", color = C.ink, fontWeight = FontWeight.Bold)
@@ -234,30 +235,49 @@ fun SuiviScreen() {
 @Composable
 fun InfosScreen() {
     val user by Store.user.collectAsState(); val st by Store.st.collectAsState()
-    var email by remember { mutableStateOf("") }; var pw by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }; var pw by remember { mutableStateOf("") }; var pw2 by remember { mutableStateOf("") }
+    var show by remember { mutableStateOf(false) }; var create by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-        Card {
+        Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
                 Text("Connecté : $user", color = C.muted)
-                Text(Store.sync.collectAsState().value, color = C.muted, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { Store.pull() }) { Text("Synchroniser") }
-                    OutlinedButton(onClick = { scope.launch { Store.signOut() } }) { Text("Se déconnecter") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(Store.sync.collectAsState().value, color = C.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { Store.pull() }) { Text("Actualiser", fontSize = 12.sp) }
                 }
+                TextButton(onClick = { scope.launch { Store.signOut() } }, contentPadding = PaddingValues(0.dp)) { Text("Se déconnecter", color = C.muted) }
             } else {
-                OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(pw, { pw = it }, label = { Text("Mot de passe") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { scope.launch { msg = Store.signIn(email.trim(), pw, false) ?: "Connecté" } }) { Text("Se connecter") }
-                    OutlinedButton(onClick = { scope.launch { msg = Store.signIn(email.trim(), pw, true) ?: "Compte créé" } }) { Text("Créer le compte") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+                    PChip("J'ai un compte", !create) { create = false; msg = null }
+                    PChip("Créer un compte", create) { create = true; msg = null }
                 }
+                OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
+                val eye = @Composable { IconButton(onClick = { show = !show }) { Icon(if (show) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (show) "Masquer le mot de passe" else "Afficher le mot de passe") } }
+                OutlinedTextField(pw, { pw = it }, label = { Text("Mot de passe") }, singleLine = true, trailingIcon = eye,
+                    visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                if (create) {
+                    OutlinedTextField(pw2, { pw2 = it }, label = { Text("Confirmer le mot de passe") }, singleLine = true, trailingIcon = eye,
+                        visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                        isError = pw2.isNotEmpty() && pw2 != pw, supportingText = { if (pw2.isNotEmpty() && pw2 != pw) Text("Les deux mots de passe sont différents") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                    Text("6 caractères minimum.", color = C.muted, fontSize = 12.sp)
+                }
+                Button(onClick = {
+                    msg = when {
+                        email.isBlank() || pw.isEmpty() -> "Renseigne l'e-mail et le mot de passe."
+                        create && pw.length < 6 -> "Le mot de passe doit faire au moins 6 caractères."
+                        create && pw != pw2 -> "Les deux mots de passe sont différents."
+                        else -> { scope.launch { msg = Store.signIn(email.trim(), pw, create) ?: "Connecté" }; "…" }
+                    }
+                }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(if (create) "Créer le compte" else "Se connecter") }
                 msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
             }
         }
-        Card {
+        Panel {
             Text("Matériel", color = C.ink, fontWeight = FontWeight.Bold)
             Text("Barre d'haltère ${Prog.fk(st.bar)} kg · disques : ${st.n2} × 2 kg, ${st.n05} × 0,5 kg · charge max ${Prog.fk(Prog.maxKg(st))} kg par haltère", color = C.muted)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -267,7 +287,7 @@ fun InfosScreen() {
                 OutlinedButton(onClick = { Store.setSettings { it.n05 += 2 } }) { Text("+ 0,5") }
             }
         }
-        Card {
+        Panel {
             Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
             Text("8 semaines, 4 séances (A, B, C, D) avec des haltères réglables. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
             Text("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", color = C.muted, fontSize = 12.sp)
