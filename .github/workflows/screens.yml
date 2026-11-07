@@ -42,6 +42,7 @@ jobs:
             adb shell cmd statusbar expand-notifications; sleep 3; adb exec-out screencap -p > shots/notif.png; adb shell cmd statusbar collapse
             $A --ei play 6; sleep 12; adb exec-out screencap -p > shots/play6.png
             for p in ${{ inputs.poses }}; do adb shell am start -S -n fr.pgragnic.force/.MainActivity --es demo $p --ef k 0.5; sleep 10; adb exec-out screencap -p > shots/pose-$p.png; done
+            adb logcat -d -b crash > shots/crash.txt || true
             adb logcat -d | grep -iE "AndroidRuntime|fr.pgragnic|GLSurface|libEGL|shader" | tail -150 > shots/logcat.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
