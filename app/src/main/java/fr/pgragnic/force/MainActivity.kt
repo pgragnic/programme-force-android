@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                                 val P = Prog.phases(st.c, st.w, st.s, st.rest, st, Store.log.value)
                                 ses = fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, voice); keepOn(true)
                             })
-                            1 -> Soon("Corps", "La carte des muscles (prêts, en récupération, fatigués) avec le personnage 3D arrive à l'étape 2.")
+                            1 -> CorpsScreen()
                             2 -> Soon("Activité", "Les pas, les activités et les calories arrivent à l'étape 3, avec l'import automatique des pas via Health Connect.")
                             3 -> SuiviScreen()
                             else -> InfosScreen()

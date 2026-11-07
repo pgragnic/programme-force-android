@@ -233,7 +233,7 @@ class Body(ctx: Context) {
     fun boneEnd(b: Bone) = m3v(b.A, b.a0 + b.u0 * b.L0) + b.t
 
     /** Couleurs par sommet : muscles travaillés (hl) ou couleurs de récupération (colors). */
-    fun colorize(base: Int, acc: Int, hl: String?, colors: Map<String, Int>?) {
+    fun colorize(base: Int, acc: Int, hl: String?, colors: Map<String, Int>?): Boolean {
         val key = "$base/$acc/$hl/${colors?.hashCode()}"
         val ext = mapOf("Avant-bras" to listOf("Biceps" to .55, "Triceps" to .35), "Jambe" to listOf("Mollets" to .45))
         val mp = hl?.let { Prog.MAP[it] } ?: emptyMap()
@@ -245,8 +245,9 @@ class Body(ctx: Context) {
             else if (colors != null) colors[n]?.let { mix(bc, rgb(it), .8f) } ?: bc
             else { var w = mp[n] ?: 0.0; ext[n]?.forEach { (m, f) -> w = max(w, (mp[m] ?: 0.0) * f) }; mix(bc, ac, min(1.0, w * 1.05).toFloat()) }
         }
+        if (groups.all { it.key == key }) return false
         for (G in groups) {
-            if (G.key == key) continue; G.key = key
+            G.key = key
             val L = G.lab
             if (L == null) { val c = if (G.g == "Yeux") floatArrayOf(.23f, .25f, .27f) else bc; for (i in 0 until G.col.size / 3) { G.col[i * 3] = c[0]; G.col[i * 3 + 1] = c[1]; G.col[i * 3 + 2] = c[2] }; continue }
             for (i in 0 until L.size / 4) {
@@ -255,6 +256,7 @@ class Body(ctx: Context) {
                 for (c in 0..2) G.col[i * 3 + c] = (a[c] * w + b[c] * (1 - w)) * sh
             }
         }
+        return true
     }
 
     fun dbs(id: String) = Poses.dbs(id)

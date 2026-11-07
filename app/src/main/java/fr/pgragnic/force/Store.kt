@@ -33,6 +33,7 @@ object Store {
     val sync = MutableStateFlow("")
     val user = MutableStateFlow<String?>(null)
     val ver = MutableStateFlow(0)
+    val days = MutableStateFlow<List<DayRec>>(emptyList())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val sb: SupabaseClient? by lazy {

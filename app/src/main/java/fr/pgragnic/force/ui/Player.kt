@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.*
+import fr.pgragnic.force.gl.Body3D
+import fr.pgragnic.force.gl.BodyState
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -138,7 +140,8 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         Text(p.n, color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
         if (p.det.isNotBlank()) Text(p.det, color = C.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp))) {
-            Figure(p.pose, k, Modifier.fillMaxSize(), ghost = p.k in listOf("prep", "rest", "switch"), mirror = mir, nodb = p.nodb, accent = col)
+            val ghost = p.k in listOf("prep", "rest", "switch")
+            Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else p.pose), Modifier.fillMaxSize())
             if (mv.isNotBlank()) Text(mv, color = col, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         }
         val prevW = ses.P.getOrNull(ses.pi - 1)
