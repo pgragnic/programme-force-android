@@ -382,6 +382,12 @@ fun ThemePanel() {
 
 /** Nouveautés de l'appli, la plus récente en premier. */
 val NEWS = listOf(
+    "7 novembre 2026, 23 h 45" to listOf(
+        "Premier lancement guidé : ton matériel, tes charges disponibles, les zones à ménager, ton objectif, ton niveau et les zones à travailler (Infos → Matériel et profil).",
+        "77 exercices : haltères, kettlebell, barre, élastiques, traction, dips, banc, roue, chaise, mur, serviette, medicine ball, ballon, Bosu, poids du corps ; les séances se composent avec ton matériel.",
+        "Échauffement à la corde ou au bâton, retour au calme au rouleau ou à la balle selon ton matériel.",
+        "Ton avis compte : envoie une idée ou signale un problème depuis l'onglet Infos.",
+        "Personnage 3D : les exercices penchés en avant (rowing, soulevé de terre, pompes…) ne sont plus dessinés cambrés en arrière."),
     "7 novembre 2026, 21 h 40" to listOf(
         "Pendant la séance, les exercices sont regroupés par poids d'haltères pour changer les disques le moins possible.",
         "Le programme (exercices, séries, consignes) se met à jour tout seul depuis ta base en ligne, sans réinstaller l'appli.",
