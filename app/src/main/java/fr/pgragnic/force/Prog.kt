@@ -52,9 +52,23 @@ object Prog {
     val METP = HashMap<String, Double>()
     val FEF = HashMap<String, Double>()
 
+    /** Version du programme en cours : 0 = celle livrée avec l'appli, sinon numéro de la version en base. */
+    var version = 0L
+
     fun load(ctx: Context) {
         if (::raw.isInitialized) return
-        raw = Json.parseToJsonElement(ctx.assets.open("programme.json").bufferedReader().readText()).jsonObject
+        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        val cached = p.getString("prog", null)
+        if (cached != null && runCatching { apply(Json.parseToJsonElement(cached).jsonObject) }.isSuccess) { version = p.getLong("progv", 0); return }
+        apply(Json.parseToJsonElement(ctx.assets.open("programme.json").bufferedReader().readText()).jsonObject)
+    }
+
+    /** Remplace le programme (exercices, semaines, séances…) par celui reçu. */
+    @Synchronized fun apply(o: JsonObject) {
+        listOf("EX", "WEEKS", "SESS1", "SESS2").forEach { require(o[it] != null) { "programme incomplet" } }
+        EX.clear(); WEEKS.clear(); SESS1.clear(); SESS2.clear(); WU.clear(); COOLN.clear(); MAP.clear(); METP.clear(); FEF.clear()
+        raw = o
+        fr.pgragnic.force.ui.Poses.clear()
         raw["EX"]!!.jsonObject.forEach { (id, v) ->
             val o = v.jsonObject
             EX[id] = Ex(id, o.s("n"), o.s("l"), o.s("tip"), o["m"]?.jsonPrimitive?.contentOrNull,

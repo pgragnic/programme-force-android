@@ -28,6 +28,9 @@ data class StateRow(val data: JsonObject)
 data class BilanRow(val data: JsonObject, val created_at: String? = null)
 
 @Serializable
+data class ProgRow(val id: Long, val data: JsonObject, val note: String? = null)
+
+@Serializable
 data class DayRow(val date: String, val data: JsonObject)
 
 /** Stockage : copie locale sur le téléphone + synchronisation Supabase quand on est connecté. */
@@ -42,6 +45,8 @@ object Store {
     val days = MutableStateFlow<List<DayRec>>(emptyList())
     /** Dernier bilan de la semaine écrit dans la base (table bilans), s'il y en a un. */
     val bilan = MutableStateFlow<JsonObject?>(null)
+    /** Message quand une nouvelle version du programme vient d'arriver. */
+    val progNote = MutableStateFlow("")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val sb: SupabaseClient? by lazy {
@@ -144,6 +149,13 @@ object Store {
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { st.value = stFrom(it.data) } }
+                runCatching {
+                    val r = c.from("programme").select { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
+                    if (r != null && r.id != Prog.version) {
+                        prefs.edit().putString("prog", r.data.toString()).putLong("progv", r.id).apply()
+                        if (Live.ses == null) withContext(Dispatchers.Main) { Prog.apply(r.data); Prog.version = r.id; ver.value++; progNote.value = "Programme mis à jour" + (r.note?.let { " : $it" } ?: "") }
+                    }
+                }
                 runCatching {
                     bilan.value = c.from("bilans").select { order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<BilanRow>().firstOrNull()?.data
                     bilan.value?.let { prefs.edit().putString("bilan", it.toString()).apply() }

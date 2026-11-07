@@ -13,7 +13,8 @@ import kotlinx.serialization.json.*
 /** Positions 2D (repère 200×200) d'une pose à l'instant k ∈ [0,1], avec images clés intermédiaires. */
 object Poses {
     private val cache = HashMap<String, List<Pair<Double, Map<String, DoubleArray>>>>()
-    private val flip: Set<String> by lazy { Prog.raw["FLIPX"]!!.jsonArray.map { it.jsonPrimitive.content }.toSet() }
+    private val flip: Set<String> get() = Prog.raw["FLIPX"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet() ?: emptySet()
+    fun clear() = cache.clear()
 
     private fun pts(o: JsonObject?): Map<String, DoubleArray> =
         o?.mapValues { (_, v) -> v.jsonArray.let { doubleArrayOf(it[0].jsonPrimitive.double, it[1].jsonPrimitive.double) } } ?: emptyMap()

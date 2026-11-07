@@ -79,7 +79,7 @@ class Body(ctx: Context) {
     private val BMAP = mapOf("Pc" to "Pc", "Nc" to "Nc", "H" to "H", "SR" to "SR", "ER" to "E1", "WR" to "W1", "SL" to "SL", "EL" to "E2", "WL" to "W2",
         "HR" to "HR", "KR" to "K1", "AR" to "A1", "TR" to "T1", "HL" to "HL", "KL" to "K2", "AL" to "A2", "TL" to "T2")
     private val TWOHAND = setOf("pull", "ohtri", "squat", "crunch", "dbugw")
-    private val FLIPX: Set<String> by lazy { Prog.raw["FLIPX"]!!.jsonArray.map { it.jsonPrimitive.content }.toSet() }
+    private val FLIPX: Set<String> get() = Prog.raw["FLIPX"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet() ?: emptySet()
 
     init {
         val buf = ctx.assets.open("corps.bin").readBytes()

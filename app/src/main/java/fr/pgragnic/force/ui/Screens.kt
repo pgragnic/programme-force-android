@@ -73,6 +73,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Eyebrow("Haltères réglables · 4 séances par semaine")
         Text("Programme Force", fontSize = 30.sp, fontWeight = FontWeight.Black, color = C.ink)
+        Store.progNote.collectAsState().value.takeIf { it.isNotBlank() }?.let { Text(it, color = C.effort, fontSize = 13.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
             Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
@@ -404,6 +405,6 @@ fun NewsPanel() {
             items.forEach { Text("• $it", color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp, start = 4.dp)) }
         }
         if (NEWS.size > 1) TextButton(onClick = { all = !all }, contentPadding = PaddingValues(0.dp)) { Text(if (all) "Moins" else "Versions précédentes") }
-        Text("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME}", color = C.muted, fontSize = 12.sp)
+        Text("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme " + if (Prog.version > 0) "n° ${Prog.version} (en ligne)" else "d'origine", color = C.muted, fontSize = 12.sp)
     }
 }
