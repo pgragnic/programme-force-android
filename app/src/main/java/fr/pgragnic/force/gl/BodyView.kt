@@ -243,7 +243,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         val bodyM = FloatArray(16).also { Matrix.setIdentityM(it, 0); if (s.mirror) Matrix.scaleM(it, 0, -1f, 1f, 1f) }
 
         // haltères
-        val dbM = ArrayList<FloatArray>()
+        val dbM = ArrayList<FloatArray>(); val dbH = ArrayList<Boolean>()
         if (!s.nodb && !s.map) {
             val dbs = b.dbs(id)
             fun inHand(w: String): V3 { val g = b.grip(if (w == "W1") "R" else "L"); g.x *= sx; return g }
@@ -251,7 +251,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 listOf(Triple(0f, 12f, 1.6f), Triple(8f, 4.5f, 6.5f), Triple(-8f, 4.5f, 6.5f)).forEach { (ox, L, r) ->
                     var m = FloatArray(16); Matrix.setIdentityM(m, 0); Matrix.translateM(m, 0, p.x, p.y, p.z)
                     if (rot != null) { val t = FloatArray(16); Matrix.multiplyMM(t, 0, m, 0, rot, 0); m = t }
-                    Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); dbM += m
+                    Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); dbM += m; dbH += (ox == 0f)
                 }
             }
             if (b.twoHand(id) && dbs.isNotEmpty()) {
@@ -290,7 +290,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         }
         setM(bodyM, rgb(s.base), 1f, op); drawBody(b)
         glDepthFunc(GL_LESS); glFrontFace(GL_CCW)
-        dbM.forEach { m -> setM(m, rgb(s.db), 0f, op); cyl.draw() }
+        dbM.forEachIndexed { i, m -> setM(m, if (dbH[i]) rgb(0x2A2F35) else rgb(s.db), 0f, op); cyl.draw() }
         glDisable(GL_BLEND)
     }
 }

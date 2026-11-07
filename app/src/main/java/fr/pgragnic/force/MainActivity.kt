@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import fr.pgragnic.force.ui.*
 
 class MainActivity : ComponentActivity() {
@@ -49,7 +50,20 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun App() {
-        var tab by rememberSaveable { mutableIntStateOf(0) }
+        var tab by rememberSaveable { mutableIntStateOf(intent.getIntExtra("tab", 0)) }
+        // Aperçu de contrôle (captures automatiques) : adb shell am start ... --es demo <pose>
+        intent.getStringExtra("demo")?.let { d ->
+            val k = intent.getFloatExtra("k", -1f)
+            var t by remember { mutableStateOf(0.0) }
+            LaunchedEffect(d) { val t0 = System.nanoTime(); while (true) { withFrameNanos { }; t = (System.nanoTime() - t0) / 1e9 } }
+            val kk = if (k >= 0) k.toDouble() else Prog.cycleK(t, listOf(1.2, .4, 1.6, .3))
+            Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
+                fr.pgragnic.force.gl.Body3D(fr.pgragnic.force.gl.BodyState(pose = d, k = kk, hl = d, ghost = intent.getBooleanExtra("ghost", false),
+                    mirror = intent.getBooleanExtra("mirror", false)), Modifier.fillMaxSize())
+                Text(d, color = C.ink, modifier = Modifier.padding(12.dp))
+            }
+            return
+        }
         var ses by remember { mutableStateOf<fr.pgragnic.force.ui.Session?>(null) }
         var ending by remember { mutableStateOf(false) }
         val cur = ses
