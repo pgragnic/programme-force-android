@@ -36,6 +36,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     var done by mutableStateOf(false)
     val sets = HashMap<String, MutableList<SetRec>>()
     val nsets = Prog.WEEKS[w].s
+    /** nombre de séries prévues pour un exercice (une de plus pour les zones à travailler) */
+    fun nsetsOf(id: String) = P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: nsets
     val nex = P.count { it.k == "work" && it.set == 1 }
     private var last = SystemClock.elapsedRealtime()
     private var lastCue: String? = null
@@ -63,7 +65,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             else -> voice.beep(1)
         }
         // pré-remplit la série qui vient de se terminer
-        if (prev?.k == "work" && prev.pose != null) slot(prev.pose!!, prev.set, tgtOf(prev))
+        if (prev?.k == "work" && prev.ex != null) slot(prev.ex!!, prev.set, tgtOf(prev))
     }
 
     fun tgtOf(p: Phase) = if (p.m == "time") p.dur.toInt() else p.reps
@@ -142,11 +144,11 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         if (p.det.isNotBlank()) Text(p.det, color = C.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp))) {
             val ghost = p.k in listOf("prep", "rest", "switch")
-            Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else p.pose).th(), Modifier.fillMaxSize())
+            Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else (p.ex ?: p.pose), ex = p.ex).th(), Modifier.fillMaxSize())
             if (mv.isNotBlank()) Text(mv, color = col, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         }
         val prevW = ses.P.getOrNull(ses.pi - 1)
-        if (prevW?.k == "work" && p.k in listOf("rest", "switch", "cool") && prevW.pose != null) SetPanel(ses, prevW)
+        if (prevW?.k == "work" && p.k in listOf("rest", "switch", "cool") && prevW.ex != null) SetPanel(ses, prevW)
         else {
             val tip = if (p.k == "rest") (p.chg ?: "") else p.tip
             if (ses.repTxt().isNotBlank()) Text(ses.repTxt(), color = C.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -177,11 +179,11 @@ private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 /** Panneau « série par série » affiché pendant la pause qui suit une série. */
 @Composable
 private fun SetPanel(ses: Session, pw: Phase) {
-    val id = pw.pose!!; val tgt = ses.tgtOf(pw); val time = pw.m == "time"
+    val id = pw.ex!!; val tgt = ses.tgtOf(pw); val time = pw.m == "time"
     var cur by remember(id, pw.set) { mutableStateOf(ses.slot(id, pw.set, tgt)) }
     fun upd(v: SetRec) { cur = v; ses.setSlot(id, pw.set, v) }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(14.dp)).padding(12.dp)) {
-        Text("${Prog.EX[id]?.n} · série ${pw.set}/${ses.nsets}  ·  objectif $tgt" + if (time) " s" else " reps", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("${Prog.EX[id]?.n} · série ${pw.set}/${ses.nsetsOf(id)}  ·  objectif $tgt" + if (time) " s" else " reps", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Text(if (time) "Secondes tenues" else if (Prog.EX[id]?.m == "uni") "Répétitions par côté" else "Répétitions faites", color = C.muted, modifier = Modifier.weight(1f))
             OutlinedButton(onClick = { upd(cur.copy(r = max(0, cur.r - if (time) 5 else 1))) }) { Text("−", fontSize = 20.sp) }

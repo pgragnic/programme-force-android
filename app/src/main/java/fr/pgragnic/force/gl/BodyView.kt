@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import fr.pgragnic.force.Prog
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -25,6 +26,8 @@ data class BodyState(
     val hl: String? = null, val colors: Map<String, Int>? = null, val az: Float? = null, val map: Boolean = false,
     val bg: Int = 0x0C0F12, val ground: Int = 0x181C21, val mat: Int = 0x21262C, val db: Int = 0x2EC089,
     val base: Int = 0xE8DAD5, val acc: Int = 0xE0453A,
+    /** exercice affiché : donne l'outil (haltère, kettlebell, élastique) */
+    val ex: String? = null, val band: Int = 0xE3A33E, val prop: Int = 0x6B7680,
 )
 
 private fun fb(n: Int): FloatBuffer = ByteBuffer.allocateDirect(n * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
@@ -69,6 +72,15 @@ private class Mesh(data: FloatArray, idx: ShortArray) {
             for (i in 0 until seg) ix += listOf(0, (i + 2).toShort(), (i + 1).toShort())
             return Mesh(d.toFloatArray(), ix.toShortArray())
         }
+        /** Sphère de rayon 1. */
+        fun sphere(seg: Int = 20): Mesh {
+            val d = ArrayList<Float>(); val ix = ArrayList<Short>()
+            for (i in 0..seg) { val t = PI.toFloat() * i / seg
+                for (j in 0..seg) { val p = 2 * PI.toFloat() * j / seg; val x = sin(t) * cos(p); val y = cos(t); val z = sin(t) * sin(p); d += listOf(x, y, z, x, y, z) } }
+            for (i in 0 until seg) for (j in 0 until seg) { val a = (i * (seg + 1) + j).toShort(); val b = (a + seg + 1).toShort()
+                ix += listOf(a, (a + 1).toShort(), b, (a + 1).toShort(), (b + 1).toShort(), b) }
+            return Mesh(d.toFloatArray(), ix.toShortArray())
+        }
         /** Boîte unité centrée. */
         fun box(): Mesh {
             val d = ArrayList<Float>(); val ix = ArrayList<Short>()
@@ -95,7 +107,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private var prog = 0
     private val gbuf = ArrayList<IntArray>() // vbo pos, nrm, col, ibo
     private val fbs = ArrayList<Triple<FloatBuffer, FloatBuffer, FloatBuffer>>()
-    private lateinit var cyl: Mesh; private lateinit var disc: Mesh; private lateinit var box: Mesh
+    private lateinit var cyl: Mesh; private lateinit var disc: Mesh; private lateinit var box: Mesh; private lateinit var ball: Mesh
     private var W = 1; private var H = 1
     private val proj = FloatArray(16); private val view = FloatArray(16); private val vp = FloatArray(16)
     private var lastKey = ""; private var lastId: String? = null
@@ -131,7 +143,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         glAttachShader(prog, shader(GL_VERTEX_SHADER, VS)); glAttachShader(prog, shader(GL_FRAGMENT_SHADER, FS)); glLinkProgram(prog)
         uMVP = glGetUniformLocation(prog, "uMVP"); uM = glGetUniformLocation(prog, "uM"); uN = glGetUniformLocation(prog, "uN")
         uCol = glGetUniformLocation(prog, "uCol"); uUse = glGetUniformLocation(prog, "uUse"); uAlpha = glGetUniformLocation(prog, "uAlpha"); uFlat = glGetUniformLocation(prog, "uFlat")
-        cyl = Mesh.cylinder(); disc = Mesh.disc(); box = Mesh.box()
+        cyl = Mesh.cylinder(); disc = Mesh.disc(); box = Mesh.box(); ball = Mesh.sphere()
         val b = body ?: Body(ctx).also { body = it }
         gbuf.clear(); fbs.clear(); lastKey = ""; b.groups.forEach { it.key = null }
         b.groups.forEach { G ->
@@ -184,7 +196,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         val key = "$id/${s.k}"
         val J = b.build(id, s.k)
         if (key != lastKey) {
-            b.skin(J, b.isFront(id)); lastKey = key
+            val lift = if (b.isFree(id)) maxOf(0f, minOf(J["A1"]!!.y, J["A2"]!!.y) - 2f) else 0f
+            b.skin(J, b.isFront(id), lift); lastKey = key
             b.groups.forEachIndexed { i, G ->
                 val ids = gbuf[i]; val (pf, nf, _) = fbs[i]
                 pf.position(0); pf.put(G.pos).position(0); glBindBuffer(GL_ARRAY_BUFFER, ids[0]); glBufferData(GL_ARRAY_BUFFER, G.pos.size * 4, pf, GL_DYNAMIC_DRAW)
@@ -242,30 +255,76 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         }
         val bodyM = FloatArray(16).also { Matrix.setIdentityM(it, 0); if (s.mirror) Matrix.scaleM(it, 0, -1f, 1f, 1f) }
 
-        // haltères
-        val dbM = ArrayList<FloatArray>(); val dbH = ArrayList<Boolean>()
-        if (!s.nodb && !s.map) {
+        // objets : haltères, kettlebell, élastiques, accessoires (maillage, matrice, couleur)
+        val objs = ArrayList<Triple<Mesh, FloatArray, FloatArray>>()
+        fun mat(p: V3, sxx: Float, syy: Float, szz: Float, rot: FloatArray? = null): FloatArray {
+            var m = FloatArray(16); Matrix.setIdentityM(m, 0); Matrix.translateM(m, 0, p.x, p.y, p.z)
+            if (rot != null) { val t = FloatArray(16); Matrix.multiplyMM(t, 0, m, 0, rot, 0); m = t }
+            Matrix.scaleM(m, 0, sxx, syy, szz); return m
+        }
+        fun rotTo(d: V3): FloatArray { val q = Q4.fromUnit(V3(1f, 0f, 0f), d.copy().norm()).mat(); return floatArrayOf(q[0], q[1], q[2], 0f, q[3], q[4], q[5], 0f, q[6], q[7], q[8], 0f, 0f, 0f, 0f, 1f) }
+        /** Segment cylindrique entre deux points (élastique, pieds de chaise…). */
+        fun seg(a: V3, c: V3, r: Float, col: FloatArray) { val d = c - a; val L = d.len(); if (L < .5f) return; objs += Triple(cyl, mat(a.lerp(c, .5f), L, r, r, rotTo(d)), col) }
+        val E = s.ex?.let { Prog.EX[it] }
+        val tool = E?.tool ?: (if (s.nodb) "" else "db")
+        fun inHand(w: String): V3 { val g = b.grip(if (w == "W1") "R" else "L"); g.x *= sx; return g }
+        fun jt(n: String): V3 { val v = J[n]!!; return V3(v.x * sx, v.y, v.z) }
+        val handle = rgb(0x2A2F35); val dbc = rgb(s.db)
+        if (!s.map && (tool == "db" || tool == "kb") && !s.nodb) {
             val dbs = b.dbs(id)
-            fun inHand(w: String): V3 { val g = b.grip(if (w == "W1") "R" else "L"); g.x *= sx; return g }
-            fun place(p: V3, rot: FloatArray?) {
+            fun dumbbell(p: V3, rot: FloatArray?) {
                 listOf(Triple(0f, 12f, 1.6f), Triple(8f, 4.5f, 6.5f), Triple(-8f, 4.5f, 6.5f)).forEach { (ox, L, r) ->
                     var m = FloatArray(16); Matrix.setIdentityM(m, 0); Matrix.translateM(m, 0, p.x, p.y, p.z)
                     if (rot != null) { val t = FloatArray(16); Matrix.multiplyMM(t, 0, m, 0, rot, 0); m = t }
-                    Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); dbM += m; dbH += (ox == 0f)
+                    Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); objs += Triple(cyl, m, if (ox == 0f) handle else dbc)
                 }
             }
+            fun kettlebell(p: V3, fore: V3) {
+                // la cloche pend sous la main, ou repose le long de l'avant-bras quand le bras est levé
+                val down = V3(0f, -1f, 0f)
+                val off = if (fore.y < -.3f) down else (fore * -1f + down).norm()
+                val c = p + off * 9f
+                objs += Triple(ball, mat(c, 8f, 8f, 8f), dbc)
+                seg(p + V3(-4.5f, 0f, 0f), p + V3(4.5f, 0f, 0f), 1.1f, handle)
+                seg(p + V3(-4.5f, 0f, 0f), c + V3(-4f, 3f, 0f), 1.1f, handle)
+                seg(p + V3(4.5f, 0f, 0f), c + V3(4f, 3f, 0f), 1.1f, handle)
+            }
+            fun fore(w: String) = (jt(w) - jt(if (w == "W1") "E1" else "E2")).norm()
             if (b.twoHand(id) && dbs.isNotEmpty()) {
                 val p = inHand("W1").lerp(inHand("W2"), .5f)
-                val rot = if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null
-                place(p, rot)
+                if (tool == "kb") kettlebell(p, fore("W1").lerp(fore("W2"), .5f))
+                else dumbbell(p, if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null)
             } else dbs.forEach { w ->
-                val rot = if (id == "hammer") {
-                    val e = J[if (w == "W1") "E1" else "E2"]!!; val wr = J[w]!!
-                    val d = V3((wr.x - e.x) * sx, wr.y - e.y, wr.z - e.z).norm()
-                    val q = Q4.fromUnit(V3(1f, 0f, 0f), d).mat()
-                    floatArrayOf(q[0], q[1], q[2], 0f, q[3], q[4], q[5], 0f, q[6], q[7], q[8], 0f, 0f, 0f, 0f, 1f)
-                } else null
-                place(inHand(w), rot)
+                if (tool == "kb") kettlebell(inHand(w), fore(w))
+                else dumbbell(inHand(w), if (id == "hammer") rotTo(fore(w)) else null)
+            }
+        }
+        // élastiques
+        if (!s.map && E != null && E.band.isNotEmpty()) {
+            val bc = rgb(s.band); val mini = E.tool == "mini"
+            fun pt(n: String): V3 = when (n) {
+                "W1", "W2" -> inHand(n)
+                "A1", "A2" -> jt(n).also { it.y = 1.2f }
+                "K1", "K2" -> jt(n).lerp(jt("Pc"), .18f)
+                else -> jt(n)
+            }
+            E.band.forEach { (a, c) -> seg(pt(a), pt(c), if (mini) 2.4f else .8f, bc) }
+        }
+        // accessoires de la pose
+        if (!s.map) b.propOf(id)?.let { (t, x) ->
+            val z = x - 100f; val pc = rgb(s.prop)
+            when (t) {
+                "chair" -> {
+                    objs += Triple(box, mat(V3(0f, 44f, z), 42f, 3f, 40f), pc)
+                    listOf(-18f, 18f).forEach { lx -> listOf(-17f, 17f).forEach { lz -> objs += Triple(box, mat(V3(lx, 21.5f, z + lz), 2.5f, 43f, 2.5f), pc) } }
+                    val back = if (x < 100f) -19f else 19f
+                    objs += Triple(box, mat(V3(0f, 66f, z + back * 1.0f), 42f, 40f, 2.5f), pc)
+                }
+                "bench" -> {
+                    objs += Triple(box, mat(V3(0f, 40f, z), 28f, 6f, 115f), pc)
+                    listOf(-45f, 45f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
+                }
+                "wall" -> objs += Triple(box, mat(V3(0f, 110f, z + (if (x < 100f) -2f else 2f)), 200f, 220f, 4f), pc)
             }
         }
 
@@ -277,7 +336,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             val sm = FloatArray(16); Matrix.multiplyMM(sm, 0, shadowM(), 0, bodyM, 0)
             val a = if (s.ghost) .14f else .28f
             setM(sm, floatArrayOf(0f, 0f, 0f), 0f, a, true); drawBody(b)
-            dbM.forEach { m -> val t = FloatArray(16); Matrix.multiplyMM(t, 0, shadowM(), 0, m, 0); setM(t, floatArrayOf(0f, 0f, 0f), 0f, a, true); cyl.draw() }
+            objs.forEach { (me, m, _) -> val t = FloatArray(16); Matrix.multiplyMM(t, 0, shadowM(), 0, m, 0); setM(t, floatArrayOf(0f, 0f, 0f), 0f, a, true); me.draw() }
             glDisable(GL_STENCIL_TEST); glDisable(GL_BLEND); glDepthMask(true)
         }
 
@@ -290,7 +349,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         }
         setM(bodyM, rgb(s.base), 1f, op); drawBody(b)
         glDepthFunc(GL_LESS); glFrontFace(GL_CCW)
-        dbM.forEachIndexed { i, m -> setM(m, if (dbH[i]) rgb(0x2A2F35) else rgb(s.db), 0f, op); cyl.draw() }
+        objs.forEach { (me, m, col) -> setM(m, col, 0f, op); me.draw() }
         glDisable(GL_BLEND)
     }
 }

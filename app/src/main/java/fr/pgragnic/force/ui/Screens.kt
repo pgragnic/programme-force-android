@@ -67,7 +67,8 @@ fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, onClick: () -> Uni
 fun SeanceScreen(onStart: () -> Unit) {
     val st by Store.st.collectAsState(); val log by Store.log.collectAsState()
     Store.ver.collectAsState().value
-    remember(log, st.bar, st.n2, st.n05) { Prog.computeLoads(log, st); 0 }
+    val gear by GearStore.g.collectAsState()
+    remember(log, gear) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -98,7 +99,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 }
             }
         }
-        val order = remember(st.c, st.w, st.s, log) { Prog.orderEx(st.c, st.s, st.w, st) }
+        val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
         Panel {
             order.forEachIndexed { i, id ->
                 val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
@@ -130,11 +131,11 @@ fun SeanceScreen(onStart: () -> Unit) {
 class EdRow(val id: String, val n: String, val target: Int, val unit: String, val kg: Double, val sets: SnapshotStateList<SetRec>, var f: MutableState<String>)
 
 fun rowsFor(ses: Session, st: Settings): List<EdRow> {
-    val ids = ses.P.filter { it.k == "work" && it.set == 1 }.mapNotNull { it.pose }
+    val ids = ses.P.filter { it.k == "work" && it.set == 1 }.mapNotNull { it.ex }
     return ids.map { id ->
         val wk = Prog.work(id, ses.w); val time = Prog.EX[id]!!.m == "time"; val tgt = if (time) wk.dur.toInt() else wk.reps
         val got = ses.sets[id] ?: mutableListOf()
-        val sets = mutableStateListOf<SetRec>().apply { (0 until ses.nsets).forEach { add(got.getOrNull(it) ?: SetRec(tgt, null)) } }
+        val sets = mutableStateListOf<SetRec>().apply { (0 until ses.nsetsOf(id)).forEach { add(got.getOrNull(it) ?: SetRec(tgt, null)) } }
         EdRow(id, Prog.EX[id]!!.n, tgt, if (time) "s" else "reps", if (Prog.hasDb(id)) Prog.kgOf(id, ses.w, st) else 0.0, sets, mutableStateOf(Prog.feelOf(sets, tgt)))
     }
 }
@@ -144,7 +145,7 @@ fun SetsEditor(rows: List<EdRow>) {
     rows.forEach { r ->
         Panel(Modifier.padding(vertical = 4.dp)) {
             Text(r.n, color = C.ink, fontWeight = FontWeight.Bold)
-            Text((if (r.kg > 0) Prog.fk(r.kg) + " kg · " else "") + "objectif ${r.target} ${if (r.unit == "s") "s" else "reps"}", color = C.muted, fontSize = 12.sp)
+            Text((if (r.kg > 0) Prog.loadTxt(r.id, r.kg) + " · " else "") + "objectif ${r.target} ${if (r.unit == "s") "s" else "reps"}", color = C.muted, fontSize = 12.sp)
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 r.sets.forEachIndexed { i, x ->
                     Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).border(1.dp, C.line, RoundedCornerShape(10.dp)).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -229,7 +230,7 @@ fun SuiviScreen() {
                     } else {
                         e.ex.forEach { x ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                                Text(x.n + if (x.kg > 0) " · ${Prog.fk(x.kg)} kg" else "", color = C.ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                                Text(x.n + if (x.kg > 0) " · " + Prog.loadTxt(x.id, x.kg) else "", color = C.ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
                                 Text((if (x.sets.isNotEmpty()) x.sets.joinToString(" · ") { s -> "${s.r}" + (s.res?.let { " R" + if (it >= 3) "3+" else "$it" } ?: "") } else "pire série ${x.done}") + " / ${x.target}", color = C.muted, fontSize = 13.sp)
                             }
                         }
@@ -307,19 +308,10 @@ fun InfosScreen() {
         RappelPanel()
         ThemePanel()
         LegalPanel()
-        Panel {
-            Text("Matériel", color = C.ink, fontWeight = FontWeight.Bold)
-            Text("Barre d'haltère ${Prog.fk(st.bar)} kg · disques : ${st.n2} × 2 kg, ${st.n05} × 0,5 kg · charge max ${Prog.fk(Prog.maxKg(st))} kg par haltère", color = C.muted)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(onClick = { Store.setSettings { it.n2 = maxOf(0, it.n2 - 2) } }) { Text("− 2 kg") }
-                OutlinedButton(onClick = { Store.setSettings { it.n2 += 2 } }) { Text("+ 2 kg") }
-                OutlinedButton(onClick = { Store.setSettings { it.n05 = maxOf(0, it.n05 - 2) } }) { Text("− 0,5") }
-                OutlinedButton(onClick = { Store.setSettings { it.n05 += 2 } }) { Text("+ 0,5") }
-            }
-        }
+        GearPanel()
         Panel {
             Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
-            Text("8 semaines, 4 séances (A, B, C, D) avec des haltères réglables. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
+            Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
             Text("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", color = C.muted, fontSize = 12.sp)
         }
     }

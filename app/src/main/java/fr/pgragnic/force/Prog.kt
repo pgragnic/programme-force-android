@@ -6,7 +6,10 @@ import kotlin.math.*
 
 /** Données du programme (exportées de la page web) et logique de séance. */
 class Ex(val id: String, val n: String, val l: String, val tip: String, val m: String?, val inv: Boolean,
-         val dr: Int, val kg0: Double?, val cues: List<String>)
+         val dr: Int, val kg0: Double?, val cues: List<String>,
+         /** matériel requis (« a|b » = l'un ou l'autre), type de charge (kg, band, bw), outil affiché, articulations sollicitées */
+         val eq: List<String> = emptyList(), val lt: String = "bw", val tool: String = "", val stress: List<String> = emptyList(),
+         val pose: String = id, val band: List<List<String>> = emptyList(), val f0: Double? = null)
 
 class Week(val t: String, val s: Int, val r: Int, val tp: List<Double>, val pl: Int, val note: String)
 
@@ -17,9 +20,9 @@ class Work(val dur: Double, val reps: Int, val rt: Double, val tp: List<Double>,
 /** Une étape de la séance guidée. */
 data class Phase(
     val k: String, var blk: String = "", var n: String = "", var det: String = "", var tip: String = "",
-    var dur: Double = 0.0, var pose: String? = null, val ei: Int = -1, val set: Int = 0,
+    var dur: Double = 0.0, var pose: String? = null, val ei: Int = -1, val set: Int = 0, var ex: String? = null,
     val inv: Boolean = false, val tp: List<Double>? = null, val rt: Double = 0.0, val reps: Int = 0,
-    val m: String? = null, val nodb: Boolean = false, var chg: String? = null, var next: Phase? = null,
+    val m: String? = null, var nodb: Boolean = false, var chg: String? = null, var next: Phase? = null,
     var ghostTp: List<Double>? = null
 )
 
@@ -74,7 +77,12 @@ object Prog {
             EX[id] = Ex(id, o.s("n"), o.s("l"), o.s("tip"), o["m"]?.jsonPrimitive?.contentOrNull,
                 o["inv"]?.jsonPrimitive?.let { it.booleanOrNull ?: (it.intOrNull == 1) } ?: false,
                 o["dr"]?.jsonPrimitive?.intOrNull ?: 0, o["kg0"]?.jsonPrimitive?.doubleOrNull,
-                o["cues"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList())
+                o["cues"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
+                o.list("eq"), o["lt"]?.jsonPrimitive?.contentOrNull ?: (if (o.s("l").contains("haltère")) "kg" else "bw"),
+                o["tool"]?.jsonPrimitive?.contentOrNull ?: (if (o.s("l").contains("haltère")) "db" else ""), o.list("stress"),
+                o["pose"]?.jsonPrimitive?.contentOrNull ?: id,
+                o["band"]?.jsonArray?.map { b -> b.jsonArray.map { it.jsonPrimitive.content } } ?: emptyList(),
+                o["f0"]?.jsonPrimitive?.doubleOrNull)
         }
         raw["WEEKS"]!!.jsonArray.forEach { v ->
             val o = v.jsonObject
@@ -91,7 +99,30 @@ object Prog {
         HEAVY = raw.list("HEAVY").toSet(); BIG = raw.list("BIG").toSet(); CORE = raw.list("CORE").toSet()
         raw["METP"]!!.jsonObject.forEach { (k, v) -> METP[k] = v.jsonPrimitive.double }
         raw["FEF"]!!.jsonObject.forEach { (k, v) -> FEF[k] = v.jsonPrimitive.double }
+        UP.clear(); ALT.clear()
+        raw["UP"]?.jsonObject?.forEach { (k, v) -> UP[k] = v.jsonArray.map { it.jsonPrimitive.content } }
+        raw["ALT"]?.jsonObject?.forEach { (k, v) -> ALT[k] = v.jsonArray.map { it.jsonPrimitive.content } }
     }
+
+    val UP = HashMap<String, List<String>>()
+    val ALT = HashMap<String, List<String>>()
+    private val gear get() = GearStore.g.value
+
+    /** L'exercice est-il faisable avec le matériel et compatible avec les restrictions de santé ? */
+    fun ok(id: String, g: Gear = gear): Boolean {
+        val e = EX[id] ?: return false
+        if (e.stress.any { it in g.limits }) return false
+        if (!e.eq.all { q -> q.split("|").any { g.has(it) } }) return false
+        if (e.lt == "kg" && g.steps(e.tool).isEmpty()) return false
+        return true
+    }
+
+    /** Exercice réellement proposé pour un emplacement de séance : meilleure option, sinon le premier remplaçant possible. */
+    fun pick(id: String, g: Gear = gear): String? =
+        ((UP[id] ?: emptyList()) + id + (ALT[id] ?: emptyList())).firstOrNull { ok(it, g) }
+
+    /** Exercices de la séance après adaptation au matériel (sans doublon). */
+    fun sessEx(c: Int, s: String, g: Gear = gear): List<String> = (sess(c)[s]?.ex ?: emptyList()).mapNotNull { pick(it, g) }.distinct()
 
     private fun JsonObject.s(k: String) = this[k]?.jsonPrimitive?.contentOrNull ?: ""
     private fun JsonObject.i(k: String) = this[k]?.jsonPrimitive?.intOrNull ?: 0
@@ -105,13 +136,35 @@ object Prog {
 
     fun r1(x: Double) = (x * 10).roundToInt() / 10.0
     fun fk(x: Double): String { val v = r1(x); return (if (v == floor(v)) v.toLong().toString() else v.toString()).replace('.', ',') }
-    fun maxKg(st: Settings) = r1(st.bar + 2 * (2 * floor(st.n2 / 2.0) + 0.5 * floor(st.n05 / 2.0)))
+    fun maxKg(st: Settings) = gear.dbWeights().lastOrNull() ?: st.bar
     private fun need(id: String) = if (id in HEAVY) 2 else 3
-    fun hasDb(id: String) = EX[id]?.l?.contains("haltère") == true
+    /** L'exercice a une charge réglable (haltère, kettlebell ou élastique). */
+    fun hasDb(id: String) = EX[id]?.lt.let { it == "kg" || it == "band" }
+    fun toolOf(id: String) = EX[id]?.tool ?: ""
+
+    private fun nextStep(id: String, cur: Double, dir: Int): Double {
+        val st = gear.steps(toolOf(id)); if (st.isEmpty()) return cur
+        return if (dir > 0) st.firstOrNull { it > cur + 1e-6 } ?: cur else st.lastOrNull { it < cur - 1e-6 } ?: cur
+    }
+
+    /** Charge de départ : réglée à la main dans le programme, sinon estimée d'après le poids et le niveau. */
+    fun startLoad(id: String): Double {
+        val e = EX[id]!!; val g = gear; val st = g.steps(e.tool)
+        if (st.isEmpty()) return 0.0
+        if (e.lt == "band") return st[min(st.size - 1, g.level ?: 0)]
+        if (g.bw == null) { val k = e.kg0 ?: 4.8; return st.lastOrNull { it <= k + 1e-6 } ?: st.first() }
+        val one = e.l.startsWith("1")
+        val f = e.f0 ?: if (e.tool == "kb") (if (e.l.contains("2 mains")) .14 else .09) else if (one) .08 else .06
+        val target = g.bw * f * listOf(1.0, 1.5, 2.0)[(g.level ?: 0).coerceIn(0, 2)]
+        return st.lastOrNull { it <= target + 1e-6 } ?: st.first()
+    }
+
+    fun unitOf(id: String) = if (EX[id]?.lt == "band") "" else " kg"
+    fun loadTxt(id: String, v: Double) = if (EX[id]?.lt == "band") "niveau ${v.toInt()}/${gear.bands}" else "${fk(v)} kg"
 
     fun computeLoads(log: List<Entry>, st: Settings) {
         val L = HashMap<String, DoubleArray>()
-        EX.values.forEach { if (hasDb(it.id)) L[it.id] = doubleArrayOf(it.kg0 ?: 4.8, 0.0, 0.0) }
+        EX.values.forEach { if (hasDb(it.id)) L[it.id] = doubleArrayOf(startLoad(it.id), 0.0, 0.0) }
         ups.clear()
         log.sortedBy { it.d }.forEach { e ->
             if (e.w == 7) return@forEach
@@ -123,38 +176,47 @@ object Prog {
                 if (x.done >= x.target && fe == "Difficile") q[2] = 0.0
                 else if (x.done >= x.target) {
                     q[2] = 0.0; q[1] += if (fe == "Facile") 2.0 else 1.0
-                    if (q[1] >= need(x.id)) { val nk = min(maxKg(st), r1(q[0] + 1)); if (nk > q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${fk(nk)} kg") }; q[1] = 0.0 }
+                    if (q[1] >= need(x.id)) { val nk = nextStep(x.id, q[0], 1); if (nk > q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${loadTxt(x.id, nk)}") }; q[1] = 0.0 }
                 } else if (x.done < x.target - 1) {
                     q[1] = 0.0; q[2]++
-                    if (q[2] >= 2) { val nk = max(st.bar, r1(q[0] - 1)); if (nk < q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↓ ${x.n} ${fk(nk)} kg") }; q[2] = 0.0 }
+                    if (q[2] >= 2) { val nk = nextStep(x.id, q[0], -1); if (nk < q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↓ ${x.n} ${loadTxt(x.id, nk)}") }; q[2] = 0.0 }
                 } else { q[1] = 0.0; q[2] = 0.0 }
             }
         }
         loads = L
     }
 
-    fun kgOf(id: String, w: Int, st: Settings): Double { val q = loads[id] ?: return 0.0; return if (w == 7) max(st.bar, r1(q[0] - 1)) else q[0] }
+    fun kgOf(id: String, w: Int, st: Settings): Double { val q = loads[id] ?: return 0.0; return if (w == 7) nextStep(id, q[0], -1) else q[0] }
 
+    /** Disques à mettre de chaque côté d'un haltère réglable pour obtenir kg. */
     fun platesFor(kg: Double, st: Settings): String {
-        val side = r1((kg - st.bar) / 2); if (side <= 0) return "barre seule"
-        var rem = side
-        val a = min(st.n2 / 2, floor(rem / 2 + 1e-6).toInt()); rem = r1(rem - a * 2)
-        val b = min(st.n05 / 2, (rem / 0.5).roundToInt()); rem = r1(rem - b * 0.5)
-        val t = listOfNotNull(if (a > 0) (if (a > 1) "$a × " else "") + "2 kg" else null, if (b > 0) (if (b > 1) "$b × " else "") + "0,5 kg" else null).joinToString(" + ")
-        return (t.ifEmpty { "barre seule" }) + " par côté" + (if (rem > 0) " (incomplet)" else "")
+        val g = gear
+        if (g.dbMode == "fixed") return "haltères de ${fk(kg)} kg"
+        var rem = r1((kg - g.bar) / 2); if (rem <= 0) return "barre seule"
+        val parts = ArrayList<String>()
+        g.plates.sortedByDescending { it.kg }.forEach { p ->
+            val n = min(p.n / 2, floor(rem / p.kg + 1e-6).toInt())
+            if (n > 0) { parts += (if (n > 1) "$n × " else "") + fk(p.kg) + " kg"; rem = r1(rem - n * p.kg) }
+        }
+        return (parts.joinToString(" + ").ifEmpty { "barre seule" }) + " par côté" + (if (rem > 0) " (incomplet)" else "")
     }
 
     fun nDb(id: String) = if (EX[id]!!.l.startsWith("1")) 1 else 2
     fun load(id: String, w: Int, st: Settings): String {
         val e = EX[id]!!
-        if (hasDb(id)) { val kg = fk(kgOf(id, w, st)); return if (e.l.startsWith("1")) e.l.replace("1 haltère", "1 haltère de $kg kg") else "2 × $kg kg" }
-        return e.l
+        if (!hasDb(id)) return e.l
+        val v = kgOf(id, w, st); val kg = fk(v)
+        return when (e.tool) {
+            "kb" -> e.l.replace("1 kettlebell", "1 kettlebell de $kg kg")
+            "band", "mini" -> e.l + " · résistance " + loadTxt(id, v)
+            else -> if (e.l.startsWith("1")) e.l.replace("1 haltère", "1 haltère de $kg kg") else "2 × $kg kg"
+        }
     }
 
     fun work(id: String, w: Int): Work {
         val e = EX[id]!!; val W = WEEKS[w]
         if (e.m == "time") return Work(W.pl.toDouble(), 0, 0.0, listOf(1.5, 1.5, 1.5, 1.5), "${W.pl} s")
-        val reps = max(5, W.r + e.dr)
+        val reps = max(5, W.r + e.dr + if (e.lt == "bw" || e.lt == "band") Gear.repsFor(gear.obj) else Gear.repsFor(gear.obj) / 2)
         if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), "$reps / côté")
         val rt = W.tp.sum(); val n = if (e.m == "uni") reps * 2 else reps
         return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") " / côté" else " reps")
@@ -165,7 +227,7 @@ object Prog {
         var cur: DoubleArray? = null; var ch = 0; val steps = ArrayList<IntArray?>(); val kgs = ArrayList<Double>()
         order.forEach { id ->
             val kg = kgOf(id, w, st); kgs += kg
-            if (kg <= 0) { steps += null; return@forEach }
+            if (kg <= 0 || toolOf(id) != "db" || gear.dbMode == "fixed") { steps += null; return@forEach }
             val n = nDb(id)
             if (cur == null) { cur = doubleArrayOf(kg, kg); steps += null; return@forEach }
             var c = 0
@@ -180,7 +242,7 @@ object Prog {
     private fun prim(id: String) = (MAP[id] ?: emptyMap()).filter { it.value >= .7 }.keys
 
     fun orderEx(c: Int, s: String, w: Int, st: Settings): List<String> {
-        val ex = sess(c)[s]!!.ex
+        val ex = sessEx(c, s)
         val core = ex.filter { it in CORE }; val rest = ex.filter { it !in CORE }
         var best: List<String>? = null; var bc = 1e9
         fun perm(a: List<String>, pre: List<String>) {
@@ -189,7 +251,7 @@ object Prog {
                 var cost = simDb(o, w, st).ch * 100.0 // regroupement par poids prioritaire (demande de Philippe)
                 for (i in 1 until o.size) { val p = prim(o[i - 1]); if (prim(o[i]).any { it in p }) cost += 8 }
                 for (i in pre.indices) for (j in i + 1 until pre.size) if (pre[i] !in BIG && pre[j] in BIG) cost += 3
-                pre.forEachIndexed { i, x -> cost += abs(ex.indexOf(x) - i) * .01 }
+                pre.forEachIndexed { i, x -> cost += abs(ex.indexOf(x) - i) * .01; if (gear.focus(x)) cost += i * 4 }
                 if (cost < bc) { bc = cost; best = o }
                 return
             }
@@ -203,9 +265,14 @@ object Prog {
         val S = sess(c)[s]!!; val W = WEEKS[w]; val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
-        val first = exo.firstOrNull { kgOf(it, w, st) > 0 }
+        val first = exo.firstOrNull { kgOf(it, w, st) > 0 && toolOf(it) == "db" }
+        val adj = gear.dbMode != "fixed"
+        val need = exo.mapNotNull { EX[it]?.eq }.flatten().flatMap { it.split("|").take(1) }.toSet()
+        val tools = listOfNotNull(if ("kb" in need) "ta kettlebell" else null, if ("band" in need) "ta bande à poignées" else null, if ("mini" in need) "ta mini-bande" else null,
+            if (exo.any { EX[it]?.eq?.any { q -> "chair" in q } == true }) "une chaise stable" else null, if ("bench" in need) "ton banc" else null)
         P += Phase("prep", blk = "Préparation", n = "Prépare ton matériel",
-            tip = if (first != null) "Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}" else "Un tapis au sol",
+            tip = (if (first != null) (if (adj) "Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}" else "Prends les haltères de ${fk(kgOf(first, w, st))} kg") else "Un tapis au sol") +
+                (if (tools.isNotEmpty()) " · Prévois aussi " + tools.joinToString(", ") else ""),
             dur = if (first != null) 20.0 else 10.0, pose = "circle")
         S.warm.forEachIndexed { i, k ->
             val x = WU[k]!!
@@ -224,15 +291,16 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            for (i in 1..W.s) {
-                P += Phase("work", ei = ei, set = i, inv = invOn, blk = "Exercice ${ei + 1}/${exo.size} · Série $i/${W.s}", n = e.n,
-                    det = "Série $i/${W.s} · ${wk.label} · ${load(id, w, st)}", tip = e.tip, dur = wk.dur, pose = id,
+            val ns = W.s + if (gear.focus(id)) 1 else 0
+            for (i in 1..ns) {
+                P += Phase("work", ei = ei, set = i, inv = invOn, blk = "Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", n = e.n,
+                    det = "Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",
                     tp = if (invOn) listOf(wk.tp[2], wk.tp[1], wk.tp[0], wk.tp[3]) else wk.tp, rt = wk.rt, reps = wk.reps, m = e.m)
-                val last = ei == exo.size - 1 && i == W.s
+                val last = ei == exo.size - 1 && i == ns
                 if (last) continue
                 val extra = if (id in HEAVY) 30 else 0
-                if (i < W.s) P += Phase("rest", ei = ei, set = i, blk = "Exercice ${ei + 1}/${exo.size}", n = "Pause",
-                    det = "Série $i/${W.s} terminée · encore ${W.s - i} série" + (if (W.s - i > 1) "s" else "") + " de ${e.n}", dur = (restS + extra).toDouble())
+                if (i < ns) P += Phase("rest", ei = ei, set = i, blk = "Exercice ${ei + 1}/${exo.size}", n = "Pause",
+                    det = "Série $i/${ns} terminée · encore ${ns - i} série" + (if (ns - i > 1) "s" else "") + " de ${e.n}", dur = (restS + extra).toDouble())
                 else P += Phase("switch", ei = ei + 1, set = 0, blk = "Exercice ${ei + 1}/${exo.size} terminé", dur = max(45, restS + extra).toDouble())
             }
         }
@@ -242,8 +310,8 @@ object Prog {
             if (p.k == "rest" || p.k == "prep" || p.k == "switch") {
                 val nx = P.drop(i + 1).firstOrNull { it.k != "rest" && it.k != "switch" }
                 if (nx != null && nx.k != "end") {
-                    p.next = nx; p.pose = nx.pose; p.ghostTp = listOf(1.2, .4, 1.6, .6)
-                    if (p.k == "switch") { p.n = nx.n; p.det = "Exercice ${nx.ei + 1}/${exo.size} · ${W.s} séries · " + nx.det.split(" · ").drop(1).joinToString(" · "); p.tip = p.chg ?: nx.tip }
+                    p.next = nx; p.pose = nx.pose; p.ex = nx.ex; p.nodb = nx.nodb; p.ghostTp = listOf(1.2, .4, 1.6, .6)
+                    if (p.k == "switch") { p.n = nx.n; p.det = "Exercice ${nx.ei + 1}/${exo.size} · ${P.count { it.k == "work" && it.ei == nx.ei }} séries · " + nx.det.split(" · ").drop(1).joinToString(" · "); p.tip = p.chg ?: nx.tip }
                 }
             }
         }

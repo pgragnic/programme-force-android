@@ -117,6 +117,10 @@ class Body(ctx: Context) {
     fun isFront(id: String) = pFlag(id, "front")?.jsonPrimitive?.booleanOrNull == true
     fun isFly(id: String) = pFlag(id, "fly")?.jsonPrimitive?.booleanOrNull == true
     fun camOf(id: String) = pFlag(id, "cam")?.jsonPrimitive?.floatOrNull
+    /** Pose où les pieds ne touchent pas tous le sol (montée sur chaise…) : le plus bas des pieds donne la hauteur. */
+    fun isFree(id: String) = pFlag(id, "free")?.jsonPrimitive?.booleanOrNull == true
+    /** Accessoire de la pose : chaise, mur ou banc, et sa position (repère 2D de la pose). */
+    fun propOf(id: String): Pair<String, Float>? = pFlag(id, "prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     fun isStat(id: String) = pFlag(id, "stat")?.jsonPrimitive?.booleanOrNull == true
 
     fun build(id: String, k: Double): HashMap<String, V3> {
@@ -193,7 +197,7 @@ class Body(ctx: Context) {
     }
 
     /** Déforme le maillage pour la pose, puis le pose au sol. */
-    fun skin(J: Map<String, V3>, front: Boolean) {
+    fun skin(J: Map<String, V3>, front: Boolean, lift: Float = 0f) {
         poseBones(J, front)
         var my = 1e9f
         for (G in groups) {
@@ -215,7 +219,7 @@ class Body(ctx: Context) {
                 N[j] = ox / l; N[j + 1] = oy / l; N[j + 2] = oz / l
             }
         }
-        val dy = .7f - my
+        val dy = .7f + lift - my
         bones.forEach { it.t.y += dy }
         for (G in groups) { val P = G.pos; var j = 1; while (j < P.size) { P[j] += dy; j += 3 } }
     }

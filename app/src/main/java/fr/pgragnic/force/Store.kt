@@ -56,8 +56,10 @@ object Store {
         else createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY) { install(Auth) { scheme = "fr.pgragnic.force"; host = "login" }; install(Postgrest) }
     }
 
+    private var app: Context? = null
     fun init(ctx: Context) {
         if (::prefs.isInitialized) return
+        app = ctx.applicationContext
         prefs = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
         runCatching { prefs.getString("bilan", null)?.let { bilan.value = json.parseToJsonElement(it).jsonObject } }
@@ -78,6 +80,13 @@ object Store {
 
     private fun stTo(s: Settings) = buildJsonObject {
         put("c", s.c); put("w", s.w); put("s", s.s); put("rest", s.rest); put("bar", s.bar); put("n2", s.n2); put("n05", s.n05)
+        put("gear", GearStore.online(GearStore.g.value))
+    }
+
+    /** Envoie le matériel et le profil avec les réglages. */
+    fun pushGear() {
+        val c = sb ?: return; if (user.value == null) return
+        scope.launch { runCatching { c.from("state").upsert(StateRow(stTo(st.value))) } }
     }
     private fun stFrom(o: JsonObject) = Settings(
         o["c"]?.jsonPrimitive?.intOrNull ?: 1, o["w"]?.jsonPrimitive?.intOrNull ?: 0, o["s"]?.jsonPrimitive?.contentOrNull ?: "A",
@@ -150,7 +159,11 @@ object Store {
                 pending.forEach { e -> c.from("sessions").insert(SessRow(d = e.d, data = entryJson(e))) }
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
-                runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { st.value = stFrom(it.data) } }
+                runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
+                    st.value = stFrom(r.data)
+                    val a = app
+                    if (a != null) { val gj = r.data["gear"]; if (gj != null) withContext(Dispatchers.Main) { GearStore.fromOnline(a, gj) } else pushGear() }
+                } }
                 runCatching {
                     val r = c.from("programme").select { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
                     if (r != null && r.id != Prog.version) {

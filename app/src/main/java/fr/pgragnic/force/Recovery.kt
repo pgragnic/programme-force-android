@@ -74,7 +74,7 @@ object Recovery {
     /** Séance la plus adaptée : celle dont les muscles principaux sont les plus reposés. */
     fun sessScore(c: Int, s: String, R: Map<String, Int>): Int {
         var mn = 100
-        Prog.sess(c)[s]?.ex?.forEach { id -> Prog.MAP[id]?.forEach { (m, v) -> if (v >= .7) mn = min(mn, R[m] ?: 100) } }
+        Prog.sessEx(c, s).forEach { id -> Prog.MAP[id]?.forEach { (m, v) -> if (v >= .7) mn = min(mn, R[m] ?: 100) } }
         return mn
     }
 

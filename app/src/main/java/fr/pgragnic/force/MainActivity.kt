@@ -28,12 +28,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        Prog.load(this); Store.init(this)
+        Prog.load(this); GearStore.load(this); Store.init(this)
         C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
+        intent.getStringExtra("gear")?.let { Demo.gear(it) }
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { Store.autoSync() }
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(d) { val t0 = System.nanoTime(); while (true) { withFrameNanos { }; t = (System.nanoTime() - t0) / 1e9 } }
             val kk = if (k >= 0) k.toDouble() else Prog.cycleK(t, listOf(1.2, .4, 1.6, .3))
             Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
-                fr.pgragnic.force.gl.Body3D(fr.pgragnic.force.gl.BodyState(pose = d, k = kk, hl = d, ghost = intent.getBooleanExtra("ghost", false),
+                fr.pgragnic.force.gl.Body3D(fr.pgragnic.force.gl.BodyState(pose = Prog.EX[d]?.pose ?: d, ex = if (Prog.EX[d] != null) d else null, k = kk, hl = d, ghost = intent.getBooleanExtra("ghost", false),
                     mirror = intent.getBooleanExtra("mirror", false)), Modifier.fillMaxSize())
                 Text(d, color = C.ink, modifier = Modifier.padding(12.dp))
             }
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
         }
         var ending by remember { mutableStateOf(false) }
         val cur = Live.ses
+        val gear by GearStore.g.collectAsState(); val setup by setupOpen.collectAsState()
         val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
         LaunchedEffect(cur) { keepOn(cur != null) }
         LaunchedEffect(Unit) {
@@ -84,6 +86,7 @@ class MainActivity : ComponentActivity() {
         }
         Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
             when {
+                cur == null && (!gear.done || setup) -> SetupScreen { setupOpen.value = false }
                 cur != null && (ending || cur.done) -> EndScreen(cur) { Live.end(this@MainActivity); ending = false }
                 cur != null -> {
                     BackHandler { Live.end(this@MainActivity) }

@@ -4,7 +4,18 @@ import java.time.LocalDate
 
 /** Données fictives pour les captures d'écran automatiques (jamais envoyées en ligne : pas de compte connecté). */
 object Demo {
+    /** Matériel fictif : "kb" = kettlebell, élastiques, chaise, banc ; "bw" = poids du corps, chaise et mur ; "new" = premier lancement. */
+    fun gear(code: String) {
+        GearStore.g.value = when (code) {
+            "kb" -> Gear(items = setOf("kb", "band", "mini", "chair", "wall", "mat", "bench"), kbs = listOf(8.0, 12.0, 16.0), level = 1, bw = 75.0, obj = "muscle", zones = setOf("bras"), done = true)
+            "bw" -> Gear(items = setOf("chair", "wall", "mat"), level = 0, bw = 80.0, obj = "poids", limits = setOf("genou"), done = true)
+            "new" -> Gear(done = false)
+            else -> Gear(done = true)
+        }
+    }
+
     fun seed() {
+        if (!GearStore.g.value.done) GearStore.g.value = Gear(done = true)
         val now = System.currentTimeMillis(); val day = 86_400_000L
         val plan = listOf(20 to "A", 18 to "B", 16 to "C", 15 to "D", 13 to "A", 11 to "B", 9 to "C", 8 to "D", 6 to "A", 4 to "B", 2 to "C", 1 to "D")
         val log = plan.mapIndexed { i, (ago, s) ->
