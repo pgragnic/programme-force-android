@@ -25,25 +25,25 @@ create table if not exists prive.cle_claude (
 );
 
 create or replace function prive.proprio(cle text) returns uuid
-language sql stable security definer set search_path = '' as $$
+language sql stable security definer set search_path = '' as $fn$
   select user_id from prive.cle_claude where empreinte = encode(sha256(convert_to(cle, 'UTF8')), 'hex')
-$$;
+$fn$;
 
 create or replace function prive.nouvelle_cle(adresse text) returns text
-language plpgsql security definer set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $fn$
 declare k text := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''); u uuid;
 begin
   select id into u from auth.users where email = adresse;
-  if u is null then raise exception 'Aucun compte avec l''adresse %', adresse; end if;
+  if u is null then raise exception 'Aucun compte pour cette adresse : %', adresse; end if;
   insert into prive.cle_claude (user_id, empreinte) values (u, encode(sha256(convert_to(k, 'UTF8')), 'hex'))
   on conflict (user_id) do update set empreinte = excluded.empreinte, created_at = now();
   return k;
-end $$;
+end $fn$;
 
 -- 3) Ce que la clé permet, et rien d'autre
 -- Lire séances, journées, réglages, bilans et la version du programme
 create or replace function public.claude_lire(cle text) returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
+language plpgsql stable security definer set search_path = '' as $fn$
 declare u uuid := prive.proprio(cle);
 begin
   if u is null then raise exception 'Clé invalide'; end if;
@@ -53,36 +53,36 @@ begin
     'state', (select data from public.state where user_id = u),
     'bilans', coalesce((select jsonb_agg(jsonb_build_object('data', data, 'created_at', created_at) order by created_at) from public.bilans where user_id = u), '[]'::jsonb),
     'programme', (select jsonb_build_object('id', id, 'note', note, 'created_at', created_at) from public.programme where user_id = u order by id desc limit 1));
-end $$;
+end $fn$;
 
 -- Lire le programme complet (dernière version)
 create or replace function public.claude_programme_actuel(cle text) returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
+language plpgsql stable security definer set search_path = '' as $fn$
 declare u uuid := prive.proprio(cle);
 begin
   if u is null then raise exception 'Clé invalide'; end if;
   return (select jsonb_build_object('id', id, 'note', note, 'data', data) from public.programme where user_id = u order by id desc limit 1);
-end $$;
+end $fn$;
 
 -- Écrire le bilan de la semaine
 create or replace function public.claude_bilan(cle text, data jsonb) returns void
-language plpgsql security definer set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $fn$
 declare u uuid := prive.proprio(cle);
 begin
   if u is null then raise exception 'Clé invalide'; end if;
   insert into public.bilans (user_id, data) values (u, data);
-end $$;
+end $fn$;
 
 -- Publier une nouvelle version du programme (les anciennes sont gardées)
 create or replace function public.claude_programme(cle text, data jsonb, note text) returns bigint
-language plpgsql security definer set search_path = '' as $$
+language plpgsql security definer set search_path = '' as $fn$
 declare u uuid := prive.proprio(cle); n bigint;
 begin
   if u is null then raise exception 'Clé invalide'; end if;
   if data->'EX' is null or data->'WEEKS' is null or data->'SESS1' is null then raise exception 'Programme incomplet'; end if;
   insert into public.programme (user_id, data, note) values (u, data, note) returning id into n;
   return n;
-end $$;
+end $fn$;
 
 revoke all on function prive.proprio(text), prive.nouvelle_cle(text) from public, anon, authenticated;
 revoke all on function public.claude_lire(text), public.claude_programme_actuel(text), public.claude_bilan(text, jsonb), public.claude_programme(text, jsonb, text) from public;
