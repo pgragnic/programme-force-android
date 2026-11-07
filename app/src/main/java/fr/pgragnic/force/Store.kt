@@ -12,6 +12,7 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 @Serializable
