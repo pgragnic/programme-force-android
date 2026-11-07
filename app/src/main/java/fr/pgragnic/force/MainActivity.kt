@@ -31,6 +31,9 @@ class MainActivity : ComponentActivity() {
         Prog.load(this); Store.init(this)
         C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
+        // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
+        intent.getStringExtra("theme")?.let { C.mode = it }
+        if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { Store.autoSync() }
@@ -72,6 +75,13 @@ class MainActivity : ComponentActivity() {
         val cur = Live.ses
         val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
         LaunchedEffect(cur) { keepOn(cur != null) }
+        LaunchedEffect(Unit) {
+            val pi = intent.getIntExtra("play", -1)
+            if (pi >= 0 && Live.ses == null) {
+                val st = Store.st.value; val P = Prog.phases(st.c, st.w, st.s, st.rest, st, Store.log.value)
+                val s = fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)); s.start(); s.enter(pi); Live.begin(this@MainActivity, s)
+            }
+        }
         Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
             when {
                 cur != null && (ending || cur.done) -> EndScreen(cur) { Live.end(this@MainActivity); ending = false }
