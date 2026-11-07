@@ -81,6 +81,11 @@ PO['rope'] = {'cam': 0.9, 'free': True, 'lat': [[6, 12], [6, 12]],
 PO['rollback'] = {'prop': {'t': 'roller', 'x': 60, 'y': 166},
     'a': {'H': [38, 150], 'N': [54, 152], 'P': [100, 150], 'K1': [128, 136], 'A1': [146, 178], 'K2': [126, 136], 'A2': [144, 178], 'E1': [50, 132], 'W1': [44, 112], 'E2': [48, 132], 'W2': [42, 112]},
     'b': {'H': [52, 150], 'N': [68, 152], 'P': [112, 152], 'K1': [136, 138], 'A1': [146, 178], 'K2': [134, 138], 'A2': [144, 178], 'E1': [64, 132], 'W1': [58, 112], 'E2': [62, 132], 'W2': [56, 112]}, '__d': 1}
+for k in ('bbrdl', 'bbrow', 'bbpress', 'bbcurl'): PO[k]['cam'] = 0.6
+def up(pose, keys, dy):
+    for n in ('P', 'K1', 'A1', 'K2', 'A2'):
+        if n in pose[keys]: pose[keys][n][1] -= dy
+up(PO['pullup'], 'a', 20); up(PO['pullup'], 'b', 26); up(PO['kneeraise'], 'a', 20); up(PO['kneeraise'], 'b', 20); up(PO['dips'], 'a', 12); up(PO['dips'], 'b', 12)
 for k in ('bbrdl', 'bbrow', 'abwheel', 'pronet'):
     if k not in d['FLIPX']: d['FLIPX'].append(k)
 for k in ('abwheel',):

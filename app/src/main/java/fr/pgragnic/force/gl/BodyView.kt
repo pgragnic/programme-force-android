@@ -304,8 +304,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             val gr = inHand("W1"); val gl = inHand("W2"); val c = gr.lerp(gl, .5f)
             var ax = gr - gl; if (ax.len() < 2f) ax = V3(1f, 0f, 0f); ax.norm()
             if (tool == "bb") {
-                seg(c - ax * 75f, c + ax * 75f, 1.4f, handle)
-                listOf(1f, -1f).forEach { sg -> objs += Triple(cyl, mat(c + ax * (52f * sg), 5f, 19f, 19f, rotTo(ax)), dbc); objs += Triple(cyl, mat(c + ax * (46f * sg), 1.5f, 3f, 3f, rotTo(ax)), handle) }
+                seg(c - ax * 65f, c + ax * 65f, 1.4f, handle)
+                listOf(1f, -1f).forEach { sg -> objs += Triple(cyl, mat(c + ax * (48f * sg), 4.5f, 14f, 14f, rotTo(ax)), dbc); objs += Triple(cyl, mat(c + ax * (43f * sg), 1.5f, 3f, 3f, rotTo(ax)), handle) }
             } else {
                 objs += Triple(cyl, mat(c + V3(0f, 0f, 0f), 6f, 9f, 9f, rotTo(ax)), dbc)
                 seg(c - ax * 14f, c + ax * 14f, 1.3f, handle)
