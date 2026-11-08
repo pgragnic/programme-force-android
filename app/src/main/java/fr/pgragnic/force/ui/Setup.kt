@@ -98,12 +98,14 @@ fun SetupScreen(onDone: () -> Unit) {
                 IconButton(onClick = onDone) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = C.ink) }
                 Text(t("Matériel et profil", "Equipment and profile"), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, modifier = Modifier.weight(1f))
             }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 tabNames.forEachIndexed { i, n ->
                     if (i == 1 && !needDetail) return@forEachIndexed
                     val on = step == i
-                    Text(n, color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) C.ink else C.surface).clickable { step = i }.padding(horizontal = 14.dp, vertical = 9.dp))
+                    Text(n, color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2, lineHeight = 14.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) C.ink else C.surface).clickable { step = i }
+                            .heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 4.dp, vertical = 6.dp))
                 }
             }
         } else Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
