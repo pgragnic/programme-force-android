@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
         L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
         C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
+        Crash.sendPending(this)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }

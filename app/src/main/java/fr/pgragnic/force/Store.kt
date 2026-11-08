@@ -15,6 +15,8 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.withLock
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -68,7 +70,9 @@ object Store {
         runCatching { prefs.getString("bilan", null)?.let { bilan.value = json.parseToJsonElement(it).jsonObject } }
         runCatching { days.value = json.decodeFromString<List<DayRec>>(prefs.getString("days", "[]")!!) }
         runCatching { prefs.getString("st", null)?.let { st.value = stFrom(json.parseToJsonElement(it).jsonObject) } }
+        migrate()
         if (sb == null) { sync.value = "Base en ligne non configurée : données gardées sur ce téléphone"; return }
+        pullProg()
         scope.launch {
             runCatching { sb!!.auth.awaitInitialization() }
             sb!!.auth.sessionStatus.collect { s ->
@@ -98,7 +102,8 @@ object Store {
 
     private fun saveLocal() {
         prefs.edit().putString("log", json.encodeToString(log.value)).putString("st", stTo(st.value).toString())
-            .putString("days", json.encodeToString(days.value)).putString("dpend", json.encodeToString(dPending.toList())).apply()
+            .putString("days", json.encodeToString(days.value)).putString("dpend", json.encodeToString(dPending.toList()))
+            .putString("spend", json.encodeToString(sPend.toList())).putString("sdel", json.encodeToString(sDel.toList())).apply()
         ver.value++
     }
 
@@ -139,8 +144,9 @@ object Store {
     private var lastPull = 0L
     /** Synchronisation automatique : retour dans l'appli, réseau retrouvé. */
     fun autoSync(force: Boolean = false) {
+        pullProg()
         if (sb == null || user.value == null) return
-        val pending = log.value.any { it._id == null } || dPending.isNotEmpty()
+        val pending = sPend.isNotEmpty() || sDel.isNotEmpty() || dPending.isNotEmpty()
         if (force || pending || System.currentTimeMillis() - lastPull > 60_000) pull()
     }
 
@@ -151,41 +157,100 @@ object Store {
         runCatching { c.handleDeeplinks(i) { sync.value = "Adresse confirmée, connecté" } }
     }
 
-    /** Récupère tout depuis Supabase, en envoyant d'abord les séances restées sur le téléphone. */
+    // ---------- séances : le téléphone est la référence ----------
+    // Chaque séance reçoit son identifiant dès sa création sur le téléphone. Les changements (ajout, modification, suppression)
+    // sont mis en file et gardés même si l'appli est fermée ; ils partent dès que la base répond. La liste en ligne ne remplace
+    // jamais une séance pas encore envoyée, et une suppression faite hors connexion ne « revient » plus.
+    private val sPend: MutableSet<Long> by lazy { runCatching { json.decodeFromString<List<Long>>(prefs.getString("spend", "[]")!!).toMutableSet() }.getOrElse { mutableSetOf() } }
+    private val sDel: MutableSet<String> by lazy { runCatching { json.decodeFromString<List<String>>(prefs.getString("sdel", "[]")!!).toMutableSet() }.getOrElse { mutableSetOf() } }
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    private fun newId() = java.util.UUID.randomUUID().toString()
+
+    /** Anciennes versions : séances restées sans identifiant → identifiant donné et envoi mis en file. */
+    private fun migrate() {
+        if (log.value.none { it._id == null }) return
+        log.value = log.value.map { if (it._id == null) it.copy(_id = newId()).also { e -> sPend += e.d } else it }
+        saveLocal()
+    }
+
+    /** Envoie la file des changements de séances. Renvoie false si quelque chose n'a pas pu partir. */
+    private suspend fun pushSessions(c: SupabaseClient): Boolean {
+        var ok = true
+        log.value.filter { it.d in sPend }.forEach { e ->
+            try { c.from("sessions").upsert(SessRow(id = e._id, d = e.d, data = entryJson(e))) { onConflict = "id" }; sPend -= e.d }
+            catch (t: Throwable) { ok = false }
+        }
+        sDel.toList().forEach { id ->
+            try { c.from("sessions").delete { filter { eq("id", id) } }; sDel -= id } catch (t: Throwable) { ok = false }
+        }
+        saveLocal(); return ok
+    }
+
+    /** Fusion : séances en ligne, sauf celles supprimées ici, et la version du téléphone pour celles pas encore envoyées. */
+    internal fun merge(local: List<Entry>, server: List<Entry>, pend: Set<Long>, del: Set<String>): List<Entry> {
+        val mine = local.filter { it.d in pend }
+        val keep = server.filter { it._id !in del && mine.none { m -> m._id == it._id || m.d == it.d } }
+        return (keep + mine).sortedBy { it.d }
+    }
+
+    private fun push() {
+        val c = sb ?: return; if (user.value == null) return
+        scope.launch { lock.withLock { if (pushSessions(c)) sync.value = t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions") else sync.value = t("Changements gardés sur le téléphone, envoi dès que possible", "Changes kept on this phone, will send when possible") } }
+    }
+
+    /** Programme : la dernière version en base, lisible même sans compte. */
+    private var lastProg = 0L
+    fun pullProg() {
+        val c = sb ?: return
+        if (System.currentTimeMillis() - lastProg < 60_000) return
+        lastProg = System.currentTimeMillis()
+        scope.launch {
+            runCatching {
+                val r = c.from("programme").select { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
+                if (r != null && r.id > Prog.version) {
+                    val why = Prog.check(r.data)
+                    if (why != null) { Log.w("UpRep", "programme ${r.id} refusé : $why"); return@launch }
+                    if (Live.ses == null) withContext(Dispatchers.Main) {
+                        if (Prog.safeApply(r.data)) {
+                            prefs.edit().putString("prog", r.data.toString()).putLong("progv", r.id).apply()
+                            Prog.version = r.id; ver.value++; progNote.value = "Programme mis à jour" + (r.note?.let { " : $it" } ?: "")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Récupère tout depuis Supabase, en envoyant d'abord les changements restés sur le téléphone. */
     private var retry = 0
     fun pull() {
         val c = sb ?: return
         scope.launch {
+            lock.withLock {
             try {
                 lastPull = System.currentTimeMillis()
                 sync.value = "Synchronisation…"
                 // attendre que la connexion au compte soit prête (au retour dans l'appli, elle se renouvelle) : sinon la base répond
-                // « aucune séance » sans erreur et la liste se vidait (retour de Philippe : « je me demande pourquoi les séances se "perdent" ? »)
+                // « aucune séance » sans erreur (retour de Philippe : « je me demande pourquoi les séances se "perdent" ? »)
                 runCatching { c.auth.awaitInitialization() }
                 if (c.auth.currentSessionOrNull() == null) runCatching { c.auth.refreshCurrentSession() }
-                val pending = log.value.filter { it._id == null }
-                pending.forEach { e -> c.from("sessions").insert(SessRow(d = e.d, data = entryJson(e))) }
+                pushSessions(c)
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 // garde-fou : une réponse vide alors que des séances sont déjà en ligne = connexion pas prête → on garde la liste et on réessaie
-                if (rows.isEmpty() && log.value.any { it._id != null }) {
+                if (rows.isEmpty() && log.value.any { it.d !in sPend }) {
                     sync.value = t("Connexion en cours, nouvel essai…", "Connecting, retrying…")
-                    if (retry++ < 3) { kotlinx.coroutines.delay(3000); lastPull = 0; pull() } else sync.value = t("Synchronisation impossible pour l'instant : séances gardées sur ce téléphone", "Can't sync right now: sessions kept on this phone")
-                    return@launch
+                    if (retry++ < 3) scope.launch { kotlinx.coroutines.delay(3000); lastPull = 0; pull() } else sync.value = t("Synchronisation impossible pour l'instant : séances gardées sur ce téléphone", "Can't sync right now: sessions kept on this phone")
+                    return@withLock
                 }
                 retry = 0
-                log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
+                val server = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }
+                log.value = merge(log.value, server, sPend, sDel)
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
                     st.value = stFrom(r.data)
                     val a = app
                     if (a != null) { val gj = r.data["gear"]; if (gj != null) withContext(Dispatchers.Main) { GearStore.fromOnline(a, gj) } else pushGear() }
                 } }
-                runCatching {
-                    val r = c.from("programme").select { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
-                    if (r != null && r.id != Prog.version) {
-                        prefs.edit().putString("prog", r.data.toString()).putLong("progv", r.id).apply()
-                        if (Live.ses == null) withContext(Dispatchers.Main) { Prog.apply(r.data); Prog.version = r.id; ver.value++; progNote.value = "Programme mis à jour" + (r.note?.let { " : $it" } ?: "") }
-                    }
-                }
+                lastProg = 0; pullProg()
                 runCatching {
                     bilan.value = c.from("bilans").select { order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<BilanRow>().firstOrNull()?.data
                     bilan.value?.let { prefs.edit().putString("bilan", it.toString()).apply() }
@@ -197,36 +262,29 @@ object Store {
                     if (dr.isNotEmpty() || days.value.isEmpty()) days.value = dr.mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
                 }
                 saveLocal()
-                sync.value = t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions")
-            } catch (t: Throwable) {
-                sync.value = "Base injoignable : données gardées sur ce téléphone"
+                val left = sPend.size + sDel.size
+                sync.value = if (left == 0) t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions")
+                    else t("Synchronisé · $left changement(s) encore à envoyer", "Synced · $left change(s) still to send")
+            } catch (ex: Throwable) {
+                sync.value = t("Base injoignable : données gardées sur ce téléphone", "Server unreachable: data kept on this phone")
+            }
             }
         }
     }
 
-    fun add(e: Entry) {
-        log.value = log.value + e; saveLocal()
-        val c = sb ?: return
-        if (user.value == null) return
-        scope.launch {
-            try {
-                val r = c.from("sessions").insert(SessRow(d = e.d, data = entryJson(e))) { select() }.decodeSingle<SessRow>()
-                log.value = log.value.map { if (it.d == e.d && it._id == null) it.copy(_id = r.id) else it }; saveLocal()
-                sync.value = "Séance enregistrée en ligne"
-            } catch (t: Throwable) { sync.value = "Séance gardée sur le téléphone, envoi au prochain lancement" }
-        }
+    fun add(e0: Entry) {
+        val e = if (e0._id == null) e0.copy(_id = newId()) else e0
+        log.value = log.value + e; sPend += e.d; saveLocal(); push()
     }
 
-    fun update(e: Entry) {
-        log.value = log.value.map { if (it.d == e.d) e else it }; saveLocal()
-        val c = sb ?: return; val id = e._id ?: return
-        scope.launch { runCatching { c.from("sessions").update({ set("data", entryJson(e)) }) { filter { eq("id", id) } } }.onFailure { sync.value = "Modification non envoyée : base injoignable" } }
+    fun update(e0: Entry) {
+        val e = if (e0._id == null) e0.copy(_id = log.value.firstOrNull { it.d == e0.d }?._id ?: newId()) else e0
+        log.value = log.value.map { if (it.d == e.d) e else it }; sPend += e.d; saveLocal(); push()
     }
 
     fun delete(e: Entry) {
-        log.value = log.value.filter { it.d != e.d }; saveLocal()
-        val c = sb ?: return; val id = e._id ?: return
-        scope.launch { runCatching { c.from("sessions").delete { filter { eq("id", id) } } }.onFailure { sync.value = "Suppression non envoyée : base injoignable" } }
+        val id = log.value.firstOrNull { it.d == e.d }?._id ?: e._id
+        log.value = log.value.filter { it.d != e.d }; sPend -= e.d; if (id != null) sDel += id; saveLocal(); push()
     }
 
     suspend fun signIn(email: String, pw: String, create: Boolean): String? {
@@ -259,8 +317,8 @@ object Store {
             c.postgrest.rpc("supprimer_mon_compte")
             runCatching { c.auth.signOut() }
             user.value = null
-            log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); st.value = Settings()
-            prefs.edit().remove("log").remove("days").remove("dpend").remove("bilan").remove("st").apply()
+            log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); sPend.clear(); sDel.clear(); st.value = Settings()
+            prefs.edit().remove("log").remove("days").remove("dpend").remove("spend").remove("sdel").remove("bilan").remove("st").apply()
             ver.value++
             sync.value = "Compte supprimé"
             null

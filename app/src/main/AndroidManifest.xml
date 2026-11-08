@@ -14,6 +14,7 @@
         <intent><action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" /></intent>
     </queries>
     <application
+        android:name=".UpRepApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"

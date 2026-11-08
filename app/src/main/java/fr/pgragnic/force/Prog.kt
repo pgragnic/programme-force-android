@@ -60,12 +60,45 @@ object Prog {
     /** Version du programme en cours : 0 = celle livrée avec l'appli, sinon numéro de la version en base. */
     var version = 0L
 
+    /** Format de programme que cette version de l'appli sait lire : un programme en base marqué « FMT » plus grand est ignoré. */
+    const val FORMAT = 1
+
     fun load(ctx: Context) {
         if (::raw.isInitialized) return
         val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
-        val cached = p.getString("prog", null)
-        if (cached != null && runCatching { apply(Json.parseToJsonElement(cached).jsonObject) }.isSuccess) { version = p.getLong("progv", 0); return }
-        apply(Json.parseToJsonElement(ctx.assets.open("programme.json").bufferedReader().readText()).jsonObject)
+        val bundled = Json.parseToJsonElement(ctx.assets.open("programme.json").bufferedReader().readText()).jsonObject
+        val bv = bundled["V"]?.jsonPrimitive?.longOrNull ?: 0L
+        val cached = p.getString("prog", null)?.let { runCatching { Json.parseToJsonElement(it).jsonObject }.getOrNull() }
+        val cv = p.getLong("progv", 0)
+        // le programme en base gardé sur le téléphone, s'il est valide et pas plus ancien que celui livré avec l'appli
+        if (cached != null && cv >= bv && check(cached) == null && safeApply(cached)) { version = cv; return }
+        apply(bundled); version = bv
+    }
+
+    /** Contrôle un programme avant de l'appliquer : renvoie la raison du refus, ou null s'il est utilisable. */
+    fun check(o: JsonObject): String? { return runCatching {
+        val fmt = o["FMT"]?.jsonPrimitive?.intOrNull ?: 1
+        if (fmt > FORMAT) return "format $fmt trop récent pour cette version de l'appli"
+        listOf("EX", "WEEKS", "SESS1", "SESS2", "WU", "COOLN", "MAP", "METP", "FEF").forEach { if (o[it] == null) return "clé $it manquante" }
+        val ex = o["EX"]!!.jsonObject; val wu = o["WU"]!!.jsonObject
+        if (ex.isEmpty()) return "aucun exercice"
+        val weeks = o["WEEKS"]!!.jsonArray
+        if (weeks.size < 8) return "${weeks.size} semaines au lieu de 8"
+        weeks.forEachIndexed { i, w -> if ((w.jsonObject["tp"]?.jsonArray?.size ?: 0) != 4) return "semaine ${i + 1} : tempo invalide" }
+        for (k in listOf("SESS1", "SESS2")) o[k]!!.jsonObject.forEach { (s, v) ->
+            val so = v.jsonObject
+            (so["ex"]?.jsonArray ?: return "$k $s sans exercices").forEach { if (it.jsonPrimitive.content !in ex) return "$k $s : exercice ${it.jsonPrimitive.content} inconnu" }
+            so["warm"]?.jsonArray?.forEach { if (it.jsonPrimitive.content !in wu) return "$k $s : échauffement ${it.jsonPrimitive.content} inconnu" }
+        }
+        for (k in listOf("UP", "ALT")) o[k]?.jsonObject?.forEach { (_, v) -> v.jsonArray.forEach { if (it.jsonPrimitive.content !in ex) return "$k : exercice ${it.jsonPrimitive.content} inconnu" } }
+        o["SIG"]?.jsonObject?.values?.forEach { c -> c.jsonObject.values.forEach { s -> s.jsonObject.values.forEach { l -> l.jsonArray.forEach { if (it.jsonPrimitive.content !in ex) return "SIG : exercice ${it.jsonPrimitive.content} inconnu" } } } }
+        null
+    }.getOrElse { "programme illisible (${it.message})" } }
+
+    /** Applique un programme ; en cas d'erreur, remet le précédent et renvoie false. */
+    @Synchronized fun safeApply(o: JsonObject): Boolean {
+        val old = if (::raw.isInitialized) raw else null
+        return try { apply(o); true } catch (t: Throwable) { if (old != null) runCatching { apply(old) }; false }
     }
 
     /** Remplace le programme (exercices, semaines, séances…) par celui reçu. */
