@@ -123,6 +123,8 @@ class Body(ctx: Context) {
     fun propOf(id: String): Pair<String, Float>? = pFlag(id, "prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     /** Outil dessiné par la pose elle-même (échauffement au bâton…). */
     fun poseTool(id: String) = pFlag(id, "tool")?.jsonPrimitive?.contentOrNull
+    /** Prise de l'haltère : "n" = neutre (paume vers le corps, haltère dans l'axe avant-arrière) ; absent = prise en pronation. */
+    fun gripOf(id: String) = pFlag(id, "grip")?.jsonPrimitive?.contentOrNull
     fun isStat(id: String) = pFlag(id, "stat")?.jsonPrimitive?.booleanOrNull == true
 
     fun build(id: String, k: Double): HashMap<String, V3> {

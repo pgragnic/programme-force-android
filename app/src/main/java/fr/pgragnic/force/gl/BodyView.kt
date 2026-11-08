@@ -296,7 +296,11 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 else dumbbell(p, if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null)
             } else dbs.forEach { w ->
                 if (tool == "kb") kettlebell(inHand(w), fore(w))
-                else dumbbell(inHand(w), if (id == "hammer") rotTo(fore(w)) else null)
+                else dumbbell(inHand(w), when {
+                    b.gripOf(id) == "n" -> FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 1f, 0f) }   // prise neutre : haltère dans l'axe avant-arrière
+                    id == "hammer" -> rotTo(fore(w))
+                    else -> null
+                })
             }
         }
         // barre longue et roue abdominale (tenues à deux mains)
