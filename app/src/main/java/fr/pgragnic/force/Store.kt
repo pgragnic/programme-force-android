@@ -238,15 +238,23 @@ object Store {
                 // « aucune séance » sans erreur (retour de Philippe : « je me demande pourquoi les séances se "perdent" ? »)
                 runCatching { c.auth.awaitInitialization() }
                 if (c.auth.currentSessionOrNull() == null) runCatching { c.auth.refreshCurrentSession() }
-                pushSessions(c)
-                val rows = c.from("sessions").select().decodeList<SessRow>()
-                // garde-fou : une réponse vide alors que des séances sont déjà en ligne = connexion pas prête → on garde la liste et on réessaie
-                if (rows.isEmpty() && log.value.any { it.d !in sPend }) {
-                    sync.value = t("Connexion en cours, nouvel essai…", "Connecting, retrying…")
-                    if (retry++ < 3) scope.launch { kotlinx.coroutines.delay(3000); lastPull = 0; pull() } else sync.value = t("Synchronisation impossible pour l'instant : séances gardées sur ce téléphone", "Can't sync right now: sessions kept on this phone")
+                // sans connexion au compte prête, la base répondrait « aucune séance » sans erreur : on n'interroge pas, on réessaie
+                val uid = c.auth.currentUserOrNull()?.id
+                if (c.auth.currentSessionOrNull() == null || uid == null) {
+                    sync.value = t("Connexion au compte en cours…", "Connecting to your account…")
+                    if (retry++ < 3) scope.launch { kotlinx.coroutines.delay(3000); lastPull = 0; pull() } else sync.value = t("Synchronisation impossible pour l'instant : données gardées sur ce téléphone", "Can't sync right now: data kept on this phone")
                     return@withLock
                 }
                 retry = 0
+                // changement de compte : les séances déjà envoyées appartiennent à l'autre compte (elles y restent en ligne) ; le téléphone
+                // reprend celles du compte connecté (retour de Philippe, passage au compte Gmail : « Repartir de zéro sur Gmail »)
+                if (prefs.getString("owner", null) != uid) {
+                    log.value = log.value.filter { it.d in sPend }; sDel.clear()
+                    days.value = days.value.filter { it.date in dPending }; bilan.value = null; prefs.edit().remove("bilan").apply()
+                    prefs.edit().putString("owner", uid).apply()
+                }
+                pushSessions(c)
+                val rows = c.from("sessions").select().decodeList<SessRow>()
                 val server = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }
                 log.value = merge(log.value, server, sPend, sDel)
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
@@ -263,7 +271,7 @@ object Store {
                     val todo = days.value.filter { it.date in dPending }
                     if (todo.isNotEmpty()) { c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }; dPending.clear() }
                     val dr = c.from("days").select().decodeList<DayRow>()
-                    if (dr.isNotEmpty() || days.value.isEmpty()) days.value = dr.mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
+                    days.value = dr.mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
                 }
                 saveLocal()
                 val left = sPend.size + sDel.size
