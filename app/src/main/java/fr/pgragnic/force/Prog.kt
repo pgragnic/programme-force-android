@@ -162,7 +162,9 @@ object Prog {
         if (g.bw == null) { val k = e.kg0 ?: 4.8; return st.lastOrNull { it <= k + 1e-6 } ?: st.first() }
         val one = e.l.startsWith("1")
         val f = e.f0 ?: if (e.tool == "bb") (if (e.id == "bbcurl") .2 else if (e.id == "bbpress") .25 else .35) else if (e.tool == "kb") (if (e.l.contains("2 mains")) .14 else .09) else if (one) .08 else .06
-        val target = g.bw * f * listOf(1.0, 1.5, 2.0)[(g.level ?: 0).coerceIn(0, 2)]
+        // femmes : charges de départ plus prudentes (surtout le haut du corps) ; plus de 60 ans : un peu plus prudentes aussi
+        val sx = if (g.sex == "f") .75 else 1.0; val ag = if ((g.age() ?: 0) >= 60) .85 else 1.0
+        val target = g.bw * f * sx * ag * listOf(1.0, 1.5, 2.0)[(g.level ?: 0).coerceIn(0, 2)]
         return st.lastOrNull { it <= target + 1e-6 } ?: st.first()
     }
 

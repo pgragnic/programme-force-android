@@ -194,6 +194,20 @@ fun SetupScreen(onDone: () -> Unit) {
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
                         Text("Ton poids sert à estimer tes charges de départ et ta dépense. Elles s'ajustent ensuite à chaque séance selon tes répétitions et ton ressenti.", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                     }
+                    Eyebrow(t("Taille, sexe et âge (facultatif)", "Height, sex and age (optional)"))
+                    Panel {
+                        var hs by remember { mutableStateOf(g.height?.toString() ?: "") }
+                        var bs by remember { mutableStateOf(g.born?.toString() ?: "") }
+                        OutlinedTextField(hs, { hs = it; g = g.copy(height = it.trim().toIntOrNull()?.takeIf { v -> v in 100..250 }) }, label = { Text(t("Ta taille (cm)", "Your height (cm)")) }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(bs, { bs = it; g = g.copy(born = it.trim().toIntOrNull()?.takeIf { v -> v in 1900..java.time.LocalDate.now().year - 10 }) }, label = { Text(t("Ton année de naissance", "Your year of birth")) }, singleLine = true,
+                            supportingText = { g.age()?.let { a -> Text(t("$a ans", "$a years old")) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                        Text(t("Sexe", "Sex"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
+                        Seg(listOf(t("Homme", "Male"), t("Femme", "Female"), t("Non précisé", "Not specified")), when (g.sex) { "m" -> 0; "f" -> 1; else -> 2 }) { g = g.copy(sex = when (it) { 0 -> "m"; 1 -> "f"; else -> null }) }
+                        Text(t("Ta taille règle la longueur de tes pas pour la dépense de l'onglet Activité. Avec ton âge et ton sexe, l'appli estime aussi ta dépense au repos et ajuste tes charges de départ.",
+                            "Your height sets your stride length for the burn in the Activity tab. With your age and sex, the app also estimates your resting burn and adjusts your starting loads."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -217,6 +231,8 @@ fun GearPanel() {
             else t("Haltères réglables : barre ${Prog.fk(g.bar)} kg, charge max ${Prog.fk(g.dbWeights().last())} kg", "Adjustable dumbbells: handle ${Prog.fk(g.bar)} kg, max load ${Prog.fk(g.dbWeights().last())} kg"), color = C.muted, fontSize = 13.sp)
         if ("barbell" in g.items) Text(t("Barre : ${Prog.fk(g.bbBar)} kg, charge max ${Prog.fk(g.bbWeights().last())} kg", "Barbell: ${Prog.fk(g.bbBar)} kg, max load ${Prog.fk(g.bbWeights().last())} kg"), color = C.muted, fontSize = 13.sp)
         if ("kb" in g.items) Text("Kettlebells : " + g.kbs.joinToString(", ") { Prog.fk(it) } + " kg", color = C.muted, fontSize = 13.sp)
+        listOfNotNull(g.height?.let { "$it cm" }, g.age()?.let { t("$it ans", "$it years old") }, when (g.sex) { "m" -> t("homme", "male"); "f" -> t("femme", "female"); else -> null }, g.bw?.let { "${Prog.fk(it)} kg" })
+            .takeIf { it.isNotEmpty() }?.let { Text(t("Profil : ", "Profile: ") + it.joinToString(" · "), color = C.muted, fontSize = 13.sp) }
         if (g.limits.isNotEmpty()) Text("À ménager : " + Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { it.second }, color = C.muted, fontSize = 13.sp)
         OutlinedButton(onClick = { setupOpen.value = true }, modifier = Modifier.padding(top = 6.dp)) { Text("Modifier") }
     }

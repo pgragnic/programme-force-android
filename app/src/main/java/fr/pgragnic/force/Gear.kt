@@ -29,6 +29,10 @@ data class Gear(
     val level: Int? = null,
     val bw: Double? = null,
     val goal: Double? = null,
+    /** taille en cm, sexe ("m", "f" ou null), année de naissance : facultatifs (foulée, dépense au repos, charges de départ) */
+    val height: Int? = null,
+    val sex: String? = null,
+    val born: Int? = null,
     /** objectif : poids, muscle, forme, mobilite, sante */
     val obj: String? = null,
     /** zones à travailler en priorité : bras, ventre, jambes, poitrine, dos */
@@ -119,4 +123,14 @@ object GearStore {
         g.value = merged
         ctx.getSharedPreferences("force", Context.MODE_PRIVATE).edit().putString("gear", json.encodeToString(Gear.serializer(), merged)).apply()
     }
+}
+
+/** Âge en années, d'après l'année de naissance. */
+fun Gear.age(): Int? = born?.let { java.time.LocalDate.now().year - it }?.takeIf { it in 10..110 }
+/** Longueur de foulée (m) d'après la taille ; 0,74 m sans taille. */
+fun Gear.stride(): Double = height?.takeIf { it in 100..250 }?.let { it / 100.0 * (if (sex == "f") .413 else .415) } ?: .74
+/** Dépense au repos (kcal par jour, formule de Mifflin-St Jeor) ; null s'il manque la taille, l'âge, le sexe ou le poids. */
+fun Gear.bmr(bw: Double?): Double? {
+    val h = height?.takeIf { it in 100..250 } ?: return null; val a = age() ?: return null; val w = bw ?: return null
+    return 10 * w + 6.25 * h - 5 * a + when (sex) { "m" -> 5.0; "f" -> -161.0; else -> return null }
 }

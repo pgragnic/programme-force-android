@@ -42,7 +42,7 @@ object Kcal {
     fun bwNow(log: List<Entry>, t: Long? = null): Double { var b = 74.0; log.sortedBy { it.d }.forEach { e -> if (e.bw != null && (t == null || e.d <= t)) b = e.bw }; return b }
     fun day(d: DayRec, log: List<Entry>): Int {
         val bw = bwNow(log, Recovery.dayTs(d)); val load = bw + (d.pack ?: 0.0); val steps = (d.steps ?: 0).toDouble()
-        var k = steps * 0.74 / 1000 * 0.5 * load
+        var k = steps * GearStore.g.value.stride() / 1000 * 0.5 * load
         if (steps == 0.0 && d.act != null && d.dur != null) k = (mapOf("Trail" to 9.0, "Randonnée" to 6.0, "Marche lestée" to 5.0)[d.act] ?: 5.0) * load * d.dur / 60
         k += (d.dplus ?: 0) * load * 9.81 / 0.25 / 4184
         return k.roundToInt()
@@ -193,6 +193,14 @@ fun ActiviteScreen() {
                 if (kd > 0) Box(Modifier.weight(kd.toFloat()).fillMaxHeight().background(C.rest))
             }
             Text("Estimation à ± 25 % de la dépense pendant l'activité, d'après ton poids du jour, la durée des séances, les pas, le sac et le dénivelé.", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            val gr by GearStore.g.collectAsState()
+            val rest = gr.bmr(if (log.any { it.bw != null }) Kcal.bwNow(log) else gr.bw)
+            HorizontalDivider(color = C.line, modifier = Modifier.padding(vertical = 10.dp))
+            if (rest != null) {
+                Text(t("Au repos : ${Kcal.kr(rest)} par jour", "At rest: ${Kcal.kr(rest)} per day"), color = C.ink, fontWeight = FontWeight.Bold)
+                Text(t("Soit ${Kcal.kr(rest * 7)} sur 7 jours, ${Kcal.kr(rest * 7 + tot)} en tout avec l'activité. Métabolisme de base estimé d'après ta taille, ton âge, ton sexe et ton poids (formule de Mifflin-St Jeor).",
+                    "That is ${Kcal.kr(rest * 7)} over 7 days, ${Kcal.kr(rest * 7 + tot)} in total with activity. Basal metabolic rate estimated from your height, age, sex and weight (Mifflin-St Jeor equation)."), color = C.muted, fontSize = 12.sp)
+            } else Text(t("Renseigne ta taille, ton âge et ton sexe dans Infos → Matériel et profil pour voir aussi ta dépense au repos.", "Add your height, age and sex in Info → Equipment and profile to also see your resting burn."), color = C.muted, fontSize = 12.sp)
         }
     }
 }
