@@ -168,3 +168,7 @@ for k in ('calf', 'calf1', 'kbcalf'): P[k]['heel'] = [0, 10]
 for s_ in ('a', 'b'): P['calf1'][s_].update({'E2': [119, 62], 'W2': [138, 64], 'F2': [138, 55]})
 P['calf1']['prop'] = {'t': 'wall', 'x': 143}
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 55 : chat-vache, courbure du dos plus marquée (Philippe : « Le dos ne bouge pas du tout ? »)
+d = json.load(open(p)); c = d['POSES']['catcow']; c['a']['S'] = [89, 120]; c['b']['S'] = [89, 148]
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

@@ -179,6 +179,8 @@ class Body(ctx: Context) {
             // orteils (T1/T2) et bouts des doigts (F1/F2) donnés par la pose : pieds à plat derrière à genoux, paumes à plat au sol ou au mur
             p["T1"]?.let { J["T1"] = sv(it, LA) }; p["T2"]?.let { J["T2"] = sv(it, -LA) }
             p["F1"]?.let { J["F1"] = sv(it, aw) }; p["F2"]?.let { J["F2"] = sv(it, -aw) }
+            // milieu du dos (S) : courbure de la colonne, dos rond ou creusé (retour de Philippe sur le chat-vache : « Le dos ne bouge pas du tout ? »)
+            p["S"]?.let { J["S"] = sv(it) }
             // talons levés (mollets) : drapeau heel = [début, fin] en unités de pose ; les orteils restent au sol, la cheville monte
             // (retour de Philippe sur les mollets sur une jambe : « Rien ne bouge »)
             pFlag(id, "heel")?.jsonArray?.map { it.jsonPrimitive.float }?.let { h ->
@@ -242,6 +244,9 @@ class Body(ctx: Context) {
             val f = m3v(b.A, b.u0).norm(); val h = (F - J[fw.second]!!).norm()
             hand[sd] = Q4.fromUnit(f, h) to boneEnd(b)
         }
+        // courbure du dos : déplacement du buste en sinus entre le bassin et le cou, vers le point S de la pose
+        val bend: V3? = J["S"]?.let { S -> val m = J["Pc"]!!.lerp(J["Nc"]!!, .5f); val sp = (J["Nc"]!! - J["Pc"]!!).norm(); val d = S - m; d - sp * d.dot(sp) }
+        val sb = bones[0]
         var my = 1e9f
         for (G in groups) {
             val rp = G.rp; val rn = G.rn; val P = G.pos; val N = G.nrm; val n = G.w.size
@@ -259,6 +264,11 @@ class Body(ctx: Context) {
                 val oz = w1 * (a[2] * nx + a[5] * ny + a[8] * nz) + w2 * (c[2] * nx + c[5] * ny + c[8] * nz)
                 val l = sqrt(ox * ox + oy * oy + oz * oz).takeIf { it > 0 } ?: 1f
                 N[j] = ox / l; N[j + 1] = oy / l; N[j + 2] = oz / l
+                if (bend != null) {
+                    val bw = (if ((G.bi[i * 2].toInt() and 0xFF) == 0) w1 else 0f) + (if ((G.bi[i * 2 + 1].toInt() and 0xFF) == 0) w2 else 0f)
+                    val tt = (V3(x, y, z) - sb.a0).dot(sb.u0) / sb.L0
+                    if (bw > 0f && tt > 0f && tt < 1f) { val f = sin(PI.toFloat() * tt) * bw; P[j] += bend.x * f; P[j + 1] += bend.y * f; P[j + 2] += bend.z * f }
+                }
                 val hs = G.hs
                 if (hs != null && hs[i] > 0) hand[hs[i].toInt()]?.let { (q, W) ->
                     val t = G.hw!![i]; val r = q.rot(V3(P[j] - W.x, P[j + 1] - W.y, P[j + 2] - W.z)); val rn = q.rot(V3(N[j], N[j + 1], N[j + 2]))
