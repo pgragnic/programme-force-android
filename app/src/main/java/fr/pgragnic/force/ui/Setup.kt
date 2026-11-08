@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 
 /** Ouverture de l'écran de réglage du matériel et du profil depuis Infos. */
@@ -68,7 +69,7 @@ fun SetupScreen(onDone: () -> Unit) {
     val ctx = LocalContext.current
     val cur = GearStore.g.collectAsState().value
     var g by remember { mutableStateOf(cur) }
-    var step by remember { mutableIntStateOf(0) }
+    var step by remember { mutableIntStateOf(Demo.setupStep) }
     var consent by remember { mutableStateOf(cur.limits.isNotEmpty()) }
     val eqList = remember { Prog.raw["EQ"]?.jsonArray?.map { s -> s.jsonArray[0].jsonPrimitive.content to s.jsonArray[1].jsonArray.map { it.jsonArray } } ?: emptyList() }
     val needDetail = "db" in g.items || "kb" in g.items || "band" in g.items || "barbell" in g.items
@@ -256,7 +257,7 @@ fun GearPanel() {
 @Composable
 fun Wheel(items: List<String>, index: Int, onChange: (Int) -> Unit) {
     val rowH = 40.dp; val st = rememberLazyListState(initialFirstVisibleItemIndex = index)
-    val half = with(LocalDensity.current) { rowH.toPx() / 2 }
+    val half = with(LocalDensity.current) { rowH.toPx() / 2 }; val scope = rememberCoroutineScope()
     val center by remember { derivedStateOf { (st.firstVisibleItemIndex + if (st.firstVisibleItemScrollOffset > half) 1 else 0).coerceIn(0, items.size - 1) } }
     LaunchedEffect(st.isScrollInProgress) { if (!st.isScrollInProgress && center != index) onChange(center) }
     Box(Modifier.fillMaxWidth().height(rowH * 5).padding(top = 4.dp)) {
@@ -265,7 +266,7 @@ fun Wheel(items: List<String>, index: Int, onChange: (Int) -> Unit) {
             itemsIndexed(items) { i, s ->
                 val d = kotlin.math.abs(i - center)
                 Text(s, color = if (d == 0) C.ink else C.muted, fontSize = if (d == 0) 20.sp else 16.sp, fontWeight = if (d == 0) FontWeight.Bold else FontWeight.Normal,
-                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(rowH).wrapContentHeight().clickable { onChange(i) }.alpha(if (d > 1) .45f else 1f))
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(rowH).wrapContentHeight().clickable { scope.launch { st.animateScrollToItem(i) } }.alpha(if (d > 1) .45f else 1f))
             }
         }
     }

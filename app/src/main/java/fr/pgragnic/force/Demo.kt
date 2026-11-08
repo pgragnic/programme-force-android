@@ -4,6 +4,8 @@ import java.time.LocalDate
 
 /** Données fictives pour les captures d'écran automatiques (jamais envoyées en ligne : pas de compte connecté). */
 object Demo {
+    /** étape du premier lancement ouverte directement (captures) */
+    var setupStep = 0
     /** Matériel fictif : "kb" = kettlebell, élastiques, chaise, banc ; "bw" = poids du corps, chaise et mur ; "new" = premier lancement. */
     fun gear(code: String) {
         GearStore.g.value = when (code) {

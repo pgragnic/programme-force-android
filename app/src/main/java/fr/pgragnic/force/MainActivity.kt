@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
+        Demo.setupStep = intent.getIntExtra("setupstep", 0)
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
