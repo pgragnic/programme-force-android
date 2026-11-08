@@ -187,6 +187,15 @@ class Body(ctx: Context) {
                 val lift = h[0] + (h[1] - h[0]) * k.toFloat()
                 listOf("A1", "A2").forEach { n -> if (pt(n)[1] >= 176) J[n]!!.y += lift }
             }
+            // rotations d'épaules : bras tendus sur les côtés, les mains tracent des cercles (vers l'avant à l'aller, vers l'arrière au retour)
+            // (retour de Philippe : « La rotation n'est pas très réaliste »)
+            if (flag(id, "circ")) {
+                val th = k * 2 * PI
+                listOf(Triple(1f, "SR", "E1" to "W1"), Triple(-1f, "SL", "E2" to "W2")).forEach { (sd, S_, ew) ->
+                    val S = J[S_]!!; val W = S + V3(sd * 42f, (7 * cos(th)).toFloat(), (7 * sin(th)).toFloat())
+                    J[ew.first] = S.lerp(W, .5f) + V3(0f, .5f, 0f); J[ew.second] = W
+                }
+            }
             if (isFly(id)) {
                 val th = k * 1.35
                 listOf(Triple(1f, "SR", "E1" to "W1"), Triple(-1f, "SL", "E2" to "W2")).forEach { (sd, S_, ew) ->

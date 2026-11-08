@@ -172,3 +172,7 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # --- 8 novembre, 18 h 55 : chat-vache, courbure du dos plus marquée (Philippe : « Le dos ne bouge pas du tout ? »)
 d = json.load(open(p)); c = d['POSES']['catcow']; c['a']['S'] = [89, 120]; c['b']['S'] = [89, 148]
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 19 h : rotations d'épaules, bras sur les côtés et petits cercles (Philippe : « La rotation n'est pas très réaliste »)
+d = json.load(open(p)); d['POSES']['circle']['circ'] = True
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
