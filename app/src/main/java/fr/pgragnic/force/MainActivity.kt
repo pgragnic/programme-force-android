@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
                 fr.pgragnic.force.gl.Body3D(fr.pgragnic.force.gl.BodyState(pose = Prog.EX[d]?.pose ?: d, ex = if (Prog.EX[d] != null) d else null, k = kk, hl = d, ghost = intent.getBooleanExtra("ghost", false),
                     mirror = intent.getBooleanExtra("mirror", false)), Modifier.fillMaxSize())
-                Text(d, color = C.ink, modifier = Modifier.padding(12.dp))
+                if (!intent.getBooleanExtra("clean", false)) Text(d, color = C.ink, modifier = Modifier.padding(12.dp))
             }
             return
         }

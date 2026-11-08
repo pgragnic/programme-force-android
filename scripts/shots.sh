@@ -18,9 +18,24 @@ shot en-play5 --es lang en --ez seed true --ei play 5
 adb shell cmd statusbar expand-notifications; sleep 4; adb exec-out screencap -p > shots/en-notif.png; adb shell cmd statusbar collapse
 shot en-play6 --es lang en --ez seed true --ei play 6
 fi
+# extraits pour un montage (onglets, mouvements) : mot-clé « clips »
+rec() { n=$1; secs=$2; act=$3; shift 3; adb shell am force-stop fr.pgragnic.force; sleep 2; adb shell am start -W -n fr.pgragnic.force/.MainActivity "$@" >> shots/start.txt; sleep 8
+  adb shell screenrecord --time-limit $secs --bit-rate 12000000 /sdcard/$n.mp4 & sleep 1
+  case $act in scroll) sleep 2; adb shell input swipe 160 520 160 220 1600; sleep 2; adb shell input swipe 160 520 160 220 1600;; esac
+  wait; adb pull /sdcard/$n.mp4 shots/$n.mp4 >/dev/null; adb shell rm /sdcard/$n.mp4; }
+case " $POSES " in *" clips "*)
+  for L in fr en; do
+    rec v-$L-play 14 none --es lang $L --ez seed true --ei play 6
+    rec v-$L-seance 7 scroll --es lang $L --ez seed true --ei tab 0
+    rec v-$L-corps 5 none --es lang $L --ez seed true --ei tab 1
+    rec v-$L-suivi 7 scroll --es lang $L --ez seed true --ei tab 3
+    rec v-$L-profil 5 none --es lang $L --es gear kb --ei setupstep 0 --ez opensetup true
+  done
+  for d in kbswing pushup lunge press; do rec v-demo-$d 5 none --es lang fr --es demo $d --ez clean true; done;;
+esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3
