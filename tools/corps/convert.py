@@ -24,7 +24,8 @@ def keytimes(id):
     return sorted(ts)
 
 def conv(id):
-    p = P[id]; flip = id in op.FLIP; tl = tools_of(id); held = {'db', 'kb', 'bb', 'pvc', 'wheel', 'towel', 'medball'} & tl
+    p = P[id]; flip = id in op.FLIP; tl = tools_of(id); held = {'db', 'kb', 'bb', 'pvc', 'wheel', 'towel', 'medball', 'band'} & tl
+    bar = (p.get('prop') or {}).get('t') in ('pullbar', 'dipbars')
     dbs = p.get('db', []); two = id in op.TWO; grip = p.get('grip')
     floor = 'F1' in p.get('a', {})
     keys = []
@@ -46,6 +47,10 @@ def conv(id):
                 elif Fv[1] > 2.5 and abs(Fv[1] - W[1]) < 3 or Fv[1] <= 2.5: U = np.array([0, -1., 0])
                 else: U = None
                 c = .5 if id == 'chairdip' else .05
+            elif bar:
+                # barre de traction : mains fermées, paumes vers l'avant ; barres à dips : mains fermées, paumes vers l'intérieur
+                c = .85
+                U = np.array([0, 0, 1.]) if p['prop']['t'] == 'pullbar' else nrm(-sd * X - fore * np.dot(-sd * X, fore))
             elif held and hand_has and (dbs or held - {'db', 'kb'}):
                 c = .85
                 if grip == 'n' or two: U = nrm(-sd * X - fore * np.dot(-sd * X, fore))
