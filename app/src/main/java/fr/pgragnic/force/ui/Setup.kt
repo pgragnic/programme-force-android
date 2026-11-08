@@ -8,6 +8,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -16,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -196,13 +203,20 @@ fun SetupScreen(onDone: () -> Unit) {
                     }
                     Eyebrow(t("Taille, sexe et âge (facultatif)", "Height, sex and age (optional)"))
                     Panel {
-                        var hs by remember { mutableStateOf(g.height?.toString() ?: "") }
-                        var bs by remember { mutableStateOf(g.born?.toString() ?: "") }
-                        OutlinedTextField(hs, { hs = it; g = g.copy(height = it.trim().toIntOrNull()?.takeIf { v -> v in 100..250 }) }, label = { Text(t("Ta taille (cm)", "Your height (cm)")) }, singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(bs, { bs = it; g = g.copy(born = it.trim().toIntOrNull()?.takeIf { v -> v in 1900..java.time.LocalDate.now().year - 10 }) }, label = { Text(t("Ton année de naissance", "Your year of birth")) }, singleLine = true,
-                            supportingText = { g.age()?.let { a -> Text(t("$a ans", "$a years old")) } },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                        // roulettes (demande de Philippe : « Peux tu prévoir des roulettes pour l'année se naissance et la taille ? ») ; « — » = non renseigné
+                        val hv = remember { listOf<Int?>(null) + (140..210).toList() }
+                        val yv = remember { val y = java.time.LocalDate.now().year; listOf<Int?>(null) + (y - 12 downTo 1930).toList() }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(t("Ta taille", "Your height"), color = C.muted, fontSize = 13.sp)
+                                Wheel(hv.map { it?.let { v -> "$v cm" } ?: "—" }, hv.indexOf(g.height).coerceAtLeast(0)) { g = g.copy(height = hv[it]) }
+                            }
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(t("Ton année de naissance", "Your year of birth"), color = C.muted, fontSize = 13.sp)
+                                Wheel(yv.map { it?.toString() ?: "—" }, yv.indexOf(g.born).coerceAtLeast(0)) { g = g.copy(born = yv[it]) }
+                                Text(g.age()?.let { a -> t("$a ans", "$a years old") } ?: " ", color = C.muted, fontSize = 12.sp)
+                            }
+                        }
                         Text(t("Sexe", "Sex"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
                         Seg(listOf(t("Homme", "Male"), t("Femme", "Female"), t("Non précisé", "Not specified")), when (g.sex) { "m" -> 0; "f" -> 1; else -> 2 }) { g = g.copy(sex = when (it) { 0 -> "m"; 1 -> "f"; else -> null }) }
                         Text(t("Ta taille règle la longueur de tes pas pour la dépense de l'onglet Activité. Avec ton âge et ton sexe, l'appli estime aussi ta dépense au repos et ajuste tes charges de départ.",
@@ -235,5 +249,24 @@ fun GearPanel() {
             .takeIf { it.isNotEmpty() }?.let { Text(t("Profil : ", "Profile: ") + it.joinToString(" · "), color = C.muted, fontSize = 13.sp) }
         if (g.limits.isNotEmpty()) Text("À ménager : " + Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { it.second }, color = C.muted, fontSize = 13.sp)
         OutlinedButton(onClick = { setupOpen.value = true }, modifier = Modifier.padding(top = 6.dp)) { Text("Modifier") }
+    }
+}
+
+/** Roulette verticale : 5 lignes visibles, la ligne du milieu est la valeur choisie. */
+@Composable
+fun Wheel(items: List<String>, index: Int, onChange: (Int) -> Unit) {
+    val rowH = 40.dp; val st = rememberLazyListState(initialFirstVisibleItemIndex = index)
+    val half = with(LocalDensity.current) { rowH.toPx() / 2 }
+    val center by remember { derivedStateOf { (st.firstVisibleItemIndex + if (st.firstVisibleItemScrollOffset > half) 1 else 0).coerceIn(0, items.size - 1) } }
+    LaunchedEffect(st.isScrollInProgress) { if (!st.isScrollInProgress && center != index) onChange(center) }
+    Box(Modifier.fillMaxWidth().height(rowH * 5).padding(top = 4.dp)) {
+        Box(Modifier.align(Alignment.Center).fillMaxWidth().height(rowH).clip(RoundedCornerShape(10.dp)).background(C.bg))
+        LazyColumn(state = st, flingBehavior = rememberSnapFlingBehavior(st), contentPadding = PaddingValues(vertical = rowH * 2), modifier = Modifier.fillMaxSize()) {
+            itemsIndexed(items) { i, s ->
+                val d = kotlin.math.abs(i - center)
+                Text(s, color = if (d == 0) C.ink else C.muted, fontSize = if (d == 0) 20.sp else 16.sp, fontWeight = if (d == 0) FontWeight.Bold else FontWeight.Normal,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(rowH).wrapContentHeight().clickable { onChange(i) }.alpha(if (d > 1) .45f else 1f))
+            }
+        }
     }
 }
