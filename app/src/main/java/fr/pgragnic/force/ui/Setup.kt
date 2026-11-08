@@ -77,18 +77,22 @@ fun SetupScreen(onDone: () -> Unit) {
     fun go(d: Int) {
         var n = step + d; if (n == 1 && !needDetail) n += d; if (n < 0) return
         if (n > 3) {
-            if (!cur.done || cur.obj != g.obj) Store.setSettings { it.rest = Gear.restFor(g.obj) }
-            GearStore.save(ctx, g.copy(done = true, level = g.level ?: 0, limits = if (consent) g.limits else emptySet())); onDone(); return
+            // valeurs par défaut pour ce qui n'est pas renseigné (étapes passées) : forme, débutant
+            val obj = g.obj ?: "forme"
+            if (!cur.done || cur.obj != obj) Store.setSettings { it.rest = Gear.restFor(obj) }
+            GearStore.save(ctx, g.copy(done = true, obj = obj, level = g.level ?: 0, limits = if (consent) g.limits else emptySet())); onDone(); return
         }
         step = n
     }
 
     Column(Modifier.fillMaxSize().background(C.bg)) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (step == 0) { if (cur.done) onDone() } else go(-1) }, enabled = step > 0 || cur.done) { Icon(Icons.Default.ArrowBack, "Retour", tint = if (step > 0 || cur.done) C.ink else C.bg) }
+            IconButton(onClick = { if (step == 0) { if (cur.done) onDone() } else go(-1) }, enabled = step > 0 || cur.done) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = if (step > 0 || cur.done) C.ink else C.bg) }
             Text(tr(steps[step]).uppercase(), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
             Text("${step + 1}/4", color = C.muted)
-            Spacer(Modifier.width(8.dp))
+            // premier lancement plus court : on peut commencer tout de suite et compléter plus tard dans Infos → Matériel et profil
+            if (!cur.done && okStep1(g)) TextButton(onClick = { step = 3; go(1) }) { Text(t("Passer", "Skip"), fontWeight = FontWeight.Bold) }
+            else Spacer(Modifier.width(8.dp))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (step) {
@@ -227,12 +231,17 @@ fun SetupScreen(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
         }
-        val okNext = when (step) { 3 -> g.obj != null && g.level != null; 1 -> !("db" in g.items && g.dbMode == "fixed" && g.fixed.isEmpty()) && !("kb" in g.items && g.kbs.isEmpty()); else -> true }
-        Button(onClick = { go(1) }, enabled = okNext, modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp)) {
+        val okNext = when (step) { 1 -> okStep1(g); else -> true }
+        Button(onClick = { go(1) }, enabled = okNext, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp)) {
             Text(if (step == 3) "Enregistrer" else "Continuer", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
+        if (!cur.done && step == 0) Text(t("Tout est modifiable plus tard dans Infos → Matériel et profil.", "Everything can be changed later in Info → Equipment and profile."),
+            color = C.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
+
+/** Les charges disponibles sont renseignées pour le matériel coché (haltères fixes, kettlebells). */
+private fun okStep1(g: Gear) = !("db" in g.items && g.dbMode == "fixed" && g.fixed.isEmpty()) && !("kb" in g.items && g.kbs.isEmpty())
 
 /** Résumé du matériel dans l'onglet Infos. */
 @Composable

@@ -38,6 +38,9 @@ data class ProgRow(val id: Long, val data: JsonObject, val note: String? = null)
 data class RetourRow(val kind: String, val texte: String, val contact: String? = null, val appli: String? = null)
 
 @Serializable
+data class MyRetour(val id: Long, val created_at: String, val kind: String, val texte: String, val reponse: String? = null)
+
+@Serializable
 data class DayRow(val date: String, val data: JsonObject)
 
 /** Stockage : copie locale sur le téléphone + synchronisation Supabase quand on est connecté. */
@@ -154,6 +157,7 @@ object Store {
     fun handleLink(intent: Intent?) {
         val c = sb ?: return; val i = intent ?: return
         if (i.data?.scheme != "fr.pgragnic.force") return
+        if (i.dataString?.contains("type=recovery") == true) recovery.value = true
         runCatching { c.handleDeeplinks(i) { sync.value = "Adresse confirmée, connecté" } }
     }
 
@@ -298,6 +302,33 @@ object Store {
         } catch (t: Throwable) { t.message ?: "Erreur de connexion" }
     }
 
+    /** Connexion avec le compte Google du téléphone (bouton visible seulement si l'identifiant Google est configuré). */
+    val googleReady get() = BuildConfig.GOOGLE_CLIENT_ID.isNotBlank() && sb != null
+    suspend fun signInGoogle(activity: Context): String? {
+        val c = sb ?: return "Base non configurée"
+        return try {
+            val opt = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_CLIENT_ID).build()
+            val req = androidx.credentials.GetCredentialRequest.Builder().addCredentialOption(opt).build()
+            val res = androidx.credentials.CredentialManager.create(activity).getCredential(activity, req)
+            val cred = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(res.credential.data)
+            c.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.IDToken) { idToken = cred.idToken; provider = io.github.jan.supabase.auth.providers.Google }
+            user.value = c.auth.currentUserOrNull()?.email; pull(); null
+        } catch (t: androidx.credentials.exceptions.GetCredentialCancellationException) { null }
+        catch (t: Throwable) { t("Connexion Google impossible : ", "Google sign-in failed: ") + (t.message ?: "") }
+    }
+
+    /** Mot de passe oublié : e-mail avec un lien qui ouvre l'appli pour choisir un nouveau mot de passe. */
+    val recovery = MutableStateFlow(false)
+    suspend fun resetPassword(email: String): String {
+        val c = sb ?: return "Base non configurée"
+        return try { c.auth.resetPasswordForEmail(email, redirectUrl = "fr.pgragnic.force://login"); t("E-mail envoyé : touche le lien sur ce téléphone pour choisir un nouveau mot de passe.", "Email sent: tap the link on this phone to choose a new password.") }
+        catch (t: Throwable) { t("Envoi impossible : ", "Couldn't send: ") + (t.message ?: "") }
+    }
+    suspend fun newPassword(pw: String): String? {
+        val c = sb ?: return "Base non configurée"
+        return try { c.auth.updateUser { password = pw }; recovery.value = false; null } catch (t: Throwable) { t.message ?: "Erreur" }
+    }
+
     suspend fun signOut() { runCatching { sb?.auth?.signOut() }; user.value = null }
 
     /** Envoie un avis ou une idée d'amélioration (possible sans compte). */
@@ -307,7 +338,17 @@ object Store {
             c.from("retours").insert(RetourRow(kind, txt.trim().take(2000), contact?.trim()?.takeIf { it.isNotBlank() }?.take(200),
                 "UpRep ${BuildConfig.VERSION_NAME} · Android ${android.os.Build.VERSION.RELEASE}"))
             null
-        } catch (t: Throwable) { "Envoi impossible pour l'instant : vérifie ta connexion et réessaie." }
+        } catch (t: Throwable) {
+            if (t.message?.contains("Trop de messages") == true) t("Tu as envoyé beaucoup de messages : réessaie dans une heure.", "You've sent a lot of messages: try again in an hour.")
+            else "Envoi impossible pour l'instant : vérifie ta connexion et réessaie."
+        }
+    }
+
+    /** Messages envoyés avec ce compte et réponses reçues (les plus récents d'abord). */
+    suspend fun myFeedback(): List<MyRetour> {
+        val c = sb ?: return emptyList(); if (user.value == null) return emptyList()
+        return runCatching { c.from("retours").select(io.github.jan.supabase.postgrest.query.Columns.list("id", "created_at", "kind", "texte", "reponse")) {
+            order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(20) }.decodeList<MyRetour>() }.getOrElse { emptyList() }
     }
 
     /** Supprime définitivement le compte et toutes ses données en ligne, puis les données du téléphone. */

@@ -51,7 +51,11 @@ object Kcal {
         e.kcal?.let { return it }
         return runCatching { val st = Settings(); Prog.sessKcal(Prog.phases(e.c, e.w, e.s, e.rest ?: 30, st, emptyList()), e.bw ?: bwNow(log, e.d)) }.getOrDefault(0.0)
     }
-    fun kr(k: Double) = "≈ " + String.format(fr.pgragnic.force.L.loc, "%,d", k.roundToInt()) + " kcal"
+    /** Dépense affichée en fourchette (estimation à ± 25 %) plutôt qu'en chiffre précis, qui ferait croire à une mesure. */
+    fun kr(k: Double): String {
+        fun f(x: Double) = String.format(fr.pgragnic.force.L.loc, "%,d", ((x / 10).roundToInt() * 10))
+        return if (k < 40) "≈ ${f(k)} kcal" else "${f(k * .75)}–${f(k * 1.25)} kcal"
+    }
     fun range(k: Double) = "${(k * .75 / 10).roundToInt() * 10}–${(k * 1.25 / 10).roundToInt() * 10} kcal"
 }
 
@@ -137,10 +141,10 @@ fun ActiviteScreen() {
         // Saisie
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { sel = sel.minusDays(1) }) { Icon(Icons.Default.ChevronLeft, "Jour précédent", tint = C.ink) }
+                IconButton(onClick = { sel = sel.minusDays(1) }) { Icon(Icons.Default.ChevronLeft, fr.pgragnic.force.tr("Jour précédent"), tint = C.ink) }
                 Text(sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)).replaceFirstChar { it.uppercase() } + if (sel == today) t(" (aujourd'hui)", " (today)") else "",
                     color = C.ink, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-                IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, "Jour suivant", tint = if (sel < today) C.ink else C.line) }
+                IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, fr.pgragnic.force.tr("Jour suivant"), tint = if (sel < today) C.ink else C.line) }
             }
             if (cur?.src == "hc") Text(t("${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} pas importés depuis Health Connect", "${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} steps imported from Health Connect"), color = C.muted, fontSize = 12.sp)
             val num = KeyboardOptions(keyboardType = KeyboardType.Number); val dec = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -177,7 +181,7 @@ fun ActiviteScreen() {
         Panel {
             Text("Dépense estimée · 7 jours", color = C.muted, fontSize = 12.sp)
             Text(Kcal.kr(tot), color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
-            Text(Kcal.range(tot), color = C.muted, fontSize = 12.sp)
+            Text(t("Estimation à ± 25 %", "Estimate, ± 25%"), color = C.muted, fontSize = 12.sp)
             Row(Modifier.padding(top = 10.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text(t("Séances (${ses7.size})", "Sessions (${ses7.size})"), color = C.muted, fontSize = 12.sp); Text(Kcal.kr(ks), color = C.effort, fontWeight = FontWeight.Bold)

@@ -117,8 +117,8 @@ fun SeanceScreen(onStart: () -> Unit) {
         }
         gear.maxMin?.let { m -> if (P.count { it.k == "work" } < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
             Text(t("Séance raccourcie pour tenir en $m min : une série de moins sur certains exercices. Réglage dans Infos → Durée des séances.", "Workout shortened to fit in $m min: one set fewer on some exercises. Setting in Info → Workout length."), color = C.muted, fontSize = 12.sp) }
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) {
-            Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
+        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp)) {
+            Icon(Icons.Default.PlayArrow, null) // le texte du bouton suffit; Spacer(Modifier.width(8.dp))
             Text(t("Démarrer la séance ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}", "Start workout ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}"), fontWeight = FontWeight.Black, fontSize = 17.sp)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +190,7 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
             val order = listOf("A", "B", "C", "D"); val ni = order.indexOf(ses.s)
             Store.setSettings { if (ni < 3) it.s = order[ni + 1] else if (it.w < 7) { it.w++; it.s = "A" } else { it.c++; it.w = 0; it.s = "A" } }
             onDone()
-        }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) { Text("Enregistrer la séance", fontWeight = FontWeight.Black) }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(16.dp)) { Text("Enregistrer la séance", fontWeight = FontWeight.Black) }
         TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Quitter sans enregistrer", color = C.muted) }
     }
 }
@@ -264,6 +264,15 @@ fun InfosScreen() {
         DureePanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
+            val rec by Store.recovery.collectAsState()
+            if (rec) {
+                // arrivée par le lien « mot de passe oublié »
+                var np by remember { mutableStateOf("") }
+                OutlinedTextField(np, { np = it }, label = { Text(t("Nouveau mot de passe", "New password")) }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                Button(onClick = { scope.launch { msg = if (np.length < 6) t("6 caractères minimum.", "At least 6 characters.") else Store.newPassword(np) ?: t("Mot de passe changé", "Password changed") } },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(t("Enregistrer le mot de passe", "Save password")) }
+            }
             if (user != null) {
                 Text(t("Connecté : $user", "Signed in: $user"), color = C.muted)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -286,7 +295,7 @@ fun InfosScreen() {
                     PChip("Créer un compte", create) { create = true; msg = null }
                 }
                 OutlinedTextField(email, { email = it }, label = { Text("E-mail") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
-                val eye = @Composable { IconButton(onClick = { show = !show }) { Icon(if (show) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (show) "Masquer le mot de passe" else "Afficher le mot de passe") } }
+                val eye = @Composable { IconButton(onClick = { show = !show }) { Icon(if (show) Icons.Default.VisibilityOff else Icons.Default.Visibility, fr.pgragnic.force.tr(if (show) "Masquer le mot de passe" else "Afficher le mot de passe")) } }
                 OutlinedTextField(pw, { pw = it }, label = { Text("Mot de passe") }, singleLine = true, trailingIcon = eye,
                     visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
@@ -305,6 +314,13 @@ fun InfosScreen() {
                         else -> { scope.launch { msg = Store.signIn(email.trim(), pw, create) ?: "Connecté" }; "…" }
                     }
                 }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(if (create) "Créer le compte" else "Se connecter") }
+                if (!create) TextButton(onClick = { scope.launch { msg = if (email.isBlank()) t("Renseigne ton e-mail.", "Enter your email.") else Store.resetPassword(email.trim()) } }, contentPadding = PaddingValues(0.dp)) {
+                    Text(t("Mot de passe oublié ?", "Forgot password?"), color = C.muted, fontSize = 13.sp)
+                }
+                if (Store.googleReady) {
+                    val act = androidx.compose.ui.platform.LocalContext.current
+                    OutlinedButton(onClick = { scope.launch { msg = Store.signInGoogle(act) } }, modifier = Modifier.fillMaxWidth()) { Text(t("Continuer avec Google", "Continue with Google"), fontWeight = FontWeight.Bold) }
+                }
                 msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
             }
         }
@@ -493,6 +509,19 @@ fun FeedbackPanel() {
         Button(onClick = { busy = true; scope.launch { msg = Store.sendFeedback(kind, txt, contact) ?: "Merci ! Ton message est bien arrivé.".also { txt = "" }; busy = false } },
             enabled = !busy && txt.trim().length >= 3, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(if (busy) "Envoi…" else "Envoyer") }
         msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
+        // messages déjà envoyés avec ce compte, et la réponse quand il y en a une
+        var mine by remember { mutableStateOf<List<MyRetour>>(emptyList()) }
+        LaunchedEffect(user, msg) { mine = Store.myFeedback() }
+        if (mine.isNotEmpty()) {
+            Text(t("Tes messages", "Your messages"), color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
+            mine.take(5).forEach { r ->
+                Column(Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(10.dp)).background(C.bg).padding(10.dp)) {
+                    Text(r.created_at.take(10).split("-").reversed().joinToString("/") + " · " + r.texte.take(140), color = C.ink, fontSize = 13.sp)
+                    Text(r.reponse?.let { t("Réponse : ", "Reply: ") + it } ?: t("En attente de réponse", "Awaiting reply"),
+                        color = if (r.reponse != null) C.rest else C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
     }
 }
 

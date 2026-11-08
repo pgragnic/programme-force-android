@@ -5,6 +5,14 @@ on:
       version:
         description: "Numéro de version affiché (ex. 1.0.0)"
         default: "1.0.0"
+      piste:
+        description: "Piste Google Play (internal = test interne, alpha = test fermé, production)"
+        type: choice
+        options: [internal, alpha, production]
+        default: internal
+      part:
+        description: "Production : part des utilisateurs qui reçoivent la version d'abord (0.1 = 10 %, 1 = tous)"
+        default: "0.2"
 permissions:
   contents: write
 jobs:
@@ -38,3 +46,30 @@ jobs:
           files: ProgrammeForce-${{ inputs.version }}.aab
           prerelease: true
           make_latest: false
+      # Envoi automatique sur Google Play, avec les notes de version de distribution/whatsnew (FR et EN).
+      # Nécessite le secret PLAY_JSON (compte de service Google Play) ; sans lui, le paquet reste à envoyer à la main.
+      - name: Envoi sur Google Play (test interne, test fermé ou production pour tous)
+        env: { PLAY_JSON: "${{ secrets.PLAY_JSON }}" }
+        if: env.PLAY_JSON != '' && (inputs.piste != 'production' || inputs.part == '1')
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
+          packageName: fr.pgragnic.force
+          releaseFiles: ProgrammeForce-${{ inputs.version }}.aab
+          releaseName: ${{ inputs.version }} (${{ env.VERSION_CODE }})
+          track: ${{ inputs.piste }}
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
+      - name: Envoi sur Google Play (production progressive)
+        env: { PLAY_JSON: "${{ secrets.PLAY_JSON }}" }
+        if: env.PLAY_JSON != '' && inputs.piste == 'production' && inputs.part != '1'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
+          packageName: fr.pgragnic.force
+          releaseFiles: ProgrammeForce-${{ inputs.version }}.aab
+          releaseName: ${{ inputs.version }} (${{ env.VERSION_CODE }})
+          track: production
+          status: inProgress
+          userFraction: ${{ inputs.part }}
+          whatsNewDirectory: distribution/whatsnew

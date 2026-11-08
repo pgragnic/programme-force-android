@@ -145,7 +145,7 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
                 modifier = Modifier.clip(RoundedCornerShape(50)).background(col).padding(horizontal = 14.dp, vertical = 6.dp))
             Spacer(Modifier.weight(1f))
             Text(p.blk, color = C.muted, fontSize = 12.sp, letterSpacing = 1.sp, textAlign = TextAlign.End, modifier = Modifier.padding(end = 8.dp).weight(2f))
-            IconButton(onClick = onClose, modifier = Modifier.size(44.dp).border(1.dp, C.line, CircleShape)) { Icon(Icons.Default.Close, "Fermer", tint = C.ink) }
+            IconButton(onClick = onClose, modifier = Modifier.size(44.dp).border(1.dp, C.line, CircleShape)) { Icon(Icons.Default.Close, fr.pgragnic.force.tr("Fermer"), tint = C.ink) }
         }
         if (p.k == "switch") Text(if (p.ei == 0) "PREMIER EXERCICE" else "NOUVEL EXERCICE", color = col, letterSpacing = 2.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
@@ -172,7 +172,7 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             RoundBtn(Icons.Default.SkipPrevious, "Précédent") { ses.prev() }
             FilledIconButton(onClick = { ses.toggle() }, modifier = Modifier.size(width = 92.dp, height = 64.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = C.ink)) {
-                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, if (ses.run) "Pause" else "Reprendre", tint = C.bg, modifier = Modifier.size(34.dp))
+                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, fr.pgragnic.force.tr(if (ses.run) "Pause" else "Reprendre"), tint = C.bg, modifier = Modifier.size(34.dp))
             }
             RoundBtn(Icons.Default.SkipNext, "Suivant") { ses.next() }
             RoundBtn(if (ses.voice.on) Icons.Default.VolumeUp else Icons.Default.VolumeOff, "Son") { ses.voice.on = !ses.voice.on }

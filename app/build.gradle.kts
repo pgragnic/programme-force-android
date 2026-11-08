@@ -23,6 +23,8 @@ android {
         versionName = System.getenv("VERSION_NAME") ?: ("0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0"))
         buildConfigField("String", "SUPABASE_URL", "\"" + (cfg.getProperty("url") ?: "") + "\"")
         buildConfigField("String", "SUPABASE_KEY", "\"" + (cfg.getProperty("key") ?: "") + "\"")
+        // identifiant « client Web » Google (Google Cloud → Identifiants) pour « Se connecter avec Google » ; vide = bouton masqué
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"" + (cfg.getProperty("google") ?: "") + "\"")
     }
     signingConfigs {
         getByName("debug") {
@@ -69,6 +71,9 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.ktor:ktor-client-okhttp:3.0.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
