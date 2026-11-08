@@ -1,6 +1,7 @@
 package fr.pgragnic.force.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -74,19 +75,38 @@ fun SetupScreen(onDone: () -> Unit) {
     val eqList = remember { Prog.raw["EQ"]?.jsonArray?.map { s -> s.jsonArray[0].jsonPrimitive.content to s.jsonArray[1].jsonArray.map { it.jsonArray } } ?: emptyList() }
     val needDetail = "db" in g.items || "kb" in g.items || "band" in g.items || "barbell" in g.items
     val steps = listOf("Ton matériel", "Tes charges", "Ta santé", "Ton profil")
+    fun save() {
+        // valeurs par défaut pour ce qui n'est pas renseigné (étapes passées) : forme, débutant
+        val obj = g.obj ?: "forme"
+        if (!cur.done || cur.obj != obj) Store.setSettings { it.rest = Gear.restFor(obj) }
+        GearStore.save(ctx, g.copy(done = true, obj = obj, level = g.level ?: 0, limits = if (consent) g.limits else emptySet())); onDone()
+    }
     fun go(d: Int) {
         var n = step + d; if (n == 1 && !needDetail) n += d; if (n < 0) return
-        if (n > 3) {
-            // valeurs par défaut pour ce qui n'est pas renseigné (étapes passées) : forme, débutant
-            val obj = g.obj ?: "forme"
-            if (!cur.done || cur.obj != obj) Store.setSettings { it.rest = Gear.restFor(obj) }
-            GearStore.save(ctx, g.copy(done = true, obj = obj, level = g.level ?: 0, limits = if (consent) g.limits else emptySet())); onDone(); return
-        }
+        if (n > 3) { save(); return }
         step = n
     }
+    // modification depuis Infos : onglets au lieu des étapes (demande de Philippe : « Dans matériel et profil, je préférerais des onglets
+    // (mon matériel, tes charges, ta santé, ton profil) ») ; le premier lancement garde les étapes guidées
+    val tabs = cur.done
+    val tabNames = listOf(t("Mon matériel", "My equipment"), t("Tes charges", "Your loads"), t("Ta santé", "Your health"), t("Ton profil", "Your profile"))
+    if (tabs && step == 1 && !needDetail) step = 0
 
     Column(Modifier.fillMaxSize().background(C.bg)) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (tabs) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDone) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = C.ink) }
+                Text(t("Matériel et profil", "Equipment and profile"), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, modifier = Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                tabNames.forEachIndexed { i, n ->
+                    if (i == 1 && !needDetail) return@forEachIndexed
+                    val on = step == i
+                    Text(n, color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) C.ink else C.surface).clickable { step = i }.padding(horizontal = 14.dp, vertical = 9.dp))
+                }
+            }
+        } else Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (step == 0) { if (cur.done) onDone() } else go(-1) }, enabled = step > 0 || cur.done) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = if (step > 0 || cur.done) C.ink else C.bg) }
             Text(tr(steps[step]).uppercase(), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
             Text("${step + 1}/4", color = C.muted)
@@ -231,9 +251,9 @@ fun SetupScreen(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
         }
-        val okNext = when (step) { 1 -> okStep1(g); else -> true }
-        Button(onClick = { go(1) }, enabled = okNext, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp)) {
-            Text(if (step == 3) "Enregistrer" else "Continuer", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        val okNext = if (tabs) okStep1(g) else when (step) { 1 -> okStep1(g); else -> true }
+        Button(onClick = { if (tabs) save() else go(1) }, enabled = okNext, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp)) {
+            Text(if (tabs || step == 3) "Enregistrer" else "Continuer", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
         if (!cur.done && step == 0) Text(t("Tout est modifiable plus tard dans Infos → Matériel et profil.", "Everything can be changed later in Info → Equipment and profile."),
             color = C.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
