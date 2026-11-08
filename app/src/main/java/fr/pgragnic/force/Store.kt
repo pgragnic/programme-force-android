@@ -263,7 +263,7 @@ object Store {
                 // changement de compte : les séances déjà envoyées appartiennent à l'autre compte (elles y restent en ligne) ; le téléphone
                 // reprend celles du compte connecté (retour de Philippe, passage au compte Gmail : « Repartir de zéro sur Gmail »)
                 if (prefs.getString("owner", null) != uid) {
-                    log.value = log.value.filter { it.d in sPend }; sDel.clear()
+                    log.value = log.value.filter { it.d in sPend }; sDel.clear(); dDel.clear()
                     days.value = days.value.filter { it.date in dPending }; bilan.value = null; prefs.edit().remove("bilan").apply()
                     prefs.edit().putString("owner", uid).apply()
                 }
