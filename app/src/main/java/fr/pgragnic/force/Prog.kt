@@ -322,7 +322,28 @@ object Prog {
         return best ?: ex
     }
 
+    /**
+     * Séance complète. Si elle dépasse la durée maximale choisie (Infos → Durée des séances), on retire des séries une à une,
+     * d'abord au gainage, puis aux petits exercices (bras, épaules…), en dernier aux gros exercices ; jamais en dessous de 2 séries,
+     * et les zones à travailler passent en dernier.
+     */
     fun phases(c: Int, w: Int, s: String, restS: Int, st: Settings, log: List<Entry>): List<Phase> {
+        val cap = gear.maxMin?.let { it * 60.0 }
+        val ns = HashMap<String, Int>()
+        var P = build(c, w, s, restS, st, log, ns)
+        if (cap == null) return P
+        val exo = P.filter { it.k == "work" }.mapNotNull { it.ex }.distinct()
+        exo.forEach { ns[it] = P.count { p -> p.k == "work" && p.ex == it } }
+        fun rank(id: String) = (if (id in CORE) 0 else if (id in BIG || id in HEAVY) 2 else 1) + (if (gear.focus(id)) 3 else 0)
+        while (P.sumOf { it.dur } > cap) {
+            val id = exo.filter { ns[it]!! > 2 }.sortedWith(compareBy<String>({ rank(it) }, { -ns[it]!! }, { -exo.indexOf(it) })).firstOrNull() ?: break
+            ns[id] = ns[id]!! - 1
+            P = build(c, w, s, restS, st, log, ns)
+        }
+        return P
+    }
+
+    private fun build(c: Int, w: Int, s: String, restS: Int, st: Settings, log: List<Entry>, nsOver: Map<String, Int>): ArrayList<Phase> {
         val S = sess(c)[s]!!; val W = WEEKS[w]; val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
@@ -354,7 +375,7 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            val ns = W.s + if (gear.focus(id)) 1 else 0
+            val ns = nsOver[id] ?: (W.s + if (gear.focus(id)) 1 else 0)
             for (i in 1..ns) {
                 P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
                     det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",

@@ -100,6 +100,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             }
         }
         val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
+        val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
         Panel {
             order.forEachIndexed { i, id ->
                 val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
@@ -109,12 +110,13 @@ fun SeanceScreen(onStart: () -> Unit) {
                         Text(e.n, color = C.ink, fontWeight = FontWeight.Bold)
                         Text(Prog.load(id, st.w, st) + " · " + e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp)
                     }
-                    Text("${W.s} × ${wk.label}", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
                 if (i < order.size - 1) HorizontalDivider(color = C.line)
             }
         }
-        val P = remember(st.c, st.w, st.s, st.rest, log) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+        gear.maxMin?.let { m -> if (P.count { it.k == "work" } < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
+            Text(t("Séance raccourcie pour tenir en $m min : une série de moins sur certains exercices. Réglage dans Infos → Durée des séances.", "Workout shortened to fit in $m min: one set fewer on some exercises. Setting in Info → Workout length."), color = C.muted, fontSize = 12.sp) }
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) {
             Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
             Text(t("Démarrer la séance ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}", "Start workout ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}"), fontWeight = FontWeight.Black, fontSize = 17.sp)
@@ -259,6 +261,7 @@ fun InfosScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
         GearPanel()
+        DureePanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
@@ -490,5 +493,24 @@ fun FeedbackPanel() {
         Button(onClick = { busy = true; scope.launch { msg = Store.sendFeedback(kind, txt, contact) ?: "Merci ! Ton message est bien arrivé.".also { txt = "" }; busy = false } },
             enabled = !busy && txt.trim().length >= 3, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(if (busy) "Envoi…" else "Envoyer") }
         msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
+    }
+}
+
+/** Durée maximale des séances (demande de Philippe : « Actuellement les séances sont à 40 minutes », choix « Plafond au choix dans Infos »). */
+@Composable
+fun DureePanel() {
+    val g by GearStore.g.collectAsState(); val ctx = androidx.compose.ui.platform.LocalContext.current
+    Panel {
+        Text(t("Durée des séances", "Workout length"), color = C.ink, fontWeight = FontWeight.Bold)
+        Text(t("Si une séance dépasse, l'appli retire une série au gainage puis aux petits exercices, jamais en dessous de 2 séries ; les gros exercices et tes zones à travailler passent en dernier.",
+            "If a workout runs over, the app drops a set from core work, then from smaller exercises, never below 2 sets; big lifts and your focus areas come last."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+        val opts = listOf(30, 35, 40, 45, null)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            opts.forEach { m ->
+                val on = g.maxMin == m
+                Text(m?.let { "$it min" } ?: t("Sans limite", "No limit"), color = if (on) C.bg else C.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1,
+                    modifier = Modifier.weight(if (m == null) 1.6f else 1f).clip(RoundedCornerShape(50)).background(if (on) C.ink else C.bg).clickable { GearStore.save(ctx, g.copy(maxMin = m)) }.padding(vertical = 9.dp))
+            }
+        }
     }
 }

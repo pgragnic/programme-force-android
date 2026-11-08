@@ -33,6 +33,8 @@ data class Gear(
     val height: Int? = null,
     val sex: String? = null,
     val born: Int? = null,
+    /** durée maximale d'une séance en minutes (null = sans limite) ; demande de Philippe : « Plafond au choix dans Infos » */
+    val maxMin: Int? = null,
     /** objectif : poids, muscle, forme, mobilite, sante */
     val obj: String? = null,
     /** zones à travailler en priorité : bras, ventre, jambes, poitrine, dos */
