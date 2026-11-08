@@ -157,3 +157,7 @@ for k in ('birddog', 'catcow'):
     for s_ in ('a', 'b'): P[k][s_].update({'T1': [160, 180], 'T2': [158, 180]})
 P['birddog']['b']['T2'] = [178, 143]        # jambe tendue derrière : orteils vers le sol
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 40 : rythme propre aux échauffements (Philippe : « La rotation des épaules est trop rapide »)
+d = json.load(open(p)); d['WTP'] = {'circle': [2.0, 0, 2.0, 0], 'pvc': [2.0, 0, 2.0, 0], 'catcow': [2.0, 0.5, 2.0, 0.5]}
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

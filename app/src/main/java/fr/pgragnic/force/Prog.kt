@@ -361,7 +361,9 @@ object Prog {
         S.warm.map { upg(WARM_UP, it, s) }.forEachIndexed { i, k ->
             val x = WU[k]!!
             P += Phase("warm", blk = "Échauffement", n = x[1].jsonPrimitive.content, det = "${i + 1}/3 · 1 min", tip = x[2].jsonPrimitive.content,
-                dur = 60.0, pose = x[0].jsonPrimitive.content, nodb = x.size > 3, tp = listOf(1.0, 0.0, 1.2, 0.0))
+                dur = 60.0, pose = x[0].jsonPrimitive.content, nodb = x.size > 3,
+                // rythme propre au mouvement si le programme en donne un (WTP), sinon 2,2 s par aller-retour
+                tp = raw["WTP"]?.jsonObject?.get(k)?.jsonArray?.map { it.jsonPrimitive.double } ?: listOf(1.0, 0.0, 1.2, 0.0))
         }
         P += Phase("switch", ei = 0, set = 0, blk = "Échauffement terminé", dur = 20.0)
         exo.forEachIndexed { ei, id ->
