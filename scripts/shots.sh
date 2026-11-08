@@ -20,6 +20,17 @@ shot en-play6 --es lang en --ez seed true --ei play 6
 fi
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+# Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
+case " $POSES " in *" video "*)
+  adb shell wm size 720x1520; adb shell wm density 320; sleep 3
+  for l in fr en; do
+    adb shell am force-stop fr.pgragnic.force; sleep 2
+    adb shell am start -W -n fr.pgragnic.force/.MainActivity --es lang $l --ez seed true --ei play 5 >> shots/start.txt; sleep 6
+    adb shell screenrecord --time-limit 30 --bit-rate 6000000 /sdcard/demo-$l.mp4
+    adb pull /sdcard/demo-$l.mp4 shots/demo-$l.mp4
+  done
+  adb shell wm size reset; adb shell wm density reset;;
+esac
 adb logcat -d -b crash > shots/crash.txt || true
 exit 0

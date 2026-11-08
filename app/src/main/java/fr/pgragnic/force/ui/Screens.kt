@@ -328,6 +328,7 @@ fun InfosScreen() {
         RappelPanel()
         ThemePanel()
         LegalPanel()
+        ExportPanel()
         Panel {
             Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
             Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
@@ -543,3 +544,25 @@ fun DureePanel() {
         }
     }
 }
+
+/** Export de toutes ses données (droit à la portabilité du RGPD). */
+@Composable
+fun ExportPanel() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var msg by remember { mutableStateOf<String?>(null) }
+    fun done(ok: Boolean) { msg = if (ok) t("Fichier enregistré.", "File saved.") else t("Enregistrement impossible.", "Couldn't save the file.") }
+    val jsonL = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { u -> if (u != null) done(Export.write(ctx, u, Export.json())) }
+    val csvL = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv")) { u -> if (u != null) done(Export.write(ctx, u, Export.csv())) }
+    val day = java.time.LocalDate.now().toString()
+    Panel {
+        Text(t("Mes données", "My data"), color = C.ink, fontWeight = FontWeight.Bold)
+        Text(t("Télécharge toutes tes données : séances, journées, matériel et profil (JSON), ou tes séances pour un tableur (CSV).",
+            "Download all your data: workouts, days, equipment and profile (JSON), or your workouts for a spreadsheet (CSV)."), color = C.muted, fontSize = 13.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { jsonL.launch("uprep-$day.json") }, modifier = Modifier.weight(1f)) { Text(t("Tout (JSON)", "All (JSON)")) }
+            OutlinedButton(onClick = { csvL.launch("uprep-seances-$day.csv") }, modifier = Modifier.weight(1f)) { Text(t("Séances (CSV)", "Workouts (CSV)")) }
+        }
+        msg?.let { Text(it, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+    }
+}
+

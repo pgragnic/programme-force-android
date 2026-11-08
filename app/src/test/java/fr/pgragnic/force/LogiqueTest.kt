@@ -125,4 +125,14 @@ class LogiqueTest {
         // séance envoyée puis supprimée sur un autre téléphone : elle disparaît ici aussi
         assertEquals(listOf("d"), Store.merge(listOf(a), listOf(d), emptySet(), emptySet()).map { it._id })
     }
+
+    @Test fun exportCsvEtJson() {
+        Store.log.value = listOf(seance(1_700_000_000_000, "hammer", 4.8, 10, 10))
+        val csv = Export.csv().lines()
+        assertEquals(2, csv.size)
+        assertTrue(csv[0].startsWith("date;cycle;semaine"))
+        assertTrue(csv[1].contains(";4,8;10;10;"))
+        assertTrue(Export.json().contains("\"seances\""))
+        Store.log.value = emptyList()
+    }
 }
