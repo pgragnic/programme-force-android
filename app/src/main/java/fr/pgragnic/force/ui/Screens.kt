@@ -258,6 +258,7 @@ fun InfosScreen() {
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+        GearPanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
@@ -308,7 +309,6 @@ fun InfosScreen() {
         RappelPanel()
         ThemePanel()
         LegalPanel()
-        GearPanel()
         Panel {
             Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
             Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
