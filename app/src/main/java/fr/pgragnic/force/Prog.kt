@@ -105,13 +105,21 @@ object Prog {
         raw["COOL_UP"]?.jsonObject?.forEach { (k, v) -> COOL_UP[k] = v.jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }
         raw["UP"]?.jsonObject?.forEach { (k, v) -> UP[k] = v.jsonArray.map { it.jsonPrimitive.content } }
         raw["ALT"]?.jsonObject?.forEach { (k, v) -> ALT[k] = v.jsonArray.map { it.jsonPrimitive.content } }
+        SIG.clear(); raw["SIG"]?.jsonObject?.forEach { (c, ss) -> SIG[c] = ss.jsonObject.mapValues { (_, sl) -> sl.jsonObject.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } } } }
+        weekCache = null
     }
 
     val UP = HashMap<String, List<String>>()
+    /** exercices propres à chaque matériel : cycle (SESS1/SESS2) -> séance -> emplacement -> exercices */
+    val SIG = HashMap<String, Map<String, Map<String, List<String>>>>()
     /** échauffement / retour au calme remplacés quand on a le matériel (corde à sauter, rouleau) */
     val WARM_UP = HashMap<String, List<Pair<String, String>>>()
     val COOL_UP = HashMap<String, List<Pair<String, String>>>()
-    private fun upg(m: Map<String, List<Pair<String, String>>>, id: String) = m[id]?.firstOrNull { gear.has(it.second) }?.first ?: id
+    /** Échauffement / retour au calme : s'il y a plusieurs matériels possibles, chaque séance en prend un différent. */
+    private fun upg(m: Map<String, List<Pair<String, String>>>, id: String, s: String = "A"): String {
+        val own = m[id]?.filter { gear.has(it.second) } ?: return id
+        return if (own.isEmpty()) id else own[((s.firstOrNull() ?: 'A') - 'A').coerceAtLeast(0) % own.size].first
+    }
     val ALT = HashMap<String, List<String>>()
     private val gear get() = GearStore.g.value
 
@@ -129,7 +137,37 @@ object Prog {
         ((UP[id] ?: emptyList()) + id + (ALT[id] ?: emptyList())).firstOrNull { ok(it, g) }
 
     /** Exercices de la séance après adaptation au matériel (sans doublon). */
-    fun sessEx(c: Int, s: String, g: Gear = gear): List<String> = (sess(c)[s]?.ex ?: emptyList()).mapNotNull { pick(it, g) }.distinct()
+    fun sessEx(c: Int, s: String, g: Gear = gear): List<String> = week(c, g)[s] ?: emptyList()
+
+    /** Matériel qui caractérise un exercice (vide pour le poids du corps et les haltères seuls). */
+    fun toolKey(id: String): String = EX[id]?.eq?.map { it.split("|").first() }?.lastOrNull { it != "db" } ?: ""
+
+    private var weekCache: Triple<Int, Gear, Map<String, List<String>>>? = null
+    /**
+     * Exercices de chaque séance de la semaine. Chaque matériel coché reçoit au moins un emplacement s'il en a un possible
+     * (demande de Philippe : « je veux que ça devienne vrai pour tous les matériels ») ; les matériels qui ont le moins
+     * d'emplacements possibles passent en premier ; sans exercice propre possible, on garde le choix habituel (pick).
+     */
+    fun week(c: Int, g: Gear = gear): Map<String, List<String>> {
+        weekCache?.let { if (it.first == c && it.second == g) return it.third }
+        val S = sess(c); val sig = SIG[if (c % 2 == 0) "SESS2" else "SESS1"] ?: emptyMap()
+        val cands = S.keys.sorted().associateWith { s -> S[s]!!.ex.map { slot -> (sig[s]?.get(slot) ?: emptyList()).filter { ok(it, g) && toolKey(it).isNotEmpty() } } }
+        val count = HashMap<String, Int>(); cands.values.flatten().forEach { l -> l.map { toolKey(it) }.toSet().forEach { count[it] = (count[it] ?: 0) + 1 } }
+        val used = HashSet<String>(); val chosen = HashMap<Pair<String, Int>, String>()
+        // d'abord chaque matériel sur un emplacement où il est le choix principal, puis les matériels restants sur un emplacement libre
+        for (prim in listOf(true, false)) count.keys.sortedBy { count[it] }.filter { it !in used }.forEach { tool ->
+            run {
+                val hit = cands.entries.firstNotNullOfOrNull { (s, sl) -> sl.indices.firstNotNullOfOrNull { i ->
+                    if ((s to i) in chosen) null else sl[i].firstOrNull { toolKey(it) == tool }?.takeIf { !prim || it == sig[s]?.get(S[s]!!.ex[i])?.firstOrNull() }?.let { (s to i) to it } } }
+                if (hit != null) { chosen[hit.first] = hit.second; used += tool }
+            }
+        }
+        // 2e passage : un emplacement restant prend son exercice propre principal (premier de la liste) si le matériel est là, sinon le choix habituel
+        val out = S.keys.sorted().associateWith { s ->
+            S[s]!!.ex.mapIndexedNotNull { i, slot -> chosen[s to i] ?: cands[s]!![i].firstOrNull()?.takeIf { it == sig[s]?.get(slot)?.firstOrNull() } ?: pick(slot, g) }.distinct()
+        }
+        weekCache = Triple(c, g, out); return out
+    }
 
     private fun JsonObject.s(k: String) = this[k]?.jsonPrimitive?.contentOrNull ?: ""
     private fun JsonObject.i(k: String) = this[k]?.jsonPrimitive?.intOrNull ?: 0
@@ -296,7 +334,7 @@ object Prog {
             tip = (if (first != null) (if (adj) t("Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}", "Set both dumbbells to ${fk(kgOf(first, w, st))} kg: ${tr(platesFor(kgOf(first, w, st), st))}") else t("Prends les haltères de ${fk(kgOf(first, w, st))} kg", "Take the ${fk(kgOf(first, w, st))} kg dumbbells")) else "Un tapis au sol") +
                 (if (tools.isNotEmpty()) " · Prévois aussi " + tools.joinToString(", ") else ""),
             dur = if (first != null) 20.0 else 10.0, pose = "circle")
-        S.warm.map { upg(WARM_UP, it) }.forEachIndexed { i, k ->
+        S.warm.map { upg(WARM_UP, it, s) }.forEachIndexed { i, k ->
             val x = WU[k]!!
             P += Phase("warm", blk = "Échauffement", n = x[1].jsonPrimitive.content, det = "${i + 1}/3 · 1 min", tip = x[2].jsonPrimitive.content,
                 dur = 60.0, pose = x[0].jsonPrimitive.content, nodb = x.size > 3, tp = listOf(1.0, 0.0, 1.2, 0.0))
@@ -326,7 +364,7 @@ object Prog {
                 else P += Phase("switch", ei = ei + 1, set = 0, blk = t("Exercice ${ei + 1}/${exo.size} terminé", "Exercise ${ei + 1}/${exo.size} done"), dur = max(45, restS + extra).toDouble())
             }
         }
-        S.cool.map { upg(COOL_UP, it) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
+        S.cool.map { upg(COOL_UP, it, s) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
         P += Phase("end")
         P.forEachIndexed { i, p ->
             if (p.k == "rest" || p.k == "prep" || p.k == "switch") {
