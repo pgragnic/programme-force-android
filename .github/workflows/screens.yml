@@ -38,4 +38,4 @@ jobs:
         run: |
           cd shots && git init -q && git checkout -q -b captures && git add -A
           git -c user.name=ci -c user.email=ci@local commit -qm "captures ${{ github.run_number }}"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" captures
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" captures captures:captures-${{ github.run_id }}

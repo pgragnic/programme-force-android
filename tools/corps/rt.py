@@ -141,6 +141,7 @@ class Body:
                 nacc += w * np.einsum('nij,nj->ni', Rs[bi], g['nrm'])
             out.append((acc, nacc / (np.linalg.norm(nacc, axis=1, keepdims=True) + 1e-9)))
         my = min(o[0][:, 1].min() for o in out)
+        self.dy = lift - my
         for o in out: o[0][:, 1] += lift - my
         return out, R, T
 
