@@ -238,9 +238,9 @@ object Prog {
         return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") t(" / côté", " / side") else " reps")
     }
 
-    private class Sim(val ch: Int, val steps: List<IntArray?>, val kgs: List<Double>)
+    private class Sim(val ch: Int, val stops: Int, val steps: List<IntArray?>, val kgs: List<Double>)
     private fun simDb(order: List<String>, w: Int, st: Settings): Sim {
-        var cur: DoubleArray? = null; var ch = 0; val steps = ArrayList<IntArray?>(); val kgs = ArrayList<Double>()
+        var cur: DoubleArray? = null; var ch = 0; var stops = 0; val steps = ArrayList<IntArray?>(); val kgs = ArrayList<Double>()
         order.forEach { id ->
             val kg = kgOf(id, w, st); kgs += kg
             if (kg <= 0 || toolOf(id) != "db" || gear.dbMode == "fixed") { steps += null; return@forEach }
@@ -250,9 +250,9 @@ object Prog {
             val s = cur!!
             if (n == 2) { c = (if (s[0] != kg) 1 else 0) + (if (s[1] != kg) 1 else 0); s[0] = kg; s[1] = kg }
             else if (s[0] != kg && s[1] != kg) { c = 1; s[1] = kg }
-            ch += c; steps += if (c > 0) intArrayOf(c, n) else null
+            ch += c; if (c > 0) stops++; steps += if (c > 0) intArrayOf(c, n) else null
         }
-        return Sim(ch, steps, kgs)
+        return Sim(ch, stops, steps, kgs)
     }
 
     private fun prim(id: String) = (MAP[id] ?: emptyMap()).filter { it.value >= .7 }.keys
@@ -264,7 +264,9 @@ object Prog {
         fun perm(a: List<String>, pre: List<String>) {
             if (a.isEmpty()) {
                 val o = pre + core
-                var cost = simDb(o, w, st).ch * 100.0 // regroupement par poids prioritaire (demande de Philippe)
+                val sd = simDb(o, w, st)
+                // regroupement par poids prioritaire (demande de Philippe) : d'abord le moins d'arrêts pour changer les disques, puis le moins d'haltères à recharger
+                var cost = sd.stops * 200.0 + sd.ch * 100.0
                 for (i in 1 until o.size) { val p = prim(o[i - 1]); if (prim(o[i]).any { it in p }) cost += 8 }
                 for (i in pre.indices) for (j in i + 1 until pre.size) if (pre[i] !in BIG && pre[j] in BIG) cost += 3
                 pre.forEachIndexed { i, x -> cost += abs(ex.indexOf(x) - i) * .01; if (gear.focus(x)) cost += i * 4 }
