@@ -111,3 +111,8 @@ c['a'].update({'E1': [66, 168], 'E2': [64, 168], 'W1': [69, 159], 'W2': [67, 159
 c['b'].update({'E1': [79, 158], 'E2': [77, 158], 'W1': [85, 150], 'W2': [83, 150]})
 c['lat'] = [[12, -12.7], [12, -12.7]]
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h : étirement dorsal, mains jointes au-dessus de la tête et buste penché sur le côté (revue de tous les mouvements demandée par Philippe)
+d = json.load(open(p)); st = d['POSES']['stlat']
+st['lat'] = [[-4, -14], [-4, -14]]; st['side'] = 14
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

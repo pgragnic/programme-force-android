@@ -171,6 +171,11 @@ class Body(ctx: Context) {
                 }
             }
         }
+        // buste penché sur le côté (étirement latéral) : drapeau side = angle en degrés, rotation du haut du corps autour du bassin
+        pFlag(id, "side")?.jsonPrimitive?.floatOrNull?.let { deg ->
+            val r = Math.toRadians(deg.toDouble()); val c = cos(r).toFloat(); val sn = sin(r).toFloat(); val o = J["Pc"]!!
+            listOf("H", "Nc", "SR", "SL", "E1", "W1", "E2", "W2").forEach { n -> J[n]?.let { v -> val dx = v.x - o.x; val dy = v.y - o.y; v.x = o.x + dx * c - dy * sn; v.y = o.y + dx * sn + dy * c } }
+        }
         if (id in FLIPX) J.values.forEach { it.x = -it.x }
         return J
     }
