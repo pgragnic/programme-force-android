@@ -54,7 +54,7 @@ fun PChip(label: String, on: Boolean, sub: String? = null, onClick: () -> Unit) 
 fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.surface).border(1.dp, C.line, RoundedCornerShape(10.dp))
         .clickable(onClick = onClick).padding(vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("S${w + 1}", color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
+        Text(t("S${w + 1}", "W${w + 1}"), color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             val c = if (on) C.bg else C.effort
             repeat(4) { i -> Box(Modifier.size(5.dp).clip(CircleShape).then(if (i < n) Modifier.background(c) else Modifier.border(1.dp, c, CircleShape))) }
@@ -85,8 +85,8 @@ fun SeanceScreen(onStart: () -> Unit) {
                 WeekChip(w, n, st.w == w, Modifier.weight(1f)) { Store.setSettings { it.w = w } }
             }
         }
-        Eyebrow("Cycle ${st.c} · semaine ${st.w + 1} · ${W.t}")
-        Text("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", color = C.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Eyebrow(t("Cycle ${st.c} · semaine ${st.w + 1} · ${W.t}", "Cycle ${st.c} · week ${st.w + 1} · ${tr(W.t)}"))
+        Text(t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"), color = C.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Text(W.note, color = C.muted)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             S.keys.forEach { s ->
@@ -117,7 +117,7 @@ fun SeanceScreen(onStart: () -> Unit) {
         val P = remember(st.c, st.w, st.s, st.rest, log) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(16.dp)) {
             Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
-            Text("Démarrer la séance ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}", fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Text(t("Démarrer la séance ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}", "Start workout ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}"), fontWeight = FontWeight.Black, fontSize = 17.sp)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Pause entre séries", color = C.muted, modifier = Modifier.weight(1f))
@@ -145,7 +145,7 @@ fun SetsEditor(rows: List<EdRow>) {
     rows.forEach { r ->
         Panel(Modifier.padding(vertical = 4.dp)) {
             Text(r.n, color = C.ink, fontWeight = FontWeight.Bold)
-            Text((if (r.kg > 0) Prog.loadTxt(r.id, r.kg) + " · " else "") + "objectif ${r.target} ${if (r.unit == "s") "s" else "reps"}", color = C.muted, fontSize = 12.sp)
+            Text((if (r.kg > 0) Prog.loadTxt(r.id, r.kg) + " · " else "") + t("objectif ${r.target} ${if (r.unit == "s") "s" else "reps"}", "goal ${r.target} ${if (r.unit == "s") "s" else "reps"}"), color = C.muted, fontSize = 12.sp)
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 r.sets.forEachIndexed { i, x ->
                     Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).border(1.dp, C.line, RoundedCornerShape(10.dp)).padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -176,7 +176,7 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
     val rows = remember { rowsFor(ses, st) }
     var bw by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().background(C.bg).verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Eyebrow("Séance ${ses.s} terminée")
+        Eyebrow(t("Séance ${ses.s} terminée", "Workout ${ses.s} complete"))
         Text("Bravo !", color = C.ink, fontSize = 30.sp, fontWeight = FontWeight.Black)
         Text("Chaque série telle que notée pendant les pauses : répétitions et réserve (R, touche pour changer). Corrige si besoin.", color = C.muted, modifier = Modifier.padding(vertical = 8.dp))
         SetsEditor(rows)
@@ -200,12 +200,12 @@ fun SuiviScreen() {
     var open by remember { mutableStateOf<Long?>(null) }
     var edit by remember { mutableStateOf<Long?>(null) }
     var arm by remember { mutableStateOf<Long?>(null) }
-    val df = remember { SimpleDateFormat("EEE d MMM", Locale.FRANCE) }
+    val df = remember { SimpleDateFormat("EEE d MMM", fr.pgragnic.force.L.loc) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Text("Suivi", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
             val wk = log.count { it.d > System.currentTimeMillis() - 7 * 86400000L }
-            Text("${log.size} séances au total · $wk ces 7 derniers jours", color = C.muted, modifier = Modifier.padding(bottom = 6.dp))
+            Text(t("${log.size} séances au total · $wk ces 7 derniers jours", "${log.size} sessions in total · $wk in the last 7 days"), color = C.muted, modifier = Modifier.padding(bottom = 6.dp))
         }
         item { BilanPanel() }
         item { ProgressPanel() }
@@ -214,7 +214,7 @@ fun SuiviScreen() {
             Panel {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", color = C.ink, fontWeight = FontWeight.Bold)
+                        Text(t("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", "C${e.c} · W${e.w + 1} · Workout ${e.s} · ${tr(e.f ?: "")}"), color = C.ink, fontWeight = FontWeight.Bold)
                         val ups = Prog.ups[e.d]; if (!ups.isNullOrEmpty()) Text(ups.joinToString(" · "), color = C.effort, fontSize = 12.sp)
                     }
                     Text(df.format(Date(e.d)), color = C.muted, fontSize = 13.sp)
@@ -231,7 +231,7 @@ fun SuiviScreen() {
                         e.ex.forEach { x ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                                 Text(x.n + if (x.kg > 0) " · " + Prog.loadTxt(x.id, x.kg) else "", color = C.ink, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                                Text((if (x.sets.isNotEmpty()) x.sets.joinToString(" · ") { s -> "${s.r}" + (s.res?.let { " R" + if (it >= 3) "3+" else "$it" } ?: "") } else "pire série ${x.done}") + " / ${x.target}", color = C.muted, fontSize = 13.sp)
+                                Text((if (x.sets.isNotEmpty()) x.sets.joinToString(" · ") { s -> "${s.r}" + (s.res?.let { " R" + if (it >= 3) "3+" else "$it" } ?: "") } else t("pire série ${x.done}", "worst set ${x.done}")) + " / ${x.target}", color = C.muted, fontSize = 13.sp)
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
@@ -262,7 +262,7 @@ fun InfosScreen() {
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
-                Text("Connecté : $user", color = C.muted)
+                Text(t("Connecté : $user", "Signed in: $user"), color = C.muted)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(Store.sync.collectAsState().value, color = C.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     TextButton(onClick = { Store.pull() }) { Text("Actualiser", fontSize = 12.sp) }
@@ -313,7 +313,7 @@ fun InfosScreen() {
         Panel {
             Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
             Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
-            Text("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", color = C.muted, fontSize = 12.sp)
+            Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0)."), color = C.muted, fontSize = 12.sp)
         }
     }
 }
@@ -337,7 +337,7 @@ fun RappelPanel() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Rappel de séance", color = C.ink, fontWeight = FontWeight.Bold)
-                Text(if (c.on) "Notification à ${c.h} h ${c.m.toString().padStart(2, '0')} les jours cochés, sauf si tu t'es déjà entraîné ce jour-là" else "Désactivé", color = C.muted, fontSize = 12.sp)
+                Text(if (c.on) t("Notification à ${c.h} h ${c.m.toString().padStart(2, '0')} les jours cochés, sauf si tu t'es déjà entraîné ce jour-là", "Notification at ${c.h}:${c.m.toString().padStart(2, '0')} on the selected days, unless you already trained that day") else "Désactivé", color = C.muted, fontSize = 12.sp)
             }
             Switch(c.on, { on ->
                 if (on && android.os.Build.VERSION.SDK_INT >= 33) runCatching { perm.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
@@ -346,7 +346,7 @@ fun RappelPanel() {
         }
         if (c.on) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                "LMMJVSD".forEachIndexed { i, l ->
+                t("LMMJVSD", "MTWTFSS").forEachIndexed { i, l ->
                     val on = (c.days shr i) and 1 == 1
                     Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { upd(c.copy(days = c.days xor (1 shl i))) }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
                         Text(l.toString(), color = if (on) C.bg else C.muted, fontWeight = FontWeight.Bold)
@@ -368,6 +368,15 @@ fun RappelPanel() {
 fun ThemePanel() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     Panel {
+        Text("Langue", color = C.ink, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("auto" to "Comme le téléphone", "fr" to "Français", "en" to "English").forEach { (m, tx) ->
+                val on = fr.pgragnic.force.L.mode == m
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { fr.pgragnic.force.L.save(ctx, m) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                    Text(tx, color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                }
+            }
+        }
         Text("Apparence", color = C.ink, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("auto" to "Comme le téléphone", "light" to "Clair", "dark" to "Sombre").forEach { (m, t) ->
@@ -418,7 +427,7 @@ fun NewsPanel() {
             items.forEach { Text("• $it", color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp, start = 4.dp)) }
         }
         if (NEWS.size > 1) TextButton(onClick = { all = !all }, contentPadding = PaddingValues(0.dp)) { Text(if (all) "Moins" else "Versions précédentes") }
-        Text("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme " + if (Prog.version > 0) "n° ${Prog.version} (en ligne)" else "d'origine", color = C.muted, fontSize = 12.sp)
+        Text(t("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ", "Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ") + if (Prog.version > 0) t("n° ${Prog.version} (en ligne)", "no. ${Prog.version} (online)") else "d'origine", color = C.muted, fontSize = 12.sp)
     }
 }
 

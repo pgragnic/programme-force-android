@@ -36,7 +36,7 @@ private fun niceTicks(mn0: Double, mx0: Double, n: Int): List<Double> {
     val t = ArrayList<Double>(); var v = a; while (v <= b + 1e-9) { t += (v * 100).roundToInt() / 100.0; v += st }
     return t
 }
-private val dfm = SimpleDateFormat("d MMM", Locale.FRANCE)
+private val dfm = SimpleDateFormat("d MMM", fr.pgragnic.force.L.loc)
 
 /** Courbe (ou escalier) avec axe, objectif facultatif et dernier point mis en valeur. */
 @Composable
@@ -57,7 +57,7 @@ fun LineChart(pts: List<Pt>, empty: String, target: Double? = null, step: Boolea
         }
         if (target != null) {
             drawLine(warm, Offset(L, Y(target)), Offset(size.width - R, Y(target)), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)))
-            drawText(tm.measure("objectif ${Prog.fk(target)} $unit", st.copy(color = warm)), topLeft = Offset(L + 4.dp.toPx(), Y(target) - 15.dp.toPx()))
+            drawText(tm.measure(t("objectif ${Prog.fk(target)} $unit", "goal ${Prog.fk(target)} $unit"), st.copy(color = warm)), topLeft = Offset(L + 4.dp.toPx(), Y(target) - 15.dp.toPx()))
         }
         val p = Path()
         pts.forEachIndexed { i, q -> val x = X(q.x); val y = Y(q.y); if (i == 0) p.moveTo(x, y) else if (step) { p.lineTo(x, Y(pts[i - 1].y)); p.lineTo(x, y) } else p.lineTo(x, y) }

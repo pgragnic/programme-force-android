@@ -184,7 +184,7 @@ object Store {
                     days.value = c.from("days").select().decodeList<DayRow>().mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
                 }
                 saveLocal()
-                sync.value = "Synchronisé · ${log.value.size} séances"
+                sync.value = t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions")
             } catch (t: Throwable) {
                 sync.value = "Base injoignable : données gardées sur ce téléphone"
             }

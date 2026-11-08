@@ -121,7 +121,7 @@ fun SetupScreen(onDone: () -> Unit) {
                                 }
                             }
                             val w = g.dbWeights()
-                            Text("Charges possibles par haltère : de ${Prog.fk(w.first())} à ${Prog.fk(w.last())} kg (${w.size} réglages).", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                            Text(t("Charges possibles par haltère : de ${Prog.fk(w.first())} à ${Prog.fk(w.last())} kg (${w.size} réglages).", "Possible loads per dumbbell: ${Prog.fk(w.first())} to ${Prog.fk(w.last())} kg (${w.size} settings)."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                         }
                     }
                     if ("kb" in g.items) Panel {
@@ -145,7 +145,7 @@ fun SetupScreen(onDone: () -> Unit) {
                                 OutlinedButton(onClick = { g = g.copy(bbPlates = g.bbPlates.filter { it.kg != kg } + Plate(kg, n + 2)) }) { Text("+") }
                             }
                         }
-                        Text("Charge maximale : ${Prog.fk(g.bbWeights().last())} kg.", color = C.muted, fontSize = 12.sp)
+                        Text(t("Charge maximale : ${Prog.fk(g.bbWeights().last())} kg.", "Maximum load: ${Prog.fk(g.bbWeights().last())} kg."), color = C.muted, fontSize = 12.sp)
                     }
                     if ("band" in g.items) Panel {
                         Text("Bandes à poignées", color = C.ink, fontWeight = FontWeight.Bold)
@@ -214,8 +214,8 @@ fun GearPanel() {
         Text("Matériel et profil", color = C.ink, fontWeight = FontWeight.Bold)
         Text(g.items.mapNotNull { names[it] }.ifEmpty { listOf("Poids du corps seulement") }.joinToString(" · "), color = C.muted, fontSize = 13.sp)
         if ("db" in g.items) Text(if (g.dbMode == "fixed") "Haltères fixes : " + g.fixed.joinToString(", ") { Prog.fk(it) } + " kg"
-            else "Haltères réglables : barre ${Prog.fk(g.bar)} kg, charge max ${Prog.fk(g.dbWeights().last())} kg", color = C.muted, fontSize = 13.sp)
-        if ("barbell" in g.items) Text("Barre : ${Prog.fk(g.bbBar)} kg, charge max ${Prog.fk(g.bbWeights().last())} kg", color = C.muted, fontSize = 13.sp)
+            else t("Haltères réglables : barre ${Prog.fk(g.bar)} kg, charge max ${Prog.fk(g.dbWeights().last())} kg", "Adjustable dumbbells: handle ${Prog.fk(g.bar)} kg, max load ${Prog.fk(g.dbWeights().last())} kg"), color = C.muted, fontSize = 13.sp)
+        if ("barbell" in g.items) Text(t("Barre : ${Prog.fk(g.bbBar)} kg, charge max ${Prog.fk(g.bbWeights().last())} kg", "Barbell: ${Prog.fk(g.bbBar)} kg, max load ${Prog.fk(g.bbWeights().last())} kg"), color = C.muted, fontSize = 13.sp)
         if ("kb" in g.items) Text("Kettlebells : " + g.kbs.joinToString(", ") { Prog.fk(it) } + " kg", color = C.muted, fontSize = 13.sp)
         if (g.limits.isNotEmpty()) Text("À ménager : " + Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { it.second }, color = C.muted, fontSize = 13.sp)
         OutlinedButton(onClick = { setupOpen.value = true }, modifier = Modifier.padding(top = 6.dp)) { Text("Modifier") }

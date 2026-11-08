@@ -68,7 +68,7 @@ fun CorpsScreen() {
                     }
                     Row {
                         Text(stt, color = C.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                        Text(if (v > 0) "${Prog.fk(v)} séries · $sh % du volume" else if (r < 100) "Fatigue due à la marche" else "Pas travaillé cette semaine", color = C.muted, fontSize = 12.sp)
+                        Text(if (v > 0) t("${Prog.fk(v)} séries · $sh % du volume", "${Prog.fk(v)} sets · $sh% of volume") else if (r < 100) "Fatigue due à la marche" else "Pas travaillé cette semaine", color = C.muted, fontSize = 12.sp)
                     }
                 }
             }

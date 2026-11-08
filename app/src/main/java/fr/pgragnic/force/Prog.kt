@@ -99,6 +99,7 @@ object Prog {
         HEAVY = raw.list("HEAVY").toSet(); BIG = raw.list("BIG").toSet(); CORE = raw.list("CORE").toSet()
         raw["METP"]!!.jsonObject.forEach { (k, v) -> METP[k] = v.jsonPrimitive.double }
         raw["FEF"]!!.jsonObject.forEach { (k, v) -> FEF[k] = v.jsonPrimitive.double }
+        L.dict.clear(); raw["EN"]?.jsonObject?.forEach { (k, v) -> L.dict[k] = v.jsonPrimitive.content }
         UP.clear(); ALT.clear(); WARM_UP.clear(); COOL_UP.clear()
         raw["WARMUP_UP"]?.jsonObject?.forEach { (k, v) -> WARM_UP[k] = v.jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }
         raw["COOL_UP"]?.jsonObject?.forEach { (k, v) -> COOL_UP[k] = v.jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }
@@ -141,7 +142,7 @@ object Prog {
     val ups = HashMap<Long, MutableList<String>>()
 
     fun r1(x: Double) = (x * 10).roundToInt() / 10.0
-    fun fk(x: Double): String { val v = r1(x); return (if (v == floor(v)) v.toLong().toString() else v.toString()).replace('.', ',') }
+    fun fk(x: Double): String { val v = r1(x); return (if (v == floor(v)) v.toLong().toString() else v.toString()).let { if (L.en) it else it.replace('.', ',') } }
     fun maxKg(st: Settings) = gear.dbWeights().lastOrNull() ?: st.bar
     private fun need(id: String) = if (id in HEAVY) 2 else 3
     /** L'exercice a une charge réglable (haltère, kettlebell ou élastique). */
@@ -166,7 +167,7 @@ object Prog {
     }
 
     fun unitOf(id: String) = if (EX[id]?.lt == "band") "" else " kg"
-    fun loadTxt(id: String, v: Double) = if (EX[id]?.lt == "band") "niveau ${v.toInt()}/${gear.bands}" else "${fk(v)} kg"
+    fun loadTxt(id: String, v: Double) = if (EX[id]?.lt == "band") t("niveau ${v.toInt()}/${gear.bands}", "level ${v.toInt()}/${gear.bands}") else "${fk(v)} kg"
 
     fun computeLoads(log: List<Entry>, st: Settings) {
         val L = HashMap<String, DoubleArray>()
@@ -197,7 +198,7 @@ object Prog {
     /** Disques à mettre de chaque côté d'un haltère réglable pour obtenir kg. */
     fun platesFor(kg: Double, st: Settings): String {
         val g = gear
-        if (g.dbMode == "fixed") return "haltères de ${fk(kg)} kg"
+        if (g.dbMode == "fixed") return t("haltères de ${fk(kg)} kg", "${fk(kg)} kg dumbbells")
         var rem = r1((kg - g.bar) / 2); if (rem <= 0) return "barre seule"
         val parts = ArrayList<String>()
         g.plates.sortedByDescending { it.kg }.forEach { p ->
@@ -221,10 +222,10 @@ object Prog {
         if (!hasDb(id)) return e.l
         val v = kgOf(id, w, st); val kg = fk(v)
         return when (e.tool) {
-            "kb" -> e.l.replace("1 kettlebell", "1 kettlebell de $kg kg")
-            "bb" -> "barre chargée à $kg kg"
+            "kb" -> e.l.replace("1 kettlebell", t("1 kettlebell de $kg kg", "1 kettlebell of $kg kg"))
+            "bb" -> t("barre chargée à $kg kg", "barbell loaded to $kg kg")
             "band", "mini" -> e.l + " · résistance " + loadTxt(id, v)
-            else -> if (e.l.startsWith("1")) e.l.replace("1 haltère", "1 haltère de $kg kg") else "2 × $kg kg"
+            else -> if (e.l.startsWith("1")) e.l.replace("1 haltère", t("1 haltère de $kg kg", "1 dumbbell of $kg kg")) else "2 × $kg kg"
         }
     }
 
@@ -232,7 +233,7 @@ object Prog {
         val e = EX[id]!!; val W = WEEKS[w]
         if (e.m == "time") return Work(W.pl.toDouble(), 0, 0.0, listOf(1.5, 1.5, 1.5, 1.5), "${W.pl} s")
         val reps = max(5, W.r + e.dr + if (e.lt == "bw" || e.lt == "band") Gear.repsFor(gear.obj) else Gear.repsFor(gear.obj) / 2)
-        if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), "$reps / côté")
+        if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), t("$reps / côté", "$reps / side"))
         val rt = W.tp.sum(); val n = if (e.m == "uni") reps * 2 else reps
         return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") " / côté" else " reps")
     }
@@ -285,10 +286,10 @@ object Prog {
         val need = exo.mapNotNull { EX[it]?.eq }.flatten().flatMap { it.split("|").take(1) }.toSet()
         val tools = listOfNotNull(if ("kb" in need) "ta kettlebell" else null, if ("band" in need) "ta bande à poignées" else null, if ("mini" in need) "ta mini-bande" else null,
             if (exo.any { EX[it]?.eq?.any { q -> "chair" in q } == true }) "une chaise stable" else null, if ("bench" in need || "incbench" in need) "ton banc" else null,
-            exo.firstOrNull { toolOf(it) == "bb" }?.let { "la barre à ${fk(kgOf(it, w, st))} kg (${bbPlates(kgOf(it, w, st))})" },
+            exo.firstOrNull { toolOf(it) == "bb" }?.let { t("la barre à ${fk(kgOf(it, w, st))} kg (${bbPlates(kgOf(it, w, st))})", "the barbell at ${fk(kgOf(it, w, st))} kg (${tr(bbPlates(kgOf(it, w, st)))})") },
             if ("abwheel" in need) "ta roue abdominale" else null)
         P += Phase("prep", blk = "Préparation", n = "Prépare ton matériel",
-            tip = (if (first != null) (if (adj) "Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}" else "Prends les haltères de ${fk(kgOf(first, w, st))} kg") else "Un tapis au sol") +
+            tip = (if (first != null) (if (adj) t("Règle les 2 haltères à ${fk(kgOf(first, w, st))} kg : ${platesFor(kgOf(first, w, st), st)}", "Set both dumbbells to ${fk(kgOf(first, w, st))} kg: ${tr(platesFor(kgOf(first, w, st), st))}") else t("Prends les haltères de ${fk(kgOf(first, w, st))} kg", "Take the ${fk(kgOf(first, w, st))} kg dumbbells")) else "Un tapis au sol") +
                 (if (tools.isNotEmpty()) " · Prévois aussi " + tools.joinToString(", ") else ""),
             dur = if (first != null) 20.0 else 10.0, pose = "circle")
         S.warm.map { upg(WARM_UP, it) }.forEachIndexed { i, k ->
@@ -310,15 +311,15 @@ object Prog {
             val invOn = e.inv && e.m != "time" && e.m != "alt"
             val ns = W.s + if (gear.focus(id)) 1 else 0
             for (i in 1..ns) {
-                P += Phase("work", ei = ei, set = i, inv = invOn, blk = "Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", n = e.n,
-                    det = "Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",
+                P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
+                    det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",
                     tp = if (invOn) listOf(wk.tp[2], wk.tp[1], wk.tp[0], wk.tp[3]) else wk.tp, rt = wk.rt, reps = wk.reps, m = e.m)
                 val last = ei == exo.size - 1 && i == ns
                 if (last) continue
                 val extra = if (id in HEAVY) 30 else 0
-                if (i < ns) P += Phase("rest", ei = ei, set = i, blk = "Exercice ${ei + 1}/${exo.size}", n = "Pause",
-                    det = "Série $i/${ns} terminée · encore ${ns - i} série" + (if (ns - i > 1) "s" else "") + " de ${e.n}", dur = (restS + extra).toDouble())
-                else P += Phase("switch", ei = ei + 1, set = 0, blk = "Exercice ${ei + 1}/${exo.size} terminé", dur = max(45, restS + extra).toDouble())
+                if (i < ns) P += Phase("rest", ei = ei, set = i, blk = t("Exercice ${ei + 1}/${exo.size}", "Exercise ${ei + 1}/${exo.size}"), n = "Pause",
+                    det = t("Série $i/${ns} terminée · encore ${ns - i} série", "Set $i/${ns} done · ${ns - i} set") + (if (ns - i > 1) "s" else "") + " de ${e.n}", dur = (restS + extra).toDouble())
+                else P += Phase("switch", ei = ei + 1, set = 0, blk = t("Exercice ${ei + 1}/${exo.size} terminé", "Exercise ${ei + 1}/${exo.size} done"), dur = max(45, restS + extra).toDouble())
             }
         }
         S.cool.map { upg(COOL_UP, it) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
@@ -328,7 +329,7 @@ object Prog {
                 val nx = P.drop(i + 1).firstOrNull { it.k != "rest" && it.k != "switch" }
                 if (nx != null && nx.k != "end") {
                     p.next = nx; p.pose = nx.pose; p.ex = nx.ex; p.nodb = nx.nodb; p.ghostTp = listOf(1.2, .4, 1.6, .6)
-                    if (p.k == "switch") { p.n = nx.n; p.det = "Exercice ${nx.ei + 1}/${exo.size} · ${P.count { it.k == "work" && it.ei == nx.ei }} séries · " + nx.det.split(" · ").drop(1).joinToString(" · "); p.tip = p.chg ?: nx.tip }
+                    if (p.k == "switch") { p.n = nx.n; p.det = t("Exercice ${nx.ei + 1}/${exo.size} · ${P.count { it.k == "work" && it.ei == nx.ei }} séries · ", "Exercise ${nx.ei + 1}/${exo.size} · ${P.count { it.k == "work" && it.ei == nx.ei }} sets · ") + nx.det.split(" · ").drop(1).joinToString(" · "); p.tip = p.chg ?: nx.tip }
                 }
             }
         }
@@ -364,9 +365,9 @@ object Prog {
         val c = lt - rep * q.rt
         val ph = if (c < tp[0]) 0 else if (c < tp[0] + tp[1]) 1 else if (c < tp[0] + tp[1] + tp[2]) 2 else 3
         var txt = (if (q.inv) listOf("Descends", "Tiens", "Monte", "") else listOf("Monte", "Tiens", "Descends", ""))[ph]
-        if (ph == 0 && rep == q.reps - 1) txt = "Dernière. $txt"
-        if (ph == 0 && rep == 0 && h == 1) txt = "Côté droit. $txt"
-        if (ph == 0 && rep == 0 && h == 0 && q.m == "uni") txt = "Côté gauche. $txt"
+        if (ph == 0 && rep == q.reps - 1) txt = t("Dernière. $txt", "Last one. $txt")
+        if (ph == 0 && rep == 0 && h == 1) txt = t("Côté droit. $txt", "Right side. $txt")
+        if (ph == 0 && rep == 0 && h == 0 && q.m == "uni") txt = t("Côté gauche. $txt", "Left side. $txt")
         return ("$h-$rep-$ph" to txt)
     }
 

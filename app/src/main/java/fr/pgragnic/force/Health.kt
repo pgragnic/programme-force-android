@@ -42,7 +42,7 @@ object Health {
                 out += (old ?: DayRec(key)).copy(steps = n, src = "hc")
             }
             Store.saveDays(out)
-            status.value = if (out.isEmpty()) "Pas à jour (Health Connect)" else "Pas importés depuis Health Connect : ${out.size} jour(s) mis à jour"
-        } catch (t: Throwable) { status.value = "Lecture Health Connect impossible : ${t.message ?: "erreur"}" }
+            status.value = if (out.isEmpty()) "Pas à jour (Health Connect)" else t("Pas importés depuis Health Connect : ${out.size} jour(s) mis à jour", "Steps imported from Health Connect: ${out.size} day(s) updated")
+        } catch (t: Throwable) { status.value = t("Lecture Health Connect impossible : ${t.message ?: "erreur"}", "Cannot read Health Connect: ${t.message ?: "error"}") }
     }
 }

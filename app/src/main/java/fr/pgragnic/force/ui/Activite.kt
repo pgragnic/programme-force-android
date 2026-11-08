@@ -51,7 +51,7 @@ object Kcal {
         e.kcal?.let { return it }
         return runCatching { val st = Settings(); Prog.sessKcal(Prog.phases(e.c, e.w, e.s, e.rest ?: 30, st, emptyList()), e.bw ?: bwNow(log, e.d)) }.getOrDefault(0.0)
     }
-    fun kr(k: Double) = "≈ " + String.format(Locale.FRANCE, "%,d", k.roundToInt()) + " kcal"
+    fun kr(k: Double) = "≈ " + String.format(fr.pgragnic.force.L.loc, "%,d", k.roundToInt()) + " kcal"
     fun range(k: Double) = "${(k * .75 / 10).roundToInt() * 10}–${(k * 1.25 / 10).roundToInt() * 10} kcal"
 }
 
@@ -85,7 +85,7 @@ fun ActiviteScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column {
             Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Text(if (last7.isNotEmpty()) "Moyenne sur 7 jours : " + String.format(Locale.FRANCE, "%,d", last7.average().roundToInt()) + " pas par jour" else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
+            Text(if (last7.isNotEmpty()) "Moyenne sur 7 jours : " + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + " pas par jour" else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
         // Health Connect
@@ -123,7 +123,7 @@ fun ActiviteScreen() {
                             val h = if (v > 0) max(3f, size.height * v / mx) else 0f
                             drawRoundRect(col, Offset(0f, size.height - h), Size(size.width, h), CornerRadius(4f, 4f))
                         }
-                        Text("lmmjvsd"[d.dayOfWeek.value - 1].toString(), color = if (on) C.ink else C.muted, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
+                        Text(t("lmmjvsd", "mtwtfss")[d.dayOfWeek.value - 1].toString(), color = if (on) C.ink else C.muted, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
                     }
                 }
             }
@@ -138,11 +138,11 @@ fun ActiviteScreen() {
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { sel = sel.minusDays(1) }) { Icon(Icons.Default.ChevronLeft, "Jour précédent", tint = C.ink) }
-                Text(sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE)).replaceFirstChar { it.uppercase() } + if (sel == today) " (aujourd'hui)" else "",
+                Text(sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)).replaceFirstChar { it.uppercase() } + if (sel == today) " (aujourd'hui)" else "",
                     color = C.ink, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, "Jour suivant", tint = if (sel < today) C.ink else C.line) }
             }
-            if (cur?.src == "hc") Text("${String.format(Locale.FRANCE, "%,d", cur.steps ?: 0)} pas importés depuis Health Connect", color = C.muted, fontSize = 12.sp)
+            if (cur?.src == "hc") Text(t("${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} pas importés depuis Health Connect", "${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} steps imported from Health Connect"), color = C.muted, fontSize = 12.sp)
             val num = KeyboardOptions(keyboardType = KeyboardType.Number); val dec = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             OutlinedTextField(steps, { steps = it.filter { c -> c.isDigit() } }, label = { Text("Pas") }, placeholder = { Text("ex. 7000") }, singleLine = true, keyboardOptions = num, modifier = Modifier.fillMaxWidth())
             Text("Activité", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
@@ -161,9 +161,9 @@ fun ActiviteScreen() {
                     src = if (cur?.src == "hc" && (steps.toIntOrNull() ?: 0) == cur.steps) "hc" else "main")
                 Store.saveDay(d)
                 val L = Recovery.dayLoad(d)
-                msg = "Journée du " + sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE)) + " enregistrée." +
-                    (if (L > 0) " Elle compte pour environ ${Prog.fk(Prog.r1(L))} séries dans la fatigue des quadriceps." else " Pas assez de pas pour fatiguer les jambes.") +
-                    " Dépense estimée : ${Kcal.kr(Kcal.day(d, log).toDouble())}."
+                msg = "Journée du " + sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)) + " enregistrée." +
+                    (if (L > 0) t(" Elle compte pour environ ${Prog.fk(Prog.r1(L))} séries dans la fatigue des quadriceps.", " It counts for about ${Prog.fk(Prog.r1(L))} sets of quad fatigue.") else " Pas assez de pas pour fatiguer les jambes.") +
+                    t(" Dépense estimée : ${Kcal.kr(Kcal.day(d, log).toDouble())}.", " Estimated burn: ${Kcal.kr(Kcal.day(d, log).toDouble())}.")
             }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Enregistrer la journée") }
             Text(msg, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         }
@@ -180,12 +180,12 @@ fun ActiviteScreen() {
             Text(Kcal.range(tot), color = C.muted, fontSize = 12.sp)
             Row(Modifier.padding(top = 10.dp)) {
                 Column(Modifier.weight(1f)) {
-                    Text("Séances (${ses7.size})", color = C.muted, fontSize = 12.sp); Text(Kcal.kr(ks), color = C.effort, fontWeight = FontWeight.Bold)
-                    Text("${if (tot > 0) (100 * ks / tot).roundToInt() else 0} % du total", color = C.muted, fontSize = 12.sp)
+                    Text(t("Séances (${ses7.size})", "Sessions (${ses7.size})"), color = C.muted, fontSize = 12.sp); Text(Kcal.kr(ks), color = C.effort, fontWeight = FontWeight.Bold)
+                    Text(t("${if (tot > 0) (100 * ks / tot).roundToInt() else 0} % du total", "${if (tot > 0) (100 * ks / tot).roundToInt() else 0}% of total"), color = C.muted, fontSize = 12.sp)
                 }
                 Column(Modifier.weight(1f)) {
                     Text("Pas & activités", color = C.muted, fontSize = 12.sp); Text(Kcal.kr(kd), color = C.rest, fontWeight = FontWeight.Bold)
-                    Text("${if (tot > 0) (100 * kd / tot).roundToInt() else 0} % du total", color = C.muted, fontSize = 12.sp)
+                    Text(t("${if (tot > 0) (100 * kd / tot).roundToInt() else 0} % du total", "${if (tot > 0) (100 * kd / tot).roundToInt() else 0}% of total"), color = C.muted, fontSize = 12.sp)
                 }
             }
             if (tot > 0) Row(Modifier.fillMaxWidth().padding(top = 8.dp).height(8.dp).clip(RoundedCornerShape(4.dp))) {

@@ -58,7 +58,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         }
         when (p.k) {
             "switch" -> { voice.beep(1); voice.say((if (p.ei == 0) "Premier exercice : " else "Exercice suivant : ") + p.n + if (p.chg != null) ". Change les disques." else "") }
-            "work" -> { voice.beep(2); val c = Prog.cueAt(p, 0.0); lastCue = c?.first; voice.say((if (p.set == 1) "Go" else "Série ${p.set}") + if (c != null && c.second.isNotBlank()) ". " + c.second else "") }
+            "work" -> { voice.beep(2); val c = Prog.cueAt(p, 0.0); lastCue = c?.first; voice.say((if (p.set == 1) "Go" else t("Série ${p.set}", "Set ${p.set}")) + if (c != null && c.second.isNotBlank()) ". " + c.second else "") }
             "warm" -> { voice.beep(2); voice.say((if (prev?.k == "warm") "" else "Échauffement. ") + p.n) }
             "cool" -> { voice.beep(2); voice.say((if (prev?.k == "cool") "" else "Retour au calme. ") + p.n) }
             "rest" -> { voice.beep(1); voice.say("Pause") }
@@ -118,9 +118,9 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
 
     fun repTxt(): String {
         val q = P[pi]; if (q.k != "work" || q.m == "time") return ""
-        if (q.m == "alt") { val n = floor(pt / q.rt).toInt(); return "Rép ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alterné" }
+        if (q.m == "alt") { val n = floor(pt / q.rt).toInt(); return t("Rép ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alterné", "Rep ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alternating") }
         val lt = if (q.m == "uni") pt % (q.dur / 2) else pt
-        return "Rép ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}"
+        return t("Rép ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}", "Rep ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}")
     }
 }
 
@@ -157,8 +157,8 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         Text("${ceil(max(0.0, p.dur - ses.pt)).toInt()}", color = col, fontSize = 84.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         LinearProgressIndicator(progress = { (ses.pt / max(1.0, p.dur)).toFloat().coerceIn(0f, 1f) }, color = col, trackColor = C.line, modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text("Écoulé ${Prog.fmt(ses.elapsed)}", color = C.muted, fontSize = 13.sp); Spacer(Modifier.weight(1f))
-            Text("Restant ${Prog.fmt(ses.totalDur - ses.elapsed)}", color = C.muted, fontSize = 13.sp)
+            Text(t("Écoulé ${Prog.fmt(ses.elapsed)}", "Elapsed ${Prog.fmt(ses.elapsed)}"), color = C.muted, fontSize = 13.sp); Spacer(Modifier.weight(1f))
+            Text(t("Restant ${Prog.fmt(ses.totalDur - ses.elapsed)}", "Left ${Prog.fmt(ses.totalDur - ses.elapsed)}"), color = C.muted, fontSize = 13.sp)
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             RoundBtn(Icons.Default.SkipPrevious, "Précédent") { ses.prev() }
@@ -183,7 +183,7 @@ private fun SetPanel(ses: Session, pw: Phase) {
     var cur by remember(id, pw.set) { mutableStateOf(ses.slot(id, pw.set, tgt)) }
     fun upd(v: SetRec) { cur = v; ses.setSlot(id, pw.set, v) }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(14.dp)).padding(12.dp)) {
-        Text("${Prog.EX[id]?.n} · série ${pw.set}/${ses.nsetsOf(id)}  ·  objectif $tgt" + if (time) " s" else " reps", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(t("${Prog.EX[id]?.n} · série ${pw.set}/${ses.nsetsOf(id)}  ·  objectif $tgt", "${tr(Prog.EX[id]?.n ?: "")} · set ${pw.set}/${ses.nsetsOf(id)}  ·  goal $tgt") + if (time) " s" else " reps", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Text(if (time) "Secondes tenues" else if (Prog.EX[id]?.m == "uni") "Répétitions par côté" else "Répétitions faites", color = C.muted, modifier = Modifier.weight(1f))
             OutlinedButton(onClick = { upd(cur.copy(r = max(0, cur.r - if (time) 5 else 1))) }) { Text("−", fontSize = 20.sp) }

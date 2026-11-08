@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import fr.pgragnic.force.ui.*
+import fr.pgragnic.force.ui.Text
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
@@ -28,7 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        Prog.load(this); GearStore.load(this); Store.init(this)
+        L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
         C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)

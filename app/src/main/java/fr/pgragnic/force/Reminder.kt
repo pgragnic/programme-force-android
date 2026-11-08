@@ -55,7 +55,7 @@ object Reminder {
         val open = PendingIntent.getActivity(ctx, 1, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val title = Prog.sess(st.c)[st.s]?.t ?: ""
         nm.notify(43, NotificationCompat.Builder(ctx, CH).setSmallIcon(R.drawable.ic_stat).setAutoCancel(true).setContentIntent(open)
-            .setContentTitle("C'est l'heure de ta séance").setContentText("Séance ${st.s} · $title · cycle ${st.c}, semaine ${st.w + 1}").build())
+            .setContentTitle(tr("C'est l'heure de ta séance")).setContentText(t("Séance ${st.s} · $title · cycle ${st.c}, semaine ${st.w + 1}", "Workout ${st.s} · ${tr(title)} · cycle ${st.c}, week ${st.w + 1}")).build())
     }
 }
 

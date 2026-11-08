@@ -22,13 +22,14 @@ class Voice(ctx: Context) : TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            tts.language = Locale.FRANCE; tts.setSpeechRate(1.05f); ready = true
+            tts.language = L.loc; tts.setSpeechRate(1.05f); ready = true
         }
     }
 
     fun say(t: String) {
         if (!on || !ready || t.isBlank()) return
-        tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "pf")
+        if (tts.language?.language != L.loc.language) runCatching { tts.language = L.loc }
+        tts.speak(tr(t), TextToSpeech.QUEUE_FLUSH, null, "pf")
     }
 
     /** Bip court (aigu) ou long (grave). */

@@ -32,32 +32,32 @@ object Bilan {
         val cur = L.filter { it.d >= m0 }; val prev = L.filter { it.d >= m0 - wk && it.d < m0 }
         val out = ArrayList<String>()
         val names = cur.map { it.s }.distinct().sorted().joinToString(", ")
-        out += "Séances : ${cur.size} sur 4 cette semaine" + if (names.isNotBlank()) " ($names)." else "."
+        out += t("Séances : ${cur.size} sur 4 cette semaine", "Sessions: ${cur.size} of 4 this week") + if (names.isNotBlank()) " ($names)." else "."
         val v = cur.sumOf { volOf(it) }; val vp = prev.sumOf { volOf(it) }
-        if (v > 0) out += "Volume soulevé : ${Prog.fk((v).roundToInt().toDouble())} kg" + if (vp > 0) " (${if (v >= vp) "+" else "−"}${(kotlin.math.abs(v - vp) / vp * 100).roundToInt()} % par rapport à la semaine dernière)." else "."
+        if (v > 0) out += t("Volume soulevé : ${Prog.fk((v).roundToInt().toDouble())} kg", "Volume lifted: ${Prog.fk((v).roundToInt().toDouble())} kg") + if (vp > 0) t(" (${if (v >= vp) "+" else "−"}${(kotlin.math.abs(v - vp) / vp * 100).roundToInt()} % par rapport à la semaine dernière).", " (${if (v >= vp) "+" else "−"}${(kotlin.math.abs(v - vp) / vp * 100).roundToInt()}% vs last week).") else "."
         // charges en hausse
         val before = HashMap<String, Double>(); L.filter { it.d < m0 }.forEach { e -> e.ex.forEach { x -> if (x.kg > 0) before[x.id] = x.kg } }
         val ups = LinkedHashMap<String, Pair<Double, Double>>()
         cur.forEach { e -> e.ex.forEach { x -> val b = before[x.id]; if (b != null && x.kg > b) ups[x.id] = b to x.kg } }
-        if (ups.isNotEmpty()) out += "Charges en hausse : " + ups.entries.joinToString(", ") { (id, p) -> "${Prog.EX[id]?.n ?: id} ${Prog.fk(p.first)} → ${Prog.fk(p.second)} kg" } + "."
+        if (ups.isNotEmpty()) out += t("Charges en hausse : ", "Loads up: ") + ups.entries.joinToString(", ") { (id, p) -> "${tr(Prog.EX[id]?.n ?: id)} ${Prog.fk(p.first)} → ${Prog.fk(p.second)} kg" } + "."
         val hard = cur.flatMap { it.ex }.filter { it.f == "Difficile" }.map { Prog.EX[it.id]?.n ?: it.id }.distinct()
-        if (hard.isNotEmpty()) out += "Ressenti difficile sur : ${hard.joinToString(", ")}. La charge restera la même la prochaine fois."
+        if (hard.isNotEmpty()) out += t("Ressenti difficile sur : ${hard.joinToString(", ")}. La charge restera la même la prochaine fois.", "Felt hard on: ${hard.joinToString(", ") { tr(it) }}. The load will stay the same next time.")
         val ld = LocalDate.now(); val steps = (0..6).mapNotNull { i -> days.firstOrNull { it.date == ld.minusDays(i.toLong()).toString() }?.steps?.takeIf { it > 0 } }
-        if (steps.isNotEmpty()) out += "Pas : ${String.format(Locale.FRANCE, "%,d", steps.average().roundToInt())} par jour en moyenne sur 7 jours."
+        if (steps.isNotEmpty()) out += t("Pas : ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} par jour en moyenne sur 7 jours.", "Steps: ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} per day on average over 7 days.")
         val acts = days.filter { it.act != null && Recovery.dayTs(it) >= m0 }
         if (acts.isNotEmpty()) out += "Activités : " + acts.joinToString(", ") { it.act + (it.dur?.let { d -> " $d min" } ?: "") + (it.dplus?.let { d -> " D+ $d m" } ?: "") } + "."
         val t0 = now - wk
         val k = L.filter { it.d >= t0 }.sumOf { Kcal.entry(it, log) } + days.filter { Recovery.dayTs(it) >= t0 }.sumOf { Kcal.day(it, log) }
-        if (k > 0) out += "Dépense estimée sur 7 jours : ${Kcal.kr(k)}."
+        if (k > 0) out += t("Dépense estimée sur 7 jours : ${Kcal.kr(k)}.", "Estimated burn over 7 days: ${Kcal.kr(k)}.")
         val MU = Recovery.muscles(log, days)
         val tired = Recovery.MUS.filter { MU.R[it]!! < 60 }; val mid = Recovery.MUS.filter { MU.R[it]!! in 60..89 }
         out += if (tired.isEmpty() && mid.isEmpty()) "Tous les muscles sont prêts." else
-            (if (tired.isNotEmpty()) "Encore fatigués : ${tired.joinToString(", ")}. " else "") + (if (mid.isNotEmpty()) "En récupération : ${mid.joinToString(", ")}." else "")
+            (if (tired.isNotEmpty()) t("Encore fatigués : ${tired.joinToString(", ")}. ", "Still tired: ${tired.joinToString(", ") { tr(it) }}. ") else "") + (if (mid.isNotEmpty()) t("En récupération : ${mid.joinToString(", ")}.", "Recovering: ${mid.joinToString(", ") { tr(it) }}.") else "")
         val doneS = cur.map { it.s }.toSet()
         val left = listOf("A", "B", "C", "D").filter { it !in doneS }
         if (left.isNotEmpty() && L.isNotEmpty()) {
             val best = left.maxBy { Recovery.sessScore(st.c, it, MU.R) }
-            out += "Prochaine séance conseillée : ${best} · ${Prog.sess(st.c)[best]?.t ?: ""} (muscles les plus reposés)."
+            out += t("Prochaine séance conseillée : ${best} · ${Prog.sess(st.c)[best]?.t ?: ""} (muscles les plus reposés).", "Suggested next workout: ${best} · ${tr(Prog.sess(st.c)[best]?.t ?: "")} (most rested muscles).")
         }
         val title = when { cur.size >= 4 -> "Semaine complète, bravo"; cur.size >= 2 -> "Bonne semaine en cours"; cur.isEmpty() -> "Nouvelle semaine"; else -> "C'est parti" }
         return B(title, out)
@@ -70,12 +70,12 @@ fun BilanPanel() {
     val auto = remember(log, days, st) { Bilan.auto(log, days, st) }
     Panel {
         Text("Bilan de la semaine", color = C.ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-        Text("Semaine du " + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", Locale.FRANCE)), color = C.muted, fontSize = 12.sp)
+        Text("Semaine du " + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), color = C.muted, fontSize = 12.sp)
         val r = remote
         val rDate = r?.get("date")?.jsonPrimitive?.contentOrNull
         val fresh = rDate != null && runCatching { LocalDate.parse(rDate) >= LocalDate.now().minusDays(8) }.getOrDefault(false)
         if (r != null && fresh) {
-            Text("Bilan de Claude · " + LocalDate.parse(rDate).format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE)), color = C.cool, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            Text("Bilan de Claude · " + LocalDate.parse(rDate).format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)), color = C.cool, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             r["title"]?.jsonPrimitive?.contentOrNull?.let { Text(it, color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp)) }
             (r["text"]?.jsonPrimitive?.contentOrNull ?: "").split(Regex("\n+")).filter { it.isNotBlank() }.forEach { t ->
                 val b = Regex("^[-•]\\s*").containsMatchIn(t)
