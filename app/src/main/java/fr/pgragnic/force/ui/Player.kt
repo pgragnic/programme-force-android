@@ -58,7 +58,10 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         }
         when (p.k) {
             "switch" -> { voice.beep(1); voice.say((if (p.ei == 0) "Premier exercice : " else "Exercice suivant : ") + p.n + if (p.chg != null) ". Change les disques." else "") }
-            "work" -> { voice.beep(2); val c = Prog.cueAt(p, 0.0); lastCue = c?.first; voice.say((if (p.set == 1) "Go" else t("Série ${p.set}", "Set ${p.set}")) + if (c != null && c.second.isNotBlank()) ". " + c.second else "") }
+            "work" -> { voice.beep(2); val c = Prog.cueAt(p, 0.0); lastCue = c?.first
+                // la série est annoncée à la fin de la pause ; au départ, seulement le premier repère (« Monte »), sinon « Go »
+                val pre = P.getOrNull(pi - 1)?.let { (it.k == "rest" || it.k == "switch") && it.dur > 8 } == true
+                voice.say(if (c != null && c.second.isNotBlank()) (if (pre) c.second else (if (p.set == 1) "Go. " else t("Série ${p.set}. ", "Set ${p.set}. ")) + c.second) else if (p.set == 1) "Go" else t("Série ${p.set}", "Set ${p.set}")) }
             "warm" -> { voice.beep(2); voice.say((if (prev?.k == "warm") "" else "Échauffement. ") + p.n) }
             "cool" -> { voice.beep(2); voice.say((if (prev?.k == "cool") "" else "Retour au calme. ") + p.n) }
             "rest" -> { voice.beep(1); voice.say("Pause") }
@@ -88,6 +91,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         for (s in 3 downTo 1) if (prev < p.dur - s && pt >= p.dur - s) { voice.beep(0); if (p.k != "work") voice.buzz(60) }
         if (p.m == "uni" && prev < p.dur / 2 && pt >= p.dur / 2) voice.beep(2)
         if ((p.k == "rest" || p.k == "switch") && p.dur > 15 && prev < p.dur - 10 && pt >= p.dur - 10) voice.say("Dix secondes. Prépare-toi")
+        P.getOrNull(pi + 1)?.let { nx -> if ((p.k == "rest" || p.k == "switch") && nx.k == "work" && p.dur > 8 && prev < p.dur - 6 && pt >= p.dur - 6)
+            voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") t(", côté gauche", ", left side") else "") }
         if (p.k == "work" && pt < p.dur) { val c = Prog.cueAt(p, pt); if (c != null && c.first != lastCue) { lastCue = c.first; voice.say(c.second) } }
         if (pt >= p.dur) enter(pi + 1)
     }

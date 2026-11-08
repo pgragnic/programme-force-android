@@ -406,10 +406,14 @@ object Prog {
         val lt = t - h * half; val rep = floor(lt / q.rt).toInt(); if (rep >= q.reps) return null
         val c = lt - rep * q.rt
         val ph = if (c < tp[0]) 0 else if (c < tp[0] + tp[1]) 1 else if (c < tp[0] + tp[1] + tp[2]) 2 else 3
-        var txt = (if (q.inv) listOf("Descends", "Tiens", "Monte", "") else listOf("Monte", "Tiens", "Descends", ""))[ph]
-        if (ph == 0 && rep == q.reps - 1) txt = t("Dernière. $txt", "Last one. $txt")
-        if (ph == 0 && rep == 0 && h == 1) txt = t("Côté droit. $txt", "Right side. $txt")
-        if (ph == 0 && rep == 0 && h == 0 && q.m == "uni") txt = t("Côté gauche. $txt", "Left side. $txt")
+        val txt = (if (q.inv) listOf("Descends", "Tiens", "Monte", "") else listOf("Monte", "Tiens", "Descends", ""))[ph]
+        // Annonces placées dans la phase la plus longue (la descente) de la répétition d'avant, pour ne pas couvrir « Monte » (retour de Philippe :
+        // « Et dernière et monte se chevauchent »)
+        val L = tp.indices.maxBy { tp[it] }; val st = tp.take(L).sum()
+        if (ph == L && c >= st + tp[L] * .4) {
+            if (rep == q.reps - 2) return ("$h-$rep-n" to t("Dernière", "Last one"))
+            if (rep == q.reps - 1 && h == 0 && q.m == "uni") return ("$h-$rep-n" to t("Ensuite, côté droit", "Then right side"))
+        }
         return ("$h-$rep-$ph" to txt)
     }
 
