@@ -161,3 +161,10 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # --- 8 novembre, 18 h 40 : rythme propre aux échauffements (Philippe : « La rotation des épaules est trop rapide »)
 d = json.load(open(p)); d['WTP'] = {'circle': [2.0, 0, 2.0, 0], 'pvc': [2.0, 0, 2.0, 0], 'catcow': [2.0, 0.5, 2.0, 0.5]}
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 45 : mollets sur une jambe, main à plat sur le mur (elle traversait), talons un peu plus hauts
+d = json.load(open(p)); P = d['POSES']
+for k in ('calf', 'calf1', 'kbcalf'): P[k]['heel'] = [0, 10]
+for s_ in ('a', 'b'): P['calf1'][s_].update({'E2': [119, 62], 'W2': [138, 64], 'F2': [138, 55]})
+P['calf1']['prop'] = {'t': 'wall', 'x': 143}
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
