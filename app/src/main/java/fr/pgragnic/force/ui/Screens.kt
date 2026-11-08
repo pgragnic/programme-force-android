@@ -258,7 +258,6 @@ fun InfosScreen() {
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-        NewsPanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             if (user != null) {
