@@ -163,6 +163,12 @@ class Body(ctx: Context) {
             J["K1"] = sv(pt("K1"), LG); J["A1"] = sv(pt("A1"), LA); J["K2"] = sv(pt("K2"), -LG); J["A2"] = sv(pt("A2"), -LA)
             val A1 = pt("A1"); val A2 = pt("A2")
             J["T1"] = sv(doubleArrayOf(A1[0] + 14.5, A1[1] + 4), LA); J["T2"] = sv(doubleArrayOf(A2[0] + 14.5, A2[1] + 4), -LA)
+            // talons levés (mollets) : drapeau heel = [début, fin] en unités de pose ; les orteils restent au sol, la cheville monte
+            // (retour de Philippe sur les mollets sur une jambe : « Rien ne bouge »)
+            pFlag(id, "heel")?.jsonArray?.map { it.jsonPrimitive.float }?.let { h ->
+                val lift = h[0] + (h[1] - h[0]) * k.toFloat()
+                listOf("A1", "A2").forEach { n -> if (pt(n)[1] >= 176) J[n]!!.y += lift }
+            }
             if (isFly(id)) {
                 val th = k * 1.35
                 listOf(Triple(1f, "SR", "E1" to "W1"), Triple(-1f, "SL", "E2" to "W2")).forEach { (sd, S_, ew) ->

@@ -123,3 +123,17 @@ for k in ('a', 'b'): sp[k].update({'E1': [88, 80], 'E2': [88, 80], 'W1': [80, 10
 sp['b'].update({'E1': [86, 78], 'E2': [86, 78], 'W1': [76, 96], 'W2': [76, 96]})
 sp['lat'] = [[-5, -15], [-5, -15]]
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 30 : mollets (Philippe : « Rien ne bouge » et « Et il n'y a pas de murs »)
+d = json.load(open(p)); P = d['POSES']
+for k in ('calf', 'calf1', 'kbcalf'):
+    P[k]['heel'] = [0, 8]
+    for s_ in ('a', 'b'):   # le corps ne monte plus par la pose : c'est la cheville qui se lève
+        q = P[k][s_]
+        if s_ == 'b':
+            for n in ('H', 'N', 'P', 'E1', 'E2', 'K1', 'K2', 'W1', 'W2'): q[n] = P[k]['a'][n][:]
+c1 = P['calf1']
+for s_ in ('a', 'b'):
+    c1[s_].update({'K2': [104, 140], 'A2': [86, 160], 'E2': [113, 66], 'W2': [126, 64]})
+c1['prop'] = {'t': 'wall', 'x': 130}
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
