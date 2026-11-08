@@ -279,31 +279,26 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); objs += Triple(cyl, m, if (ox == 0f) handle else dbc)
                 }
             }
-            fun kettlebell(p: V3, fore: V3) {
+            fun kettlebell(p: V3, fore: V3, hax: V3) {
                 // la cloche pend sous la main, ou repose le long de l'avant-bras quand le bras est levé
                 val down = V3(0f, -1f, 0f)
                 val off = if (fore.y < -.3f) down else (fore * -1f + down).norm()
                 val c = p + off * 9f
                 objs += Triple(ball, mat(c, 8f, 8f, 8f), dbc)
-                seg(p + V3(-4.5f, 0f, 0f), p + V3(4.5f, 0f, 0f), 1.1f, handle)
-                seg(p + V3(-4.5f, 0f, 0f), c + V3(-4f, 3f, 0f), 1.1f, handle)
-                seg(p + V3(4.5f, 0f, 0f), c + V3(4f, 3f, 0f), 1.1f, handle)
+                seg(p - hax * 4.5f, p + hax * 4.5f, 1.1f, handle)
+                seg(p - hax * 4.5f, c - hax * 4f + V3(0f, 3f, 0f), 1.1f, handle)
+                seg(p + hax * 4.5f, c + hax * 4f + V3(0f, 3f, 0f), 1.1f, handle)
             }
             fun fore(w: String) = (jt(w) - jt(if (w == "W1") "E1" else "E2")).norm()
+            fun axis(sd: String): V3 { val a = b.handAxis(sd); a.x *= sx; return a }
             if (b.twoHand(id) && dbs.isNotEmpty()) {
                 val p = inHand("W1").lerp(inHand("W2"), .5f)
-                if (tool == "kb") kettlebell(p, fore("W1").lerp(fore("W2"), .5f))
+                if (tool == "kb") kettlebell(p, fore("W1").lerp(fore("W2"), .5f), axis("R"))
                 else dumbbell(p, if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null)
             } else dbs.forEach { w ->
-                if (tool == "kb") kettlebell(inHand(w), fore(w))
-                else {
-                    // poignée toujours perpendiculaire à l'avant-bras (retour de Philippe : « La position des mains par rapport aux haltères n'est pas correcte ») :
-                    // prise neutre → dans le plan avant-arrière ; sinon → en travers, vers le côté ; avant-bras dans l'axe → avant-arrière
-                    val f = fore(w); val X = V3(1f, 0f, 0f)
-                    var a = if (b.gripOf(id) == "n") f.cross(X) else X - f * f.dot(X)
-                    if (a.len() < .3f) a = V3(0f, 0f, 1f)
-                    dumbbell(inHand(w), rotTo(a.norm()))
-                }
+                val sd = if (w == "W1") "R" else "L"
+                if (tool == "kb") kettlebell(inHand(w), fore(w), axis(sd))
+                else dumbbell(inHand(w), rotTo(axis(sd)))   // poignée dans l'axe des jointures : la main fermée tient le milieu
             }
         }
         // barre longue et roue abdominale (tenues à deux mains)

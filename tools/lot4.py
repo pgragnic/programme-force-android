@@ -176,3 +176,10 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # --- 8 novembre, 19 h : rotations d'épaules, bras sur les côtés et petits cercles (Philippe : « La rotation n'est pas très réaliste »)
 d = json.load(open(p)); d['POSES']['circle']['circ'] = True
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 19 h 15 : poses 3D du nouveau personnage (option 2 choisie par Philippe), générées par tools/corps/convert.py
+import os
+_p3 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corps', 'poses3.json')
+if os.path.exists(_p3):
+    d = json.load(open(p)); d['POSES3'] = json.load(open(_p3))
+    json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
