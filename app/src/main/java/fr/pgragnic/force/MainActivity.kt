@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
         Store.handleLink(intent)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
+        intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
