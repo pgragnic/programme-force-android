@@ -137,3 +137,23 @@ for s_ in ('a', 'b'):
     c1[s_].update({'K2': [104, 140], 'A2': [86, 160], 'E2': [113, 66], 'W2': [126, 64]})
 c1['prop'] = {'t': 'wall', 'x': 130}
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 35 : pompes (Philippe : « Les bras rentrent dans le corps », « Et les paumes doivent être à plat au sol en pompes classiques ? »)
+# et bird dog (« les mains et les pieds sont un peu positionnés bizarrement ») : bas de la pompe refait (mains sous les épaules, coudes à 45°),
+# bouts des doigts F1/F2 (paume à plat) et orteils T1/T2 (pied à plat derrière quand on est à genoux)
+d = json.load(open(p)); P = d['POSES']
+for k, dx in (('pushup', 0), ('incline', 2)):
+    P[k]['b'].update({'N': [60 + dx, 168], 'H': [46 + dx, 165], 'E1': [70 + dx, 161], 'E2': [68 + dx, 161]})
+    P[k]['lat'] = [[3, 6], [16.5, 9.3]]
+def fing(k, off):
+    for s_ in ('a', 'b'):
+        q = P[k][s_] if s_ == 'a' else {**P[k]['a'], **P[k].get('b', {})}
+        for w, f in (('W1', 'F1'), ('W2', 'F2')):
+            P[k].setdefault(s_, {})[f] = [q[w][0] + off[0], q[w][1] + off[1]]
+for k in ('pushup', 'incline', 'pike', 'catcow', 'birddog'): fing(k, (-9, 0))
+fing('wallpush', (0, -9)); fing('chairdip', (8, 1))
+P['birddog']['b']['F1'] = [3, 127]          # bras tendu devant : la main prolonge le bras
+for k in ('birddog', 'catcow'):
+    for s_ in ('a', 'b'): P[k][s_].update({'T1': [160, 180], 'T2': [158, 180]})
+P['birddog']['b']['T2'] = [178, 143]        # jambe tendue derrière : orteils vers le sol
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

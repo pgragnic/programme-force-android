@@ -66,6 +66,8 @@ class Bone(val a0: V3, val u0: V3, val L0: Float, val p: Int, val ka: String, va
 
 class Group(val g: String, val rp: FloatArray, val rn: FloatArray, val idx: ShortArray, val bi: ByteArray, val w: ByteArray, val lab: ByteArray?) {
     val pos = rp.copyOf(); val nrm = rn.copyOf(); val col = FloatArray(rp.size) { 1f }
+    /** main : côté (0 aucun, 1 droite, 2 gauche) et poids (0 au poignet → 1 dans la main), calculés au chargement */
+    var hs: ByteArray? = null; var hw: FloatArray? = null
     var key: String? = null
 }
 
@@ -110,6 +112,17 @@ class Body(ctx: Context) {
             val nr = if (g["nrm"] != null) FloatArray(nv * 3) { buf[o + it] / 127f }.also { al(nv * 3) } else FloatArray(nv * 3)
             val lab = if (g["lab"] != null) buf.copyOfRange(o, o + nv * 4).also { al(nv * 4) } else null
             groups += Group(g["g"]!!.jsonPrimitive.content, pos, nr, idx, bi, w, lab)
+        }
+        // la main n'a pas d'os : les sommets au-delà du poignet (le long de l'avant-bras) forment une « main » qu'on peut tourner
+        for (G in groups) {
+            val n = G.w.size; val hs = ByteArray(n); val hw = FloatArray(n); var any = false
+            for (i in 0 until n) for ((sd, bk) in listOf(1 to 3, 2 to 5)) {
+                val b = bones[bk]; val v = V3(G.rp[i * 3], G.rp[i * 3 + 1], G.rp[i * 3 + 2])
+                val t = (v - b.a0).dot(b.u0) / b.L0
+                val near = (v - (b.a0 + b.u0 * ((v - b.a0).dot(b.u0)))).len() < 9f
+                if (t > .97f && near) { hs[i] = sd.toByte(); hw[i] = ((t - .97f) / .1f).coerceIn(0f, 1f); any = true }
+            }
+            if (any) { G.hs = hs; G.hw = hw }
         }
     }
 
@@ -163,6 +176,9 @@ class Body(ctx: Context) {
             J["K1"] = sv(pt("K1"), LG); J["A1"] = sv(pt("A1"), LA); J["K2"] = sv(pt("K2"), -LG); J["A2"] = sv(pt("A2"), -LA)
             val A1 = pt("A1"); val A2 = pt("A2")
             J["T1"] = sv(doubleArrayOf(A1[0] + 14.5, A1[1] + 4), LA); J["T2"] = sv(doubleArrayOf(A2[0] + 14.5, A2[1] + 4), -LA)
+            // orteils (T1/T2) et bouts des doigts (F1/F2) donnés par la pose : pieds à plat derrière à genoux, paumes à plat au sol ou au mur
+            p["T1"]?.let { J["T1"] = sv(it, LA) }; p["T2"]?.let { J["T2"] = sv(it, -LA) }
+            p["F1"]?.let { J["F1"] = sv(it, aw) }; p["F2"]?.let { J["F2"] = sv(it, -aw) }
             // talons levés (mollets) : drapeau heel = [début, fin] en unités de pose ; les orteils restent au sol, la cheville monte
             // (retour de Philippe sur les mollets sur une jambe : « Rien ne bouge »)
             pFlag(id, "heel")?.jsonArray?.map { it.jsonPrimitive.float }?.let { h ->
@@ -219,6 +235,13 @@ class Body(ctx: Context) {
     /** Déforme le maillage pour la pose, puis le pose au sol. */
     fun skin(J: Map<String, V3>, front: Boolean, lift: Float = 0f) {
         poseBones(J, front)
+        // rotation de chaque main vers le bout des doigts demandé (F1/F2), autour du poignet
+        val hand = arrayOfNulls<Pair<Q4, V3>>(3)
+        listOf(Triple(1, 3, "F1" to "W1"), Triple(2, 5, "F2" to "W2")).forEach { (sd, bk, fw) ->
+            val F = J[fw.first] ?: return@forEach; val b = bones[bk]
+            val f = m3v(b.A, b.u0).norm(); val h = (F - J[fw.second]!!).norm()
+            hand[sd] = Q4.fromUnit(f, h) to boneEnd(b)
+        }
         var my = 1e9f
         for (G in groups) {
             val rp = G.rp; val rn = G.rn; val P = G.pos; val N = G.nrm; val n = G.w.size
@@ -230,13 +253,19 @@ class Body(ctx: Context) {
                 P[j] = w1 * (a[0] * x + a[3] * y + a[6] * z + t1.x) + w2 * (c[0] * x + c[3] * y + c[6] * z + t2.x)
                 P[j + 1] = w1 * (a[1] * x + a[4] * y + a[7] * z + t1.y) + w2 * (c[1] * x + c[4] * y + c[7] * z + t2.y)
                 P[j + 2] = w1 * (a[2] * x + a[5] * y + a[8] * z + t1.z) + w2 * (c[2] * x + c[5] * y + c[8] * z + t2.z)
-                if (P[j + 1] < my) my = P[j + 1]
                 val nx = rn[j]; val ny = rn[j + 1]; val nz = rn[j + 2]
                 val ox = w1 * (a[0] * nx + a[3] * ny + a[6] * nz) + w2 * (c[0] * nx + c[3] * ny + c[6] * nz)
                 val oy = w1 * (a[1] * nx + a[4] * ny + a[7] * nz) + w2 * (c[1] * nx + c[4] * ny + c[7] * nz)
                 val oz = w1 * (a[2] * nx + a[5] * ny + a[8] * nz) + w2 * (c[2] * nx + c[5] * ny + c[8] * nz)
                 val l = sqrt(ox * ox + oy * oy + oz * oz).takeIf { it > 0 } ?: 1f
                 N[j] = ox / l; N[j + 1] = oy / l; N[j + 2] = oz / l
+                val hs = G.hs
+                if (hs != null && hs[i] > 0) hand[hs[i].toInt()]?.let { (q, W) ->
+                    val t = G.hw!![i]; val r = q.rot(V3(P[j] - W.x, P[j + 1] - W.y, P[j + 2] - W.z)); val rn = q.rot(V3(N[j], N[j + 1], N[j + 2]))
+                    P[j] += (W.x + r.x - P[j]) * t; P[j + 1] += (W.y + r.y - P[j + 1]) * t; P[j + 2] += (W.z + r.z - P[j + 2]) * t
+                    N[j] += (rn.x - N[j]) * t; N[j + 1] += (rn.y - N[j + 1]) * t; N[j + 2] += (rn.z - N[j + 2]) * t
+                }
+                if (P[j + 1] < my) my = P[j + 1]
             }
         }
         val dy = .7f + lift - my
