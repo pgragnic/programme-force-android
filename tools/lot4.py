@@ -84,3 +84,13 @@ EN.update({
 })
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 print(len(EX), 'exercices')
+
+# --- 8 novembre, 11 h 15 : montée en 1,5 s (Philippe : « Ok pour montée à 1,5 s ») ; swing et slam à leur rythme propre
+d = json.load(open(p)); EN = d['EN']
+for w in d['WEEKS']: w['tp'][0] = 1.5
+old = d['WEEKS'][0]['note']; new = old.replace('montée en 1 s', 'montée en 1,5 s')
+d['WEEKS'][0]['note'] = new; EN[new] = EN.get(old, '').replace('1 s up', '1.5 s up')
+d['EX']['kbswing']['tp'] = [0.8, 0, 1.2, 0]
+d['EX']['mbslam']['tp'] = [0.8, 0.2, 1, 0]
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+print('tempo', [w['tp'] for w in d['WEEKS']], new, EN[new])

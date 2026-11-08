@@ -9,7 +9,9 @@ class Ex(val id: String, val n: String, val l: String, val tip: String, val m: S
          val dr: Int, val kg0: Double?, val cues: List<String>,
          /** matériel requis (« a|b » = l'un ou l'autre), type de charge (kg, band, bw), outil affiché, articulations sollicitées */
          val eq: List<String> = emptyList(), val lt: String = "bw", val tool: String = "", val stress: List<String> = emptyList(),
-         val pose: String = id, val band: List<List<String>> = emptyList(), val f0: Double? = null)
+         val pose: String = id, val band: List<List<String>> = emptyList(), val f0: Double? = null,
+         /** rythme propre (mouvements explosifs : swing, slam), à la place du tempo de la semaine */
+         val tp: List<Double>? = null)
 
 class Week(val t: String, val s: Int, val r: Int, val tp: List<Double>, val pl: Int, val note: String)
 
@@ -82,7 +84,8 @@ object Prog {
                 o["tool"]?.jsonPrimitive?.contentOrNull ?: (if (o.s("l").contains("haltère")) "db" else ""), o.list("stress"),
                 o["pose"]?.jsonPrimitive?.contentOrNull ?: id,
                 o["band"]?.jsonArray?.map { b -> b.jsonArray.map { it.jsonPrimitive.content } } ?: emptyList(),
-                o["f0"]?.jsonPrimitive?.doubleOrNull)
+                o["f0"]?.jsonPrimitive?.doubleOrNull,
+                o["tp"]?.jsonArray?.map { it.jsonPrimitive.double })
         }
         raw["WEEKS"]!!.jsonArray.forEach { v ->
             val o = v.jsonObject
@@ -274,8 +277,8 @@ object Prog {
         if (e.m == "time") return Work(W.pl.toDouble(), 0, 0.0, listOf(1.5, 1.5, 1.5, 1.5), "${W.pl} s")
         val reps = max(5, W.r + e.dr + if (e.lt == "bw" || e.lt == "band") Gear.repsFor(gear.obj) else Gear.repsFor(gear.obj) / 2)
         if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), t("$reps / côté", "$reps / side"))
-        val rt = W.tp.sum(); val n = if (e.m == "uni") reps * 2 else reps
-        return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") t(" / côté", " / side") else " reps")
+        val tp = e.tp ?: W.tp; val rt = tp.sum(); val n = if (e.m == "uni") reps * 2 else reps
+        return Work(n * rt + (if (e.m == "uni") SWAP else 0.0), reps, rt, tp, "$reps" + if (e.m == "uni") t(" / côté", " / side") else " reps")
     }
 
     private class Sim(val ch: Int, val stops: Int, val steps: List<IntArray?>, val kgs: List<Double>)
@@ -388,6 +391,14 @@ object Prog {
         return 0.0
     }
 
+    /** Pause pour changer de côté au milieu d'un exercice unilatéral (retour de Philippe : « Sur le rowing il n'y a pas de pause (5 secondes par exemple) pour changer de mains »). */
+    const val SWAP = 5.0
+    /** Exercice unilatéral : côté (0 gauche, 1 droit), temps écoulé dans le côté, et vrai pendant la pause de changement de côté. */
+    fun uniPos(q: Phase, pt: Double): Triple<Int, Double, Boolean> {
+        val side = (q.dur - SWAP) / 2
+        return when { pt < side -> Triple(0, pt, false); pt < side + SWAP -> Triple(1, 0.0, true); else -> Triple(1, pt - side - SWAP, false) }
+    }
+
     /** Repère vocal à l'instant t d'une phase d'effort. */
     fun cueAt(q: Phase, t0: Double): Pair<String, String>? {
         val t = max(0.0, t0)
@@ -401,9 +412,9 @@ object Prog {
             return ("a$n" to (if (n == tot - 1) "Dernière. " else "") + if (n % 2 == 1) "Droite" else "Gauche")
         }
         val tp = q.tp ?: return null
-        val half = if (q.m == "uni") q.dur / 2 else q.dur
-        val h = if (q.m == "uni" && t >= half) 1 else 0
-        val lt = t - h * half; val rep = floor(lt / q.rt).toInt(); if (rep >= q.reps) return null
+        val (h, lt, gap) = if (q.m == "uni") uniPos(q, t) else Triple(0, t, false)
+        if (gap) return ("swap" to t("Change de côté", "Switch sides"))
+        val rep = floor(lt / q.rt).toInt(); if (rep >= q.reps) return null
         val c = lt - rep * q.rt
         val ph = if (c < tp[0]) 0 else if (c < tp[0] + tp[1]) 1 else if (c < tp[0] + tp[1] + tp[2]) 2 else 3
         val txt = (if (q.inv) listOf("Descends", "Tiens", "Monte", "") else listOf("Monte", "Tiens", "Descends", ""))[ph]
@@ -412,7 +423,6 @@ object Prog {
         val L = tp.indices.maxBy { tp[it] }; val st = tp.take(L).sum()
         if (ph == L && c >= st + tp[L] * .4) {
             if (rep == q.reps - 2) return ("$h-$rep-n" to t("Dernière", "Last one"))
-            if (rep == q.reps - 1 && h == 0 && q.m == "uni") return ("$h-$rep-n" to t("Ensuite, côté droit", "Then right side"))
         }
         return ("$h-$rep-$ph" to txt)
     }

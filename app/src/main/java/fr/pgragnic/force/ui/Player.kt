@@ -89,7 +89,9 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         }
         val p = P[pi]; val prev = pt; pt += dt; elapsed += dt
         for (s in 3 downTo 1) if (prev < p.dur - s && pt >= p.dur - s) { voice.beep(0); if (p.k != "work") voice.buzz(60) }
-        if (p.m == "uni" && prev < p.dur / 2 && pt >= p.dur / 2) voice.beep(2)
+        if (p.m == "uni") { val r = (p.dur - Prog.SWAP) / 2 + Prog.SWAP
+            for (s in 3 downTo 1) if (prev < r - s && pt >= r - s) voice.beep(0)
+            if (prev < r && pt >= r) { voice.beep(2); voice.buzz(350) } }
         if ((p.k == "rest" || p.k == "switch") && p.dur > 15 && prev < p.dur - 10 && pt >= p.dur - 10) voice.say("Dix secondes. Prépare-toi")
         P.getOrNull(pi + 1)?.let { nx -> if ((p.k == "rest" || p.k == "switch") && nx.k == "work" && p.dur > 8 && prev < p.dur - 6 && pt >= p.dur - 6)
             voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") t(", côté gauche", ", left side") else "") }
@@ -108,13 +110,14 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         val q = P[pi]
         if (q.k == "work") {
             if (q.m == "time") return Triple(0.0, false, "TIENS")
-            val lt = if (q.m == "uni") pt % (q.dur / 2) else pt
+            val (h, lt, gap) = if (q.m == "uni") Prog.uniPos(q, pt) else Triple(0, pt, false)
+            if (gap) return Triple(0.0, true, t("CHANGE DE CÔTÉ", "SWITCH SIDES"))
             val k = Prog.cycleK(lt, q.tp!!)
             val ph = lt % q.rt; val tp = q.tp
             val mv = if (q.m == "alt") (if (floor(pt / q.rt).toInt() % 2 == 1) "DROITE" else "GAUCHE")
             else if (ph < tp[0]) (if (q.inv) "DESCENDS" else "MONTE") else if (ph < tp[0] + tp[1]) "TIENS" else if (ph < tp[0] + tp[1] + tp[2]) (if (q.inv) "MONTE" else "DESCENDS") else ""
-            val side = if (q.m == "uni") (if (pt < q.dur / 2) "GAUCHE · " else "DROIT · ") else ""
-            return Triple(k, q.m == "uni" && pt >= q.dur / 2, side + mv)
+            val side = if (q.m == "uni") (if (h == 0) "GAUCHE · " else "DROIT · ") else ""
+            return Triple(k, h == 1, side + mv)
         }
         if (q.k == "warm") return Triple(Prog.cycleK(pt, q.tp ?: listOf(1.0, 0.0, 1.2, 0.0)), false, "")
         q.ghostTp?.let { return Triple(Prog.cycleK(pt, it), false, "") }
@@ -124,7 +127,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     fun repTxt(): String {
         val q = P[pi]; if (q.k != "work" || q.m == "time") return ""
         if (q.m == "alt") { val n = floor(pt / q.rt).toInt(); return t("Rép ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alterné", "Rep ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alternating") }
-        val lt = if (q.m == "uni") pt % (q.dur / 2) else pt
+        val (_, lt, gap) = if (q.m == "uni") Prog.uniPos(q, pt) else Triple(0, pt, false)
+        if (gap) return t("Côté droit dans ${kotlin.math.ceil((q.dur - Prog.SWAP) / 2 + Prog.SWAP - pt).toInt()} s", "Right side in ${kotlin.math.ceil((q.dur - Prog.SWAP) / 2 + Prog.SWAP - pt).toInt()} s")
         return t("Rép ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}", "Rep ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}")
     }
 }
