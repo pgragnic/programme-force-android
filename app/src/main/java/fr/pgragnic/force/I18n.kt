@@ -31,6 +31,9 @@ private val SEPS = listOf(" · ", ". ", " : ", " ; ", " — ")
 fun tr(s: String): String {
     if (!L.en || s.isBlank()) return s
     L.dict[s]?.let { return it }
+    // espaces, puces et majuscules autour du texte
+    val lead = s.takeWhile { it == ' ' || it == '•' || it == '\n' }; val trail = s.takeLastWhile { it == ' ' || it == '\n' }
+    if (lead.isNotEmpty() || trail.isNotEmpty()) { val m = s.substring(lead.length, s.length - trail.length); if (m.isNotEmpty()) return lead + tr(m) + trail }
     val core = s.trimEnd('.', '!', ' ')
     if (core != s) L.dict[core]?.let { return it + s.substring(core.length) }
     for (sep in SEPS) if (s.contains(sep)) {

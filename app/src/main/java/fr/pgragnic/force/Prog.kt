@@ -222,10 +222,10 @@ object Prog {
         if (!hasDb(id)) return e.l
         val v = kgOf(id, w, st); val kg = fk(v)
         return when (e.tool) {
-            "kb" -> e.l.replace("1 kettlebell", t("1 kettlebell de $kg kg", "1 kettlebell of $kg kg"))
+            "kb" -> if (L.en) tr(e.l) + " · $kg kg" else e.l.replace("1 kettlebell", "1 kettlebell de $kg kg")
             "bb" -> t("barre chargée à $kg kg", "barbell loaded to $kg kg")
             "band", "mini" -> e.l + " · résistance " + loadTxt(id, v)
-            else -> if (e.l.startsWith("1")) e.l.replace("1 haltère", t("1 haltère de $kg kg", "1 dumbbell of $kg kg")) else "2 × $kg kg"
+            else -> if (e.l.startsWith("1")) (if (L.en) tr(e.l) + " · $kg kg" else e.l.replace("1 haltère", "1 haltère de $kg kg")) else "2 × $kg kg"
         }
     }
 
@@ -235,7 +235,7 @@ object Prog {
         val reps = max(5, W.r + e.dr + if (e.lt == "bw" || e.lt == "band") Gear.repsFor(gear.obj) else Gear.repsFor(gear.obj) / 2)
         if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), t("$reps / côté", "$reps / side"))
         val rt = W.tp.sum(); val n = if (e.m == "uni") reps * 2 else reps
-        return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") " / côté" else " reps")
+        return Work(n * rt, reps, rt, W.tp, "$reps" + if (e.m == "uni") t(" / côté", " / side") else " reps")
     }
 
     private class Sim(val ch: Int, val steps: List<IntArray?>, val kgs: List<Double>)
@@ -318,7 +318,7 @@ object Prog {
                 if (last) continue
                 val extra = if (id in HEAVY) 30 else 0
                 if (i < ns) P += Phase("rest", ei = ei, set = i, blk = t("Exercice ${ei + 1}/${exo.size}", "Exercise ${ei + 1}/${exo.size}"), n = "Pause",
-                    det = t("Série $i/${ns} terminée · encore ${ns - i} série", "Set $i/${ns} done · ${ns - i} set") + (if (ns - i > 1) "s" else "") + " de ${e.n}", dur = (restS + extra).toDouble())
+                    det = t("Série $i/${ns} terminée · encore ${ns - i} série", "Set $i/${ns} done · ${ns - i} more set") + (if (ns - i > 1) "s" else "") + t(" de ", " of ") + tr(e.n), dur = (restS + extra).toDouble())
                 else P += Phase("switch", ei = ei + 1, set = 0, blk = t("Exercice ${ei + 1}/${exo.size} terminé", "Exercise ${ei + 1}/${exo.size} done"), dur = max(45, restS + extra).toDouble())
             }
         }

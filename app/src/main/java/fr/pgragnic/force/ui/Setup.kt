@@ -78,7 +78,7 @@ fun SetupScreen(onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().background(C.bg)) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (step == 0) { if (cur.done) onDone() } else go(-1) }, enabled = step > 0 || cur.done) { Icon(Icons.Default.ArrowBack, "Retour", tint = if (step > 0 || cur.done) C.ink else C.bg) }
-            Text(steps[step].uppercase(), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+            Text(tr(steps[step]).uppercase(), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
             Text("${step + 1}/4", color = C.muted)
             Spacer(Modifier.width(8.dp))
         }

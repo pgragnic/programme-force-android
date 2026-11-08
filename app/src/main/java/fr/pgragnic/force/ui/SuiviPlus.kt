@@ -45,7 +45,7 @@ object Bilan {
         val ld = LocalDate.now(); val steps = (0..6).mapNotNull { i -> days.firstOrNull { it.date == ld.minusDays(i.toLong()).toString() }?.steps?.takeIf { it > 0 } }
         if (steps.isNotEmpty()) out += t("Pas : ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} par jour en moyenne sur 7 jours.", "Steps: ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} per day on average over 7 days.")
         val acts = days.filter { it.act != null && Recovery.dayTs(it) >= m0 }
-        if (acts.isNotEmpty()) out += "Activités : " + acts.joinToString(", ") { it.act + (it.dur?.let { d -> " $d min" } ?: "") + (it.dplus?.let { d -> " D+ $d m" } ?: "") } + "."
+        if (acts.isNotEmpty()) out += t("Activités : ", "Activities: ") + acts.joinToString(", ") { tr(it.act ?: "") + (it.dur?.let { d -> " $d min" } ?: "") + (it.dplus?.let { d -> " D+ $d m" } ?: "") } + "."
         val t0 = now - wk
         val k = L.filter { it.d >= t0 }.sumOf { Kcal.entry(it, log) } + days.filter { Recovery.dayTs(it) >= t0 }.sumOf { Kcal.day(it, log) }
         if (k > 0) out += t("Dépense estimée sur 7 jours : ${Kcal.kr(k)}.", "Estimated burn over 7 days: ${Kcal.kr(k)}.")
@@ -70,7 +70,7 @@ fun BilanPanel() {
     val auto = remember(log, days, st) { Bilan.auto(log, days, st) }
     Panel {
         Text("Bilan de la semaine", color = C.ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
-        Text("Semaine du " + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), color = C.muted, fontSize = 12.sp)
+        Text(t("Semaine du ", "Week of ") + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), color = C.muted, fontSize = 12.sp)
         val r = remote
         val rDate = r?.get("date")?.jsonPrimitive?.contentOrNull
         val fresh = rDate != null && runCatching { LocalDate.parse(rDate) >= LocalDate.now().minusDays(8) }.getOrDefault(false)

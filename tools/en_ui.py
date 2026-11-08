@@ -59,7 +59,7 @@ UI = {
 "Onglet Activité : pas importés automatiquement via Health Connect, saisie des marches lestées, randos et trails, graphique sur 14 jours et dépense estimée.": "Activity tab: steps imported automatically from Health Connect, weighted walks, hikes and trail runs, 14-day chart and estimated energy burn.",
 "Onglet Corps : récupération de chaque muscle, de face et de dos, et le détail par muscle.": "Body tab: recovery of each muscle, front and back, with per-muscle details.", "Ouvrir le Play Store": "Open the Play Store",
 "PAUSE": "REST", "PREMIER EXERCICE": "FIRST EXERCISE", "PRÊT ?": "READY?", "Pas": "Steps", "Pas & activités": "Steps & activities", "Pas automatiques": "Automatic steps", "Pas travaillé cette semaine": "Not trained this week",
-"Pas à jour (Health Connect)": "Steps up to date (Health Connect)", "Pause": "Pause", "Pause entre séries": "Rest between sets", "Pectoraux": "Chest",
+"Pas à jour (Health Connect)": "Steps up to date (Health Connect)", "Pause": "Pause", "Pause entre séries": "Rest", "Pectoraux": "Chest",
 "Pendant la séance, les exercices sont regroupés par poids d'haltères pour changer les disques le moins possible.": "During the session, exercises are grouped by dumbbell weight so you change plates as little as possible.",
 "Personnage 3D : les exercices penchés en avant (rowing, soulevé de terre, pompes…) ne sont plus dessinés cambrés en arrière.": "3D model: forward-leaning exercises (rows, deadlifts, push-ups…) are no longer drawn arching backwards.",
 "Personnage 3D réaliste pendant la séance, avec les muscles travaillés en rouge ; fais-le tourner du doigt.": "Realistic 3D model during the session, with the muscles worked in red; rotate it with your finger.",

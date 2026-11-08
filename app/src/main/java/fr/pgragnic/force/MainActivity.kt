@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.ui.*
 import fr.pgragnic.force.ui.Text
 import androidx.lifecycle.lifecycleScope
@@ -100,7 +101,7 @@ class MainActivity : ComponentActivity() {
                         val items = listOf<Pair<String, ImageVector>>("Séance" to Icons.Default.FitnessCenter, "Corps" to Icons.Default.Accessibility,
                             "Activité" to Icons.Default.BarChart, "Suivi" to Icons.Default.Article, "Infos" to Icons.Default.Info)
                         items.forEachIndexed { i, (t, ic) ->
-                            NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(ic, t) }, label = { Text(t) },
+                            NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = C.effort, selectedTextColor = C.effort, indicatorColor = C.bg, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
                         }
                     }

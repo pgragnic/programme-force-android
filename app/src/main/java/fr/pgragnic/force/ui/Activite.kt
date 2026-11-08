@@ -85,7 +85,7 @@ fun ActiviteScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column {
             Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Text(if (last7.isNotEmpty()) "Moyenne sur 7 jours : " + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + " pas par jour" else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
+            Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
         // Health Connect
@@ -138,7 +138,7 @@ fun ActiviteScreen() {
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { sel = sel.minusDays(1) }) { Icon(Icons.Default.ChevronLeft, "Jour précédent", tint = C.ink) }
-                Text(sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)).replaceFirstChar { it.uppercase() } + if (sel == today) " (aujourd'hui)" else "",
+                Text(sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)).replaceFirstChar { it.uppercase() } + if (sel == today) t(" (aujourd'hui)", " (today)") else "",
                     color = C.ink, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, "Jour suivant", tint = if (sel < today) C.ink else C.line) }
             }

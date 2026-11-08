@@ -38,7 +38,7 @@ fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> 
 }
 
 @Composable
-fun Eyebrow(t: String) = Text(t.uppercase(), color = C.muted, fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+fun Eyebrow(t: String) = Text(fr.pgragnic.force.tr(t).uppercase(), color = C.muted, fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
 
 @Composable
 fun PChip(label: String, on: Boolean, sub: String? = null, onClick: () -> Unit) {
@@ -427,7 +427,7 @@ fun NewsPanel() {
             items.forEach { Text("• $it", color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 3.dp, start = 4.dp)) }
         }
         if (NEWS.size > 1) TextButton(onClick = { all = !all }, contentPadding = PaddingValues(0.dp)) { Text(if (all) "Moins" else "Versions précédentes") }
-        Text(t("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ", "Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ") + if (Prog.version > 0) t("n° ${Prog.version} (en ligne)", "no. ${Prog.version} (online)") else "d'origine", color = C.muted, fontSize = 12.sp)
+        Text(t("Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ", "Version ${fr.pgragnic.force.BuildConfig.VERSION_NAME} · programme ") + if (Prog.version > 0) t("n° ${Prog.version} (en ligne)", "no. ${Prog.version} (online)") else t("d'origine", "original"), color = C.muted, fontSize = 12.sp)
     }
 }
 
