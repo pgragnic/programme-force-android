@@ -116,3 +116,10 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 d = json.load(open(p)); st = d['POSES']['stlat']
 st['lat'] = [[-4, -14], [-4, -14]]; st['side'] = 14
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 18 h 25 : étirement pectoraux, mains jointes dans le dos (Philippe : « La position des bras est bizarre ? »)
+d = json.load(open(p)); sp = d['POSES']['stpec']
+for k in ('a', 'b'): sp[k].update({'E1': [88, 80], 'E2': [88, 80], 'W1': [80, 100], 'W2': [80, 100]})
+sp['b'].update({'E1': [86, 78], 'E2': [86, 78], 'W1': [76, 96], 'W2': [76, 96]})
+sp['lat'] = [[-5, -15], [-5, -15]]
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
