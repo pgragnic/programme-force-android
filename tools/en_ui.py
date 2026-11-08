@@ -1,5 +1,8 @@
 # Traductions anglaises de l'interface (texte français exact → anglais)
 UI = {
+"8 novembre 2026": "November 8, 2026",
+"L'appli parle anglais : elle suit la langue du téléphone, ou ton choix dans Infos → Langue.": "The app speaks English: it follows your phone's language, or your choice in Info → Language.",
+"Voix de séance, notification et rappel en anglais quand l'appli est en anglais.": "Session voice, notification and reminder in English when the app is in English.",
 " (aujourd'hui)": " (today)", " (incomplet)": " (incomplete)", " / côté": " / side", " Pas assez de pas pour fatiguer les jambes.": " Not enough steps to tire the legs.",
 " enregistrée.": " saved.", " kcal": " kcal", " par côté": " per side", " pas par jour": " steps per day", " reps": " reps", " · Prévois aussi ": " · Also get ",
 " · résistance ": " · resistance ", ". Change les disques.": ". Change the plates.", "1 haltère": "1 dumbbell", "1 kettlebell": "1 kettlebell",

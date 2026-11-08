@@ -391,6 +391,9 @@ fun ThemePanel() {
 
 /** Nouveautés de l'appli, la plus récente en premier. */
 val NEWS = listOf(
+    "8 novembre 2026" to listOf(
+        "L'appli parle anglais : elle suit la langue du téléphone, ou ton choix dans Infos → Langue.",
+        "Voix de séance, notification et rappel en anglais quand l'appli est en anglais."),
     "7 novembre 2026, 23 h 45" to listOf(
         "Premier lancement guidé : ton matériel, tes charges disponibles, les zones à ménager, ton objectif, ton niveau et les zones à travailler (Infos → Matériel et profil).",
         "77 exercices : haltères, kettlebell, barre, élastiques, traction, dips, banc, roue, chaise, mur, serviette, medicine ball, ballon, Bosu, poids du corps ; les séances se composent avec ton matériel.",
