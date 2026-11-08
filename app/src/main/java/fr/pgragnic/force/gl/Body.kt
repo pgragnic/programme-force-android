@@ -141,8 +141,8 @@ class Body(ctx: Context) {
         J["HR"] = J["Pc"]!! + V3(hipX, 0f, 0f); J["HL"] = J["Pc"]!! + V3(-hipX, 0f, 0f)
         val lat = pFlag(id, "lat")?.jsonArray?.map { r -> r.jsonArray.map { it.jsonPrimitive.float } }
         val LT = lat?.let { floatArrayOf(it[0][0] + (it[1][0] - it[0][0]) * k.toFloat(), it[0][1] + (it[1][1] - it[0][1]) * k.toFloat()) }
-        val aw = if (two) 5f else if (LT != null) shX + LT[1] else shX + 1.5f
-        val ae = if (two) 10f else if (LT != null) shX + LT[0] else shX + 2.5f
+        val aw = if (LT != null) shX + LT[1] else if (two) 5f else shX + 1.5f
+        val ae = if (LT != null) shX + LT[0] else if (two) 10f else shX + 2.5f
         if (front) {
             var e1 = sv(pt("E1")); var w1 = sv(pt("W1")); var e2 = sv(pt("E2")); var w2 = sv(pt("W2"))
             val ds = shX - 11

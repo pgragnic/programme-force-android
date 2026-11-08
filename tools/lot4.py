@@ -104,3 +104,10 @@ d = json.load(open(p))
 for k in ('hammer', 'row1', 'row2', 'revfly', 'lateral', 'calf', 'calf1', 'lunge', 'fwdlunge'): d['POSES'][k]['grip'] = 'n'
 d['POSES']['kbsumo']['legw'] = [12, 18]
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 17 h 50 : crunch lesté, haltère posé sur la poitrine (Philippe : « L'haltère n'est pas sur la poitrine »)
+d = json.load(open(p)); c = d['POSES']['crunch']
+c['a'].update({'E1': [66, 168], 'E2': [64, 168], 'W1': [69, 159], 'W2': [67, 159]})
+c['b'].update({'E1': [79, 158], 'E2': [77, 158], 'W1': [85, 150], 'W2': [83, 150]})
+c['lat'] = [[12, -12.7], [12, -12.7]]
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
