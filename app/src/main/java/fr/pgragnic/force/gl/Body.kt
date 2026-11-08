@@ -114,18 +114,20 @@ class Body(ctx: Context) {
 
     // ---------- poses ----------
     private fun pFlag(id: String, k: String) = Prog.raw["POSES"]!!.jsonObject[id]?.jsonObject?.get(k)
-    fun isFront(id: String) = pFlag(id, "front")?.jsonPrimitive?.booleanOrNull == true
-    fun isFly(id: String) = pFlag(id, "fly")?.jsonPrimitive?.booleanOrNull == true
+    /** drapeau de pose : true ou 1 (le programme utilise les deux) */
+    private fun flag(id: String, k: String) = pFlag(id, k)?.jsonPrimitive?.let { it.booleanOrNull ?: (it.doubleOrNull?.let { v -> v != 0.0 }) } == true
+    fun isFront(id: String) = flag(id, "front")
+    fun isFly(id: String) = flag(id, "fly")
     fun camOf(id: String) = pFlag(id, "cam")?.jsonPrimitive?.floatOrNull
     /** Pose où les pieds ne touchent pas tous le sol (montée sur chaise…) : le plus bas des pieds donne la hauteur. */
-    fun isFree(id: String) = pFlag(id, "free")?.jsonPrimitive?.booleanOrNull == true
+    fun isFree(id: String) = flag(id, "free")
     /** Accessoire de la pose : chaise, mur ou banc, et sa position (repère 2D de la pose). */
     fun propOf(id: String): Pair<String, Float>? = pFlag(id, "prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     /** Outil dessiné par la pose elle-même (échauffement au bâton…). */
     fun poseTool(id: String) = pFlag(id, "tool")?.jsonPrimitive?.contentOrNull
     /** Prise de l'haltère : "n" = neutre (paume vers le corps, haltère dans l'axe avant-arrière) ; absent = prise en pronation. */
     fun gripOf(id: String) = pFlag(id, "grip")?.jsonPrimitive?.contentOrNull
-    fun isStat(id: String) = pFlag(id, "stat")?.jsonPrimitive?.booleanOrNull == true
+    fun isStat(id: String) = flag(id, "stat")
 
     fun build(id: String, k: Double): HashMap<String, V3> {
         val p = Poses.at(id, k) ?: Poses.at("calf", 0.0)!!

@@ -94,3 +94,7 @@ d['EX']['kbswing']['tp'] = [0.8, 0, 1.2, 0]
 d['EX']['mbslam']['tp'] = [0.8, 0.2, 1, 0]
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 print('tempo', [w['tp'] for w in d['WEEKS']], new, EN[new])
+
+# --- 8 novembre, 17 h 30 : oiseau mal dessiné (Philippe : « L'oiseau est mal représenté ») : drapeau fly à 1 au lieu de true, ignoré par l'appli
+d = json.load(open(p)); d['POSES']['revfly']['fly'] = True
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
