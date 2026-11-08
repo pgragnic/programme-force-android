@@ -106,7 +106,7 @@ object Store {
     private fun saveLocal() {
         prefs.edit().putString("log", json.encodeToString(log.value)).putString("st", stTo(st.value).toString())
             .putString("days", json.encodeToString(days.value)).putString("dpend", json.encodeToString(dPending.toList()))
-            .putString("spend", json.encodeToString(sPend.toList())).putString("sdel", json.encodeToString(sDel.toList())).apply()
+            .putString("spend", json.encodeToString(sPend.toList())).putString("ddel", json.encodeToString(dDel.toList())).putString("sdel", json.encodeToString(sDel.toList())).apply()
         ver.value++
     }
 
@@ -133,14 +133,28 @@ object Store {
         dPending += keys; saveLocal()
         pushDays()
     }
+    /** Journées supprimées sur le téléphone, à supprimer aussi en ligne (gardé même appli fermée). */
+    private val dDel: MutableSet<String> by lazy { runCatching { json.decodeFromString<List<String>>(prefs.getString("ddel", "[]")!!).toMutableSet() }.getOrElse { mutableSetOf() } }
+
+    /** Supprime une journée d'activité saisie (sur le téléphone puis en ligne). */
+    fun deleteDay(date: String) {
+        days.value = days.value.filter { it.date != date }
+        dPending -= date; dDel += date; saveLocal()
+        pushDays()
+    }
+
+    private suspend fun pushDaysNow(c: SupabaseClient) {
+        val todo = days.value.filter { it.date in dPending }
+        if (todo.isNotEmpty()) { c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }; dPending -= todo.map { it.date }.toSet() }
+        dDel.toList().forEach { d -> c.from("days").delete { filter { eq("date", d) } }; dDel -= d }
+        saveLocal()
+    }
+
     private fun pushDays() {
         val c = sb ?: return; if (user.value == null) return
-        val todo = days.value.filter { it.date in dPending }; if (todo.isEmpty()) return
+        if (dPending.isEmpty() && dDel.isEmpty()) return
         scope.launch {
-            try {
-                c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }
-                dPending -= todo.map { it.date }.toSet(); saveLocal()
-            } catch (t: Throwable) { sync.value = "Journée gardée sur le téléphone, envoi plus tard" }
+            try { pushDaysNow(c) } catch (t: Throwable) { sync.value = "Journée gardée sur le téléphone, envoi plus tard" }
         }
     }
 
@@ -149,7 +163,7 @@ object Store {
     fun autoSync(force: Boolean = false) {
         pullProg()
         if (sb == null || user.value == null) return
-        val pending = sPend.isNotEmpty() || sDel.isNotEmpty() || dPending.isNotEmpty()
+        val pending = sPend.isNotEmpty() || sDel.isNotEmpty() || dPending.isNotEmpty() || dDel.isNotEmpty()
         if (force || pending || System.currentTimeMillis() - lastPull > 60_000) pull()
     }
 
@@ -366,8 +380,8 @@ object Store {
             c.postgrest.rpc("supprimer_mon_compte")
             runCatching { c.auth.signOut() }
             user.value = null
-            log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); sPend.clear(); sDel.clear(); st.value = Settings()
-            prefs.edit().remove("log").remove("days").remove("dpend").remove("spend").remove("sdel").remove("bilan").remove("st").apply()
+            log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); dDel.clear(); sPend.clear(); sDel.clear(); st.value = Settings()
+            prefs.edit().remove("log").remove("days").remove("dpend").remove("ddel").remove("spend").remove("sdel").remove("bilan").remove("st").apply()
             ver.value++
             sync.value = "Compte supprimé"
             null

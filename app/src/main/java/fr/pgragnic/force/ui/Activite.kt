@@ -169,6 +169,13 @@ fun ActiviteScreen() {
                     (if (L > 0) t(" Elle compte pour environ ${Prog.fk(Prog.r1(L))} séries dans la fatigue des quadriceps.", " It counts for about ${Prog.fk(Prog.r1(L))} sets of quad fatigue.") else " Pas assez de pas pour fatiguer les jambes.") +
                     t(" Dépense estimée : ${Kcal.kr(Kcal.day(d, log).toDouble())}.", " Estimated burn: ${Kcal.kr(Kcal.day(d, log).toDouble())}.")
             }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Enregistrer la journée") }
+            // suppression d'une journée saisie à la main (les pas importés de Health Connect reviendraient à l'import suivant)
+            if (cur != null && cur.src != "hc") {
+                var arm by remember(sel) { mutableStateOf(false) }
+                TextButton(onClick = { if (!arm) arm = true else { Store.deleteDay(sel.toString()); arm = false; msg = t("Journée supprimée.", "Day deleted.") } }, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (arm) t("Confirmer la suppression", "Confirm deletion") else t("Supprimer cette journée", "Delete this day"), color = C.danger)
+                }
+            }
             Text(msg, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
