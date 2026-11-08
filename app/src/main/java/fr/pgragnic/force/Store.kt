@@ -152,15 +152,27 @@ object Store {
     }
 
     /** Récupère tout depuis Supabase, en envoyant d'abord les séances restées sur le téléphone. */
+    private var retry = 0
     fun pull() {
         val c = sb ?: return
         scope.launch {
             try {
                 lastPull = System.currentTimeMillis()
                 sync.value = "Synchronisation…"
+                // attendre que la connexion au compte soit prête (au retour dans l'appli, elle se renouvelle) : sinon la base répond
+                // « aucune séance » sans erreur et la liste se vidait (retour de Philippe : « je me demande pourquoi les séances se "perdent" ? »)
+                runCatching { c.auth.awaitInitialization() }
+                if (c.auth.currentSessionOrNull() == null) runCatching { c.auth.refreshCurrentSession() }
                 val pending = log.value.filter { it._id == null }
                 pending.forEach { e -> c.from("sessions").insert(SessRow(d = e.d, data = entryJson(e))) }
                 val rows = c.from("sessions").select().decodeList<SessRow>()
+                // garde-fou : une réponse vide alors que des séances sont déjà en ligne = connexion pas prête → on garde la liste et on réessaie
+                if (rows.isEmpty() && log.value.any { it._id != null }) {
+                    sync.value = t("Connexion en cours, nouvel essai…", "Connecting, retrying…")
+                    if (retry++ < 3) { kotlinx.coroutines.delay(3000); lastPull = 0; pull() } else sync.value = t("Synchronisation impossible pour l'instant : séances gardées sur ce téléphone", "Can't sync right now: sessions kept on this phone")
+                    return@launch
+                }
+                retry = 0
                 log.value = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }.sortedBy { it.d }
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
                     st.value = stFrom(r.data)
@@ -181,7 +193,8 @@ object Store {
                 runCatching {
                     val todo = days.value.filter { it.date in dPending }
                     if (todo.isNotEmpty()) { c.from("days").upsert(todo.map { DayRow(it.date, json.encodeToJsonElement(it).jsonObject) }) { onConflict = "user_id,date" }; dPending.clear() }
-                    days.value = c.from("days").select().decodeList<DayRow>().mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
+                    val dr = c.from("days").select().decodeList<DayRow>()
+                    if (dr.isNotEmpty() || days.value.isEmpty()) days.value = dr.mapNotNull { r -> runCatching { json.decodeFromJsonElement<DayRec>(r.data).copy(date = r.date) }.getOrNull() }.sortedBy { it.date }
                 }
                 saveLocal()
                 sync.value = t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions")
