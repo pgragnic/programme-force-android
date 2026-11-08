@@ -14,11 +14,11 @@ val cfg = Properties().apply {
 
 android {
     namespace = "fr.pgragnic.force"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "fr.pgragnic.force"
         minSdk = 28
-        targetSdk = 35
+        targetSdk = 36
         versionCode = (System.getenv("VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = System.getenv("VERSION_NAME") ?: ("0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0"))
         buildConfigField("String", "SUPABASE_URL", "\"" + (cfg.getProperty("url") ?: "") + "\"")
