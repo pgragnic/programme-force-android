@@ -30,7 +30,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}
-          name: Programme Force 0.1.${{ github.run_number }}
+          name: UpRep 0.1.${{ github.run_number }}
           body: APK à installer sur le téléphone (Paramètres → autoriser l'installation depuis le navigateur).
           files: ProgrammeForce.apk
           make_latest: true

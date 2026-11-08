@@ -247,7 +247,7 @@ object Store {
         val c = sb ?: return "Envoi impossible : base non configurée"
         return try {
             c.from("retours").insert(RetourRow(kind, txt.trim().take(2000), contact?.trim()?.takeIf { it.isNotBlank() }?.take(200),
-                "Programme Force ${BuildConfig.VERSION_NAME} · Android ${android.os.Build.VERSION.RELEASE}"))
+                "UpRep ${BuildConfig.VERSION_NAME} · Android ${android.os.Build.VERSION.RELEASE}"))
             null
         } catch (t: Throwable) { "Envoi impossible pour l'instant : vérifie ta connexion et réessaie." }
     }

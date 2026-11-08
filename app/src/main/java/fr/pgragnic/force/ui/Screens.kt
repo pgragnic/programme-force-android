@@ -73,7 +73,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Eyebrow("Haltères réglables · 4 séances par semaine")
-        Text("Programme Force", fontSize = 30.sp, fontWeight = FontWeight.Black, color = C.ink)
+        Text("UpRep", fontSize = 30.sp, fontWeight = FontWeight.Black, color = C.ink)
         Store.progNote.collectAsState().value.takeIf { it.isNotBlank() }?.let { Text(it, color = C.effort, fontSize = 13.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
@@ -448,7 +448,7 @@ fun HealthNotice() {
     AlertDialog(onDismissRequest = {}, containerColor = C.surface,
         title = { Text("Avant de commencer", color = C.ink, fontWeight = FontWeight.Bold) },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
-            Text("Programme Force propose des exercices de renforcement musculaire. Ce n'est pas un dispositif médical et elle ne remplace pas l'avis d'un médecin.", color = C.ink)
+            Text(t("UpRep propose des exercices de renforcement musculaire. Ce n'est pas un dispositif médical et elle ne remplace pas l'avis d'un médecin.", "UpRep offers strength training exercises. It is not a medical device and does not replace medical advice."), color = C.ink)
             Text("Demande l'avis d'un médecin avant de commencer si tu as un problème cardiaque, une tension élevée, une blessure, des douleurs articulaires ou dorsales, si tu es enceinte, ou si tu reprends le sport après une longue pause.", color = C.ink, modifier = Modifier.padding(top = 8.dp))
             Text("Arrête immédiatement en cas de douleur, de vertige, d'essoufflement inhabituel ou de malaise. Choisis des charges que tu maîtrises et garde une bonne technique.", color = C.ink, modifier = Modifier.padding(top = 8.dp))
             Text("Appli réservée aux personnes de 16 ans et plus.", color = C.muted, modifier = Modifier.padding(top = 8.dp))
@@ -462,7 +462,7 @@ fun LegalPanel() {
     fun open(u: String) = runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u))) }
     Panel {
         Text("Santé et confidentialité", color = C.ink, fontWeight = FontWeight.Bold)
-        Text("Programme Force n'est pas un dispositif médical. En cas de doute sur ta santé, demande l'avis d'un médecin avant de t'entraîner, et arrête en cas de douleur ou de malaise.", color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Text(t("UpRep n'est pas un dispositif médical. En cas de doute sur ta santé, demande l'avis d'un médecin avant de t'entraîner, et arrête en cas de douleur ou de malaise.", "UpRep is not a medical device. If in doubt about your health, ask a doctor before training, and stop if you feel pain or unwell."), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
         Row {
             TextButton(onClick = { open(SITE + "confidentialite.html") }, contentPadding = PaddingValues(0.dp)) { Text("Politique de confidentialité") }
             Spacer(Modifier.width(16.dp))

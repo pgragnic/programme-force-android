@@ -1,4 +1,4 @@
-# Programme Force — appli Android
+# UpRep — appli Android
 
 Appli Kotlin (Jetpack Compose) du programme de musculation sur 8 semaines avec haltères réglables.
 Données synchronisées dans Supabase (une ligne par séance, accès réservé au compte connecté).
