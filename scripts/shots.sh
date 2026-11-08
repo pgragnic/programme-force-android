@@ -7,6 +7,8 @@ adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || tr
 adb shell cmd uimode night yes || true
 shot() { n=$1; shift; adb shell am force-stop fr.pgragnic.force; sleep 2; adb shell am start -W -n fr.pgragnic.force/.MainActivity "$@" >> shots/start.txt; sleep 9; adb exec-out screencap -p > shots/$n.png; }
 sw() { adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/$1.png; }
+for t in 0 1 2 3 4; do shot fr-tab$t --es lang fr --ez seed true --ei tab $t; done
+shot fr-play5 --es lang fr --ez seed true --ei play 5
 shot en-setup --es lang en --es gear new; sw en-setup-b
 for t in 0 1 2 3 4; do shot en-tab$t --es lang en --ez seed true --ei tab $t; sw en-tab$t-b; sw en-tab$t-c; done
 shot en-kb0 --es lang en --es gear kb --ei tab 0; sw en-kb0-b

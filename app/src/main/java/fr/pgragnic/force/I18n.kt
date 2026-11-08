@@ -12,7 +12,7 @@ object L {
     /** "auto", "fr" ou "en" */
     var mode by mutableStateOf("auto")
     val dict = HashMap<String, String>()
-    val loc: Locale get() = if (en) Locale.ENGLISH else fr.pgragnic.force.L.loc
+    val loc: Locale get() = if (en) Locale.ENGLISH else Locale.FRANCE
 
     fun load(ctx: Context) {
         mode = ctx.getSharedPreferences("force", Context.MODE_PRIVATE).getString("lang", "auto") ?: "auto"
