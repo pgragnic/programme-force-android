@@ -296,11 +296,14 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 else dumbbell(p, if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null)
             } else dbs.forEach { w ->
                 if (tool == "kb") kettlebell(inHand(w), fore(w))
-                else dumbbell(inHand(w), when {
-                    b.gripOf(id) == "n" -> FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 1f, 0f) }   // prise neutre : haltère dans l'axe avant-arrière
-                    id == "hammer" -> rotTo(fore(w))
-                    else -> null
-                })
+                else {
+                    // poignée toujours perpendiculaire à l'avant-bras (retour de Philippe : « La position des mains par rapport aux haltères n'est pas correcte ») :
+                    // prise neutre → dans le plan avant-arrière ; sinon → en travers, vers le côté ; avant-bras dans l'axe → avant-arrière
+                    val f = fore(w); val X = V3(1f, 0f, 0f)
+                    var a = if (b.gripOf(id) == "n") f.cross(X) else X - f * f.dot(X)
+                    if (a.len() < .3f) a = V3(0f, 0f, 1f)
+                    dumbbell(inHand(w), rotTo(a.norm()))
+                }
             }
         }
         // barre longue et roue abdominale (tenues à deux mains)

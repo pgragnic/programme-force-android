@@ -98,3 +98,9 @@ print('tempo', [w['tp'] for w in d['WEEKS']], new, EN[new])
 # --- 8 novembre, 17 h 30 : oiseau mal dessiné (Philippe : « L'oiseau est mal représenté ») : drapeau fly à 1 au lieu de true, ignoré par l'appli
 d = json.load(open(p)); d['POSES']['revfly']['fly'] = True
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 8 novembre, 17 h 45 : prises et écart des jambes (Philippe : « La position des mains par rapport aux haltères n'est pas correcte »)
+d = json.load(open(p))
+for k in ('hammer', 'row1', 'row2', 'revfly', 'lateral', 'calf', 'calf1', 'lunge', 'fwdlunge'): d['POSES'][k]['grip'] = 'n'
+d['POSES']['kbsumo']['legw'] = [12, 18]
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

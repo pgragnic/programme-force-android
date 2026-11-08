@@ -15,6 +15,6 @@ shot en-kb0 --es lang en --es gear kb --ei tab 0; sw en-kb0-b
 shot en-play5 --es lang en --ez seed true --ei play 5
 adb shell cmd statusbar expand-notifications; sleep 4; adb exec-out screencap -p > shots/en-notif.png; adb shell cmd statusbar collapse
 shot en-play6 --es lang en --ez seed true --ei play 6
-for p in $POSES; do shot pose-$p --es demo $p --ef k 0.5; done
+for p in $POSES; do id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 adb logcat -d -b crash > shots/crash.txt || true
 exit 0

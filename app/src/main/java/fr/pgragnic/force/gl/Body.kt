@@ -78,7 +78,8 @@ class Body(ctx: Context) {
     private var shX = 16.7f; private var hipX = 8.8f
     private val BMAP = mapOf("Pc" to "Pc", "Nc" to "Nc", "H" to "H", "SR" to "SR", "ER" to "E1", "WR" to "W1", "SL" to "SL", "EL" to "E2", "WL" to "W2",
         "HR" to "HR", "KR" to "K1", "AR" to "A1", "TR" to "T1", "HL" to "HL", "KL" to "K2", "AL" to "A2", "TL" to "T2")
-    private val TWOHAND = setOf("pull", "ohtri", "squat", "crunch", "dbugw")
+    /** poses tenues à deux mains : liste de base + liste TWOHAND du programme (swing, halo, squat sumo…) */
+    private val TWOHAND: Set<String> get() = setOf("pull", "ohtri", "squat", "crunch", "dbugw") + (Prog.raw["TWOHAND"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList())
     private val FLIPX: Set<String> get() = Prog.raw["FLIPX"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet() ?: emptySet()
 
     init {
@@ -125,7 +126,7 @@ class Body(ctx: Context) {
     fun propOf(id: String): Pair<String, Float>? = pFlag(id, "prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     /** Outil dessiné par la pose elle-même (échauffement au bâton…). */
     fun poseTool(id: String) = pFlag(id, "tool")?.jsonPrimitive?.contentOrNull
-    /** Prise de l'haltère : "n" = neutre (paume vers le corps, haltère dans l'axe avant-arrière) ; absent = prise en pronation. */
+    /** Prise de l'haltère : "n" = neutre (pouces vers le haut, poignée perpendiculaire à l'avant-bras, dans l'axe avant-arrière) ; absent = paumes vers le haut ou le bas (poignée en travers, sur le côté). */
     fun gripOf(id: String) = pFlag(id, "grip")?.jsonPrimitive?.contentOrNull
     fun isStat(id: String) = flag(id, "stat")
 
@@ -156,7 +157,9 @@ class Body(ctx: Context) {
             J["T1"] = a1 + V3(0f, 0f, 9f); J["T2"] = a2 + V3(0f, 0f, 9f)
         } else {
             J["E1"] = sv(pt("E1"), ae); J["W1"] = sv(pt("W1"), aw); J["E2"] = sv(pt("E2"), -ae); J["W2"] = sv(pt("W2"), -aw)
-            val LG = hipX + .3f; val LA = hipX + .6f
+            // écart des jambes sur les côtés (squat sumo…) : drapeau legw = [genoux, chevilles]
+            val lw = pFlag(id, "legw")?.jsonArray?.map { it.jsonPrimitive.float }
+            val LG = hipX + .3f + (lw?.get(0) ?: 0f); val LA = hipX + .6f + (lw?.get(1) ?: 0f)
             J["K1"] = sv(pt("K1"), LG); J["A1"] = sv(pt("A1"), LA); J["K2"] = sv(pt("K2"), -LG); J["A2"] = sv(pt("A2"), -LA)
             val A1 = pt("A1"); val A2 = pt("A2")
             J["T1"] = sv(doubleArrayOf(A1[0] + 14.5, A1[1] + 4), LA); J["T2"] = sv(doubleArrayOf(A2[0] + 14.5, A2[1] + 4), -LA)
