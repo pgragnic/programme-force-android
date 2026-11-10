@@ -73,13 +73,32 @@ top = np.argsort(-W, 1)[:, :4]; tw = np.take_along_axis(W, top, 1); tw /= tw.sum
 tri = []
 for f in F:
     a, b, c, d = f; tri += [a, c, b, a, d, c]
-tri = np.array(tri, dtype='<u2')
+tri = np.array(tri, dtype=np.int64)
+# corps plus fin (hors tête, mains, pieds) pour des contours de muscles nets : sommets au milieu des arêtes
+import subdiv
+SKIP = ('head', 'clav') if False else ('head', 'hand', 'fin', 'thmb', 'foot', 'toes')
+vmask = ~np.isin(top[:, 0], [i for i, b in enumerate(BONES) if b[0].startswith(SKIP)])
+tri, EM = subdiv.subdivide(tri, vmask, len(Vb))
+Vb = np.concatenate([Vb, (Vb[EM[:, 0]] + Vb[EM[:, 1]]) / 2])
+W = np.concatenate([W, (W[EM[:, 0]] + W[EM[:, 1]]) / 2])
+top = np.argsort(-W, 1)[:, :4]; tw = np.take_along_axis(W, top, 1); tw /= tw.sum(1, keepdims=True)
+NV = len(Vb)
+np.save(__file__.replace('build.py', 'subdiv_edges.npy'), EM.astype(np.int32))
+tri = tri.astype('<u2')
 # normales au repos
 nr = np.zeros_like(Vb)
 for i in range(0, len(tri), 3):
     a, b, c = tri[i:i+3]; n = np.cross(Vb[b] - Vb[a], Vb[c] - Vb[a]); nr[[a, b, c]] += n
 nr /= np.linalg.norm(nr, axis=1, keepdims=True) + 1e-9
 lab = G0[0]['lab']
+lab = np.concatenate([lab, ((lab[EM[:, 0]].astype(int) + lab[EM[:, 1]]) // 2).astype('u1')])
+# zones musculaires anatomiques et sens des fibres (tools/corps/muscles.py, d'après l'atlas BodyParts3D) si disponibles
+import os
+fib = None; labels = hdr0['labels']
+_mz = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'muscles.npz')
+if os.path.exists(_mz):
+    z = np.load(_mz)
+    if len(z['lab']) == NV: lab = z['lab']; fib = z['fib']
 # yeux : ceux de l'ancien fichier, rattachés à la tête
 eye = G0[1]
 
@@ -89,14 +108,15 @@ out = dict(v=2, labels=hdr0['labels'],
 blob = bytearray()
 def pad():
     while len(blob) % 4: blob.append(0)
-def grp(name, pos, idx, top, tw, nrm, lab):
+def grp(name, pos, idx, top, tw, nrm, lab, fib=None):
     mn = pos.min(0); mx = pos.max(0); q = np.round((pos - mn) / (mx - mn) * 65535).astype('<u2')
-    out['groups'].append(dict(g=name, nv=len(pos), ni=len(idx), mn=[float(x) for x in mn], mx=[float(x) for x in mx], nrm=1, lab=1 if lab is not None else 0))
+    out['groups'].append(dict(g=name, nv=len(pos), ni=len(idx), mn=[float(x) for x in mn], mx=[float(x) for x in mx], nrm=1, lab=1 if lab is not None else 0, fib=1 if fib is not None else 0))
     blob.extend(q.tobytes()); pad(); blob.extend(np.asarray(idx, '<u2').tobytes()); pad()
     blob.extend(top.astype('u1').tobytes()); pad(); blob.extend(np.round(tw * 255).astype('u1').tobytes()); pad()
     blob.extend(np.round(nrm * 127).astype('i1').tobytes()); pad()
     if lab is not None: blob.extend(lab.astype('u1').tobytes()); pad()
-grp('Corps', Vb, tri, top, tw, nr, lab)
+    if fib is not None: blob.extend(fib.astype('u1').tobytes()); pad()
+grp('Corps', Vb, tri, top, tw, nr, lab, fib)
 ne = len(eye['pos']); hi = names.index('head')
 grp('Yeux', eye['pos'], eye['idx'], np.tile([hi, 0, 0, 0], (ne, 1)), np.tile([1., 0, 0, 0], (ne, 1)), eye['nrm'] if eye['nrm'] is not None else np.zeros((ne, 3)), None)
 # repère de la main au repos (pour le moteur) : normale de paume, axe des jointures, point de prise

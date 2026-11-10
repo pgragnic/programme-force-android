@@ -86,7 +86,9 @@ class Bone(val name: String, val a0: V3, val b0: V3, val p: Int) {
     var A = M_ID.copyOf(); val t = V3()
 }
 
-class Group(val g: String, val rp: FloatArray, val rn: FloatArray, val idx: ShortArray, val bi: ByteArray, val bw: FloatArray, val lab: ByteArray?) {
+class Group(val g: String, val rp: FloatArray, val rn: FloatArray, val idx: ShortArray, val bi: ByteArray, val bw: FloatArray, val lab: ByteArray?,
+            /** par sommet : sens des fibres au repos (3 octets, 128 = 0) et marge à la frontière du muscle (0 = sillon, 255 = centre ou peau) */
+            val fib: ByteArray? = null) {
     val pos = rp.copyOf(); val nrm = rn.copyOf(); val col = FloatArray(rp.size) { 1f }
     var key: String? = null
 }
@@ -128,7 +130,8 @@ class Body(ctx: Context) {
             for (i in 0 until nv) { var s = 0f; for (j in 0..3) s += bw[i * 4 + j]; if (s > 0) for (j in 0..3) bw[i * 4 + j] /= s }
             val nr = FloatArray(nv * 3) { buf[o + it] / 127f }; al(nv * 3)
             val lab = if (g["lab"]?.jsonPrimitive?.int == 1) buf.copyOfRange(o, o + nv * 4).also { al(nv * 4) } else null
-            groups += Group(g["g"]!!.jsonPrimitive.content, pos, nr, idx, bi, bw, lab)
+            val fib = if (g["fib"]?.jsonPrimitive?.int == 1) buf.copyOfRange(o, o + nv * 4).also { al(nv * 4) } else null
+            groups += Group(g["g"]!!.jsonPrimitive.content, pos, nr, idx, bi, bw, lab, fib)
         }
     }
 

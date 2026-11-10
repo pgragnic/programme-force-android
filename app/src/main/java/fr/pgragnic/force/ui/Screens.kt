@@ -364,7 +364,7 @@ fun ReglagesScreen() {
                     Panel {
                         Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
                         Text("8 semaines, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
-                        Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0)."), color = C.muted, fontSize = 12.sp)
+                        Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0). Muscles : atlas BodyParts3D, © The Database Center for Life Science (CC BY-SA 2.1 JP).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0). Muscles: BodyParts3D atlas, © The Database Center for Life Science (CC BY-SA 2.1 JP)."), color = C.muted, fontSize = 12.sp)
                     }
                 }
             }

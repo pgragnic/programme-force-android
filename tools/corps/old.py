@@ -1,5 +1,5 @@
 import json, struct, numpy as np
-def load(p='/home/claude/programme-force-android/app/src/main/assets/corps.bin'):
+def load(p=__file__.replace('old.py', 'corps_v1.bin')):   # ancien corps (v1), retiré des assets le 8 novembre
     buf = open(p, 'rb').read(); hl = struct.unpack('<i', buf[:4])[0]; hdr = json.loads(buf[4:4+hl]); o = 4 + hl
     def al(n):
         nonlocal o; o += n; o += (4 - o % 4) % 4

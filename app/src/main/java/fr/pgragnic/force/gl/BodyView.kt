@@ -48,6 +48,7 @@ private class Mesh(data: FloatArray, idx: ShortArray) {
         glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, false, 24, 0)
         glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, false, 24, 12)
         glDisableVertexAttribArray(2); glVertexAttrib3f(2, 1f, 1f, 1f)
+        noFib()
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo[0]); glDrawElements(GL_TRIANGLES, n, GL_UNSIGNED_SHORT, 0)
     }
     companion object {
@@ -99,6 +100,13 @@ private class Mesh(data: FloatArray, idx: ShortArray) {
     }
 }
 
+/** Objets sans fibres ni sillons (matériel, sol, peau sans données) */
+fun noFib() {
+    glDisableVertexAttribArray(3); glVertexAttrib3f(3, 0f, 0f, 0f)
+    glDisableVertexAttribArray(4); glVertexAttrib3f(4, 0f, 0f, 0f)
+    glDisableVertexAttribArray(5); glVertexAttrib1f(5, 1f)
+}
+
 class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     @Volatile var state = BodyState()
     @Volatile var user = 0f; @Volatile var uel = 0f
@@ -114,26 +122,42 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private var az: Float? = null; private var ta = 1.05f; private var elx = 0f; private var dist = 360f
     private val tgt = V3(0f, 80f, 0f)
     private val t0 = System.currentTimeMillis()
-    private var uMVP = 0; private var uM = 0; private var uN = 0; private var uCol = 0; private var uUse = 0; private var uAlpha = 0; private var uFlat = 0
+    private var uMVP = 0; private var uM = 0; private var uN = 0; private var uCol = 0; private var uUse = 0; private var uAlpha = 0; private var uFlat = 0; private var uEye = 0
+    private val fibBuf = ArrayList<IntArray?>() // vbo repos, fibres, marge
 
+    // Rendu « écorché » (Philippe : « Comment on pourrait faire pour avoir un bonhomme ressemblant à ça ? », « Voie 1 ») :
+    // muscles anatomiques (atlas BodyParts3D) avec sillons entre muscles, relief bombé, fibres, reflet et lumière de contour.
     private val VS = """#version 300 es
         layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec3 aC;
+        layout(location=3) in vec3 aR; layout(location=4) in vec3 aF; layout(location=5) in float aL;
         uniform mat4 uMVP; uniform mat4 uM; uniform mat3 uN;
-        out vec3 vN; out vec3 vC; out vec3 vW;
-        void main(){ vN = normalize(uN * aN); vC = aC; vW = (uM * vec4(aP,1.0)).xyz; gl_Position = uMVP * vec4(aP,1.0); }"""
+        out vec3 vN; out vec3 vC; out vec3 vW; out vec3 vR; out vec3 vF; out float vL;
+        void main(){ vN = normalize(uN * aN); vC = aC; vW = (uM * vec4(aP,1.0)).xyz; vR = aR; vF = aF; vL = aL; gl_Position = uMVP * vec4(aP,1.0); }"""
     private val FS = """#version 300 es
-        precision mediump float;
-        in vec3 vN; in vec3 vC; in vec3 vW;
-        uniform vec3 uCol; uniform float uUse; uniform float uAlpha; uniform float uFlat;
+        precision highp float;
+        in vec3 vN; in vec3 vC; in vec3 vW; in vec3 vR; in vec3 vF; in float vL;
+        uniform vec3 uCol; uniform float uUse; uniform float uAlpha; uniform float uFlat; uniform vec3 uEye;
         out vec4 o;
+        float h(vec3 p){ p = fract(p*0.3183099+0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+        float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
+          return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                     mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
         void main(){
           if (uFlat > 0.5) { o = vec4(uCol, uAlpha); return; }
-          vec3 n = normalize(vN);
+          vec3 n = normalize(vN); vec3 v = normalize(uEye - vW);
           vec3 c = mix(uCol, vC, uUse);
-          vec3 hemi = mix(vec3(0.333,0.376,0.439), vec3(1.0), n.y*0.5+0.5) * 0.8;
+          float fl = length(vF); float fib = 1.0; float dl = vL * 3.0;
+          if (fl > 0.3) { vec3 F = vF / fl; float a = dot(vR, F); vec3 q = vR - F * a;
+            float s = vn(q*4.0 + F*a*0.10)*0.6 + vn(q*9.0 + F*a*0.2)*0.4; fib = mix(0.80, 1.07, s); }
+          float groove = 1.0 - smoothstep(0.0, 0.35, dl);
+          float dome = fl > 0.3 ? smoothstep(0.1, 2.0, dl) : 1.0;
+          c *= fib * (1.0 - 0.5*groove) * mix(0.80, 1.06, dome);
+          vec3 hemi = mix(vec3(0.30,0.33,0.38), vec3(0.95), n.y*0.5+0.5) * 0.45;
           vec3 L1 = normalize(vec3(120.0,260.0,160.0)); vec3 L2 = normalize(vec3(-120.0,160.0,-200.0));
-          float d = 0.85*max(dot(n,L1),0.0) + 0.45*max(dot(n,L2),0.0);
-          o = vec4(min(c*(hemi + vec3(d)), vec3(1.0)), uAlpha);
+          float d = 0.80*max(dot(n,L1),0.0) + 0.42*max(dot(n,L2),0.0);
+          float spec = uUse > 0.5 ? pow(max(dot(n, normalize(L1+v)),0.0), 28.0) * 0.20 * fib : 0.0;
+          float rim = uUse > 0.5 ? pow(1.0 - max(dot(n,v),0.0), 2.5) * 0.24 : 0.0;
+          o = vec4(min(c*(hemi + vec3(d)) + vec3(spec + rim), vec3(1.0)), uAlpha);
         }"""
 
     private fun shader(t: Int, src: String) = glCreateShader(t).also { glShaderSource(it, src); glCompileShader(it) }
@@ -142,16 +166,27 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         prog = glCreateProgram()
         glAttachShader(prog, shader(GL_VERTEX_SHADER, VS)); glAttachShader(prog, shader(GL_FRAGMENT_SHADER, FS)); glLinkProgram(prog)
         uMVP = glGetUniformLocation(prog, "uMVP"); uM = glGetUniformLocation(prog, "uM"); uN = glGetUniformLocation(prog, "uN")
-        uCol = glGetUniformLocation(prog, "uCol"); uUse = glGetUniformLocation(prog, "uUse"); uAlpha = glGetUniformLocation(prog, "uAlpha"); uFlat = glGetUniformLocation(prog, "uFlat")
+        uCol = glGetUniformLocation(prog, "uCol"); uUse = glGetUniformLocation(prog, "uUse"); uAlpha = glGetUniformLocation(prog, "uAlpha"); uFlat = glGetUniformLocation(prog, "uFlat"); uEye = glGetUniformLocation(prog, "uEye")
         cyl = Mesh.cylinder(); disc = Mesh.disc(); box = Mesh.box(); ball = Mesh.sphere()
         val b = body ?: Body(ctx).also { body = it }
-        gbuf.clear(); fbs.clear(); lastKey = ""; b.groups.forEach { it.key = null }
+        gbuf.clear(); fbs.clear(); fibBuf.clear(); lastKey = ""; b.groups.forEach { it.key = null }
         b.groups.forEach { G ->
             val ids = IntArray(4); glGenBuffers(4, ids, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ids[3])
             val sb: ShortBuffer = ByteBuffer.allocateDirect(G.idx.size * 2).order(ByteOrder.nativeOrder()).asShortBuffer().put(G.idx)
             sb.position(0); glBufferData(GL_ELEMENT_ARRAY_BUFFER, G.idx.size * 2, sb, GL_STATIC_DRAW)
             gbuf += ids; fbs += Triple(fb(G.pos.size), fb(G.nrm.size), fb(G.col.size))
+            // données fixes du rendu écorché : position au repos, sens des fibres, marge à la frontière du muscle
+            val F = G.fib
+            if (F == null) fibBuf += null else {
+                val fx = IntArray(3); glGenBuffers(3, fx, 0); val nv = G.rp.size / 3
+                glBindBuffer(GL_ARRAY_BUFFER, fx[0]); glBufferData(GL_ARRAY_BUFFER, G.rp.size * 4, fb(G.rp.size).put(G.rp).position(0), GL_STATIC_DRAW)
+                val dir = FloatArray(nv * 3) { i -> ((F[(i / 3) * 4 + i % 3].toInt() and 0xFF) - 128) / 127f }
+                glBindBuffer(GL_ARRAY_BUFFER, fx[1]); glBufferData(GL_ARRAY_BUFFER, dir.size * 4, fb(dir.size).put(dir).position(0), GL_STATIC_DRAW)
+                val ln = FloatArray(nv) { i -> (F[i * 4 + 3].toInt() and 0xFF) / 255f }
+                glBindBuffer(GL_ARRAY_BUFFER, fx[2]); glBufferData(GL_ARRAY_BUFFER, ln.size * 4, fb(ln.size).put(ln).position(0), GL_STATIC_DRAW)
+                fibBuf += fx
+            }
         }
         glEnable(GL_DEPTH_TEST)
     }
@@ -170,6 +205,12 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private fun drawBody(b: Body) {
         b.groups.forEachIndexed { i, G ->
             val ids = gbuf[i]
+            val fx = fibBuf.getOrNull(i)
+            if (fx == null) noFib() else {
+                glBindBuffer(GL_ARRAY_BUFFER, fx[0]); glEnableVertexAttribArray(3); glVertexAttribPointer(3, 3, GL_FLOAT, false, 0, 0)
+                glBindBuffer(GL_ARRAY_BUFFER, fx[1]); glEnableVertexAttribArray(4); glVertexAttribPointer(4, 3, GL_FLOAT, false, 0, 0)
+                glBindBuffer(GL_ARRAY_BUFFER, fx[2]); glEnableVertexAttribArray(5); glVertexAttribPointer(5, 1, GL_FLOAT, false, 0, 0)
+            }
             glBindBuffer(GL_ARRAY_BUFFER, ids[0]); glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0)
             glBindBuffer(GL_ARRAY_BUFFER, ids[1]); glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0)
             glBindBuffer(GL_ARRAY_BUFFER, ids[2]); glEnableVertexAttribArray(2); glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0)
@@ -243,6 +284,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         snap = false
         Matrix.perspectiveM(proj, 0, 32f, asp, 5f, 3000f)
         Matrix.setLookAtM(view, 0, tgt.x + dist * sin(A) * cos(E), tgt.y + dist * sin(E), tgt.z + dist * cos(A) * cos(E), tgt.x, tgt.y, tgt.z, 0f, 1f, 0f)
+        glUseProgram(prog); glUniform3f(uEye, tgt.x + dist * sin(A) * cos(E), tgt.y + dist * sin(E), tgt.z + dist * cos(A) * cos(E))
         Matrix.multiplyMM(vp, 0, proj, 0, view, 0)
 
         val I = FloatArray(16).also { Matrix.setIdentityM(it, 0) }

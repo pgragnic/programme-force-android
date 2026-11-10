@@ -22,7 +22,7 @@ object C {
     val warm get() = p(0xFFE3A33E, 0xFFB87412); val cool get() = p(0xFFA88DEC, 0xFF7556C0); val hot get() = p(0xFFE0453A, 0xFFC2410C)
     val danger get() = p(0xFFF06A6A, 0xFFD23B3B); val fig get() = p(0xFFB9C6CF, 0xFF5B6B78); val mat get() = p(0xFF25333C, 0xFFC9D6D2)
     val db get() = p(0xFF1F9E6F, 0xFF0E8A5E)
-    val mrest get() = p(0xFFE8DAD5, 0xFFEFE2DD); val mhot get() = p(0xFFE0453A, 0xFFD7372C)
+    val mrest get() = p(0xFFD5D8DC, 0xFFDDE0E3)   // gris clair façon écorché; val mhot get() = p(0xFFE0453A, 0xFFD7372C)
     /** Texte posé sur une pastille colorée. */
     val onColor get() = if (dark) Color(0xFF06261A) else Color.White
     fun phase(k: String) = when (k) { "work" -> effort; "rest" -> rest; "switch" -> switch; "warm" -> warm; "cool" -> cool; else -> muted }
