@@ -80,6 +80,29 @@ fun SeanceScreen(onStart: () -> Unit) {
     val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
     val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
     val nSets = P.count { it.k == "work" }
+    // muscles pas encore récupérés sollicités par la séance (Philippe : « Et si je souhaite faire une séance par jour ? », choix « 3 » :
+    // alerte avant de démarrer, avec une autre séance proposée)
+    val days by Store.days.collectAsState()
+    val MU = remember(log, days) { Recovery.muscles(log, days) }
+    fun tired(ids: List<String>): Pair<Double, List<String>> {
+        val w = HashMap<String, Double>(); ids.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> w[k] = (w[k] ?: 0.0) + v } }
+        val tot = w.values.sum().takeIf { it > 0 } ?: return 0.0 to emptyList()
+        val t = w.filter { (k, v) -> v >= .7 && (MU.R[k] ?: 100) < 75 }
+        return t.values.sum() / tot to t.keys.sortedBy { MU.R[it] ?: 100 }
+    }
+    val (share, sore) = remember(order, MU) { tired(order) }
+    val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Prog.orderEx(st.c, it, st.w, st)).first }.minByOrNull { it.second }?.takeIf { it.second < share - .2 }?.first }
+    var warn by remember { mutableStateOf(false) }
+    if (warn) AlertDialog(onDismissRequest = { warn = false }, containerColor = C.surface,
+        title = { Text(t("Muscles pas encore récupérés", "Muscles not recovered yet"), color = C.ink, fontWeight = FontWeight.Bold) },
+        text = { Text(t("Cette séance sollicite surtout ", "This workout mostly works ") + sore.joinToString(", ") { "${tr(it)} (${MU.R[it]} %)" } + ". " +
+            (alt?.let { t("La séance $it (${tr(S[it]!!.t)}) les ménage davantage.", "Workout $it (${tr(S[it]!!.t)}) is easier on them.") } ?: t("Un jour de repos ou une activité douce leur ferait du bien.", "A rest day or light activity would help them.")),
+            color = C.muted) },
+        confirmButton = { Column(horizontalAlignment = Alignment.End) {
+            alt?.let { a -> TextButton(onClick = { warn = false; Store.setSettings { it.s = a } }) { Text(t("Passer à la séance $a", "Switch to workout $a"), color = C.effort, fontWeight = FontWeight.Bold) } }
+            TextButton(onClick = { warn = false; onStart() }) { Text(t("Démarrer quand même", "Start anyway"), color = C.ink) }
+            TextButton(onClick = { warn = false }) { Text(t("Annuler", "Cancel"), color = C.muted) }
+        } })
     // muscles les plus sollicités par la séance
     val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -131,7 +154,8 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(t("${order.size} exercices · $nSets séries · ${W.r} reps", "${order.size} exercises · $nSets sets · ${W.r} reps"), color = C.muted, fontSize = 13.sp)
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp),
+            if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
+            Button(onClick = { if (share >= .4) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
                 Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)

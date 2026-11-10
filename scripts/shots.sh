@@ -44,9 +44,15 @@ case " $POSES " in *" ergo "*)
   shot ergo-en-tab0 --es lang en --ez seed true --ei tab 0
   shot ergo-play5 --es lang fr --ez seed true --ei play 5; shot ergo-play7 --es lang fr --ez seed true --ei play 7;;
 esac
+# alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
+tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
+  b=$(python3 -c "import re,sys;x=open('shots/ui.xml').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
+case " $POSES " in *" warn "*)
+  shot warn-a --es lang fr --ez seed true --ei tab 0; sw warn-b; tapt "Démarrer"; adb exec-out screencap -p > shots/warn-c.png;;
+esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = warn ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3
