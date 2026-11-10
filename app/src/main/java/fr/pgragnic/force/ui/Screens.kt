@@ -517,7 +517,7 @@ fun RappelPanel() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var c by remember { mutableStateOf(Reminder.get(ctx)) }
     val perm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
-    fun upd(n: Reminder.Cfg) { c = n; Reminder.set(ctx, n) }
+    fun upd(n: Reminder.Cfg) { c = n; Reminder.set(ctx, n); Store.devChanged() }
     Panel {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -557,7 +557,7 @@ fun ThemePanel() {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("auto" to "Comme le téléphone", "fr" to "Français", "en" to "English").forEach { (m, tx) ->
                 val on = fr.pgragnic.force.L.mode == m
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { fr.pgragnic.force.L.save(ctx, m) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { fr.pgragnic.force.L.save(ctx, m); Store.devChanged() }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
                     Text(tx, color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 }
             }
@@ -566,7 +566,7 @@ fun ThemePanel() {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("auto" to "Comme le téléphone", "light" to "Clair", "dark" to "Sombre").forEach { (m, t) ->
                 val on = C.mode == m
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { C.save(ctx, m) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable { C.save(ctx, m); Store.devChanged() }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
                     Text(t, color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 }
             }

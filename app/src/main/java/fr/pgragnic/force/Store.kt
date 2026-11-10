@@ -91,6 +91,41 @@ object Store {
     private fun stTo(s: Settings) = buildJsonObject {
         put("c", s.c); put("w", s.w); put("s", s.s); put("rest", s.rest); put("bar", s.bar); put("n2", s.n2); put("n05", s.n05)
         put("gear", GearStore.online(GearStore.g.value))
+        devId()?.let { id -> put("dev", JsonObject(devAll + (id to devLocal()))) }
+    }
+
+    // Réglages propres à chaque téléphone (affichage et rappels), gardés en base mais par appareil. Demande de Philippe :
+    // « Pour l'affichage je souhaite que ce soit en base et lié au téléphone », puis « Pour les rappels aussi ».
+    // Clé : identifiant Android de l'appli sur ce téléphone (stable après réinstallation, différent sur un autre téléphone).
+    private var devAll: Map<String, JsonElement> = emptyMap()
+    private fun devId(): String? = app?.let { runCatching { android.provider.Settings.Secure.getString(it.contentResolver, android.provider.Settings.Secure.ANDROID_ID) }.getOrNull() }
+    private fun devLocal(): JsonObject {
+        val a = app; val r = a?.let { Reminder.get(it) } ?: Reminder.Cfg()
+        return buildJsonObject {
+            put("theme", fr.pgragnic.force.ui.C.mode); put("lang", L.mode)
+            put("rem", buildJsonObject { put("on", r.on); put("h", r.h); put("m", r.m); put("days", r.days) })
+        }
+    }
+    /** Affichage ou rappels changés sur ce téléphone : à envoyer en ligne. */
+    fun devChanged() {
+        prefs.edit().putBoolean("devdirty", true).apply()
+        val c = sb ?: return; if (user.value == null) return
+        scope.launch { runCatching { c.from("state").upsert(StateRow(stTo(st.value))); prefs.edit().putBoolean("devdirty", false).apply() } }
+    }
+    /** Réglages de ce téléphone trouvés en base : appliqués, sauf changement local pas encore envoyé. */
+    private suspend fun devFromOnline(o: JsonObject?) {
+        devAll = o ?: emptyMap()
+        val id = devId() ?: return; val a = app ?: return
+        val mine = devAll[id] as? JsonObject
+        if (mine == null || prefs.getBoolean("devdirty", false)) { devChanged(); return }
+        withContext(Dispatchers.Main) {
+            mine["theme"]?.jsonPrimitive?.contentOrNull?.let { if (it != fr.pgragnic.force.ui.C.mode) fr.pgragnic.force.ui.C.save(a, it) }
+            mine["lang"]?.jsonPrimitive?.contentOrNull?.let { if (it != L.mode) L.save(a, it) }
+            (mine["rem"] as? JsonObject)?.let { r ->
+                val n = Reminder.Cfg(r["on"]?.jsonPrimitive?.booleanOrNull ?: false, r["h"]?.jsonPrimitive?.intOrNull ?: 18, r["m"]?.jsonPrimitive?.intOrNull ?: 0, r["days"]?.jsonPrimitive?.intOrNull ?: 0b0011011)
+                if (n != Reminder.get(a)) Reminder.set(a, n)
+            }
+        }
     }
 
     /** Envoie le matériel et le profil avec les réglages. */
@@ -273,6 +308,7 @@ object Store {
                 log.value = merge(log.value, server, sPend, sDel)
                 runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
                     st.value = stFrom(r.data)
+                    runCatching { devFromOnline(r.data["dev"] as? JsonObject) }
                     val a = app
                     if (a != null) { val gj = r.data["gear"]; if (gj != null) withContext(Dispatchers.Main) { GearStore.fromOnline(a, gj) } else pushGear() }
                 } }
