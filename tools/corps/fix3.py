@@ -37,7 +37,9 @@ def fix(P3):
                 k['P'] = [0.0, 26.0, k['P'][2]]; k['N'] = [0.0, -12.0, k['N'][2]]; k['H'] = [0.0, -6.0, k['H'][2]]
             else: touch(k, ['P', 'N', 'H', 'S'], ['hips', 'chest'], ref)
             touch(k, ['E1', 'E2', 'W1', 'W2'], ['farmR', 'farmL', 'handR', 'handL'], ref)
-            touch(k, ['W1', 'W2'], ['handR', 'handL', 'finAR', 'finAL', 'finBR', 'finBL', 'thmbR', 'thmbL'], ref, 0.5)
+            # mains à plat : poignet à la hauteur du coude, doigts vers les pieds, paume au sol
+            for s in '12': k['W' + s][1] = k['E' + s][1]; k['F' + s] = [k['W' + s][0], k['W' + s][1], k['W' + s][2] + 9]
+            touch(k, ['W1', 'W2', 'F1', 'F2'], ['handR', 'handL', 'finAR', 'finAL', 'finBR', 'finBL'], ref, 0.6)
     # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
     for k in P3['plank']['k']:
         for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
