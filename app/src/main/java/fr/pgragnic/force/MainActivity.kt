@@ -37,12 +37,12 @@ class MainActivity : ComponentActivity() {
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
+        Demo.tired = intent.getBooleanExtra("tired", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
         Demo.muscle = intent.getStringExtra("muscle")
         Demo.sub = intent.getStringExtra("sub")
-        Demo.tired = intent.getBooleanExtra("tired", false)
         Demo.sub?.takeIf { it.toIntOrNull() == null }?.let { fr.pgragnic.force.ui.regSub.value = it }
         if (intent.getBooleanExtra("opensetup", false)) fr.pgragnic.force.ui.setupOpen.value = true
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
