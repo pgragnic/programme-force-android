@@ -63,6 +63,14 @@ def fix(P3):
         if id in P3: clear_db(P3, id)
     # bird dog : bras d'appui tendu sous l'épaule (Philippe : « Et le bras qui touche le sol n'est pas droit »)
     for k in P3['birddog']['k']: straighten(k, '12' if k['t'] < .5 else '1', ['shinL'])
+    # développé au sol : en bas, avant-bras verticaux au-dessus des coudes posés au sol (mains plus larges que les épaules), les haltères
+    # ne touchent plus la poitrine ; en haut, mains au-dessus des épaules comme avant
+    k0 = P3['floor']['k'][0]; W0 = {s: list(k0['W' + s]) for s in '12'}; E0 = {s: list(k0['E' + s]) for s in '12'}
+    for dx in range(0, 17):
+        for s, sx in (('1', 1), ('2', -1)):
+            k0['W' + s] = [round(W0[s][0] + sx * dx, 2), W0[s][1], W0[s][2]]; k0['E' + s] = [round(E0[s][0] + sx * dx * .6, 2), E0[s][1], E0[s][2]]
+        if db_pen(P3, 'floor', 0) == 0: break
+    print('développé au sol : mains écartées en bas de', dx, 'cm, reste', db_pen(P3, 'floor', 0))
     # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
     for k in P3['plank']['k']:
         for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
