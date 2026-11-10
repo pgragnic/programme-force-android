@@ -97,9 +97,35 @@ class LogiqueTest {
 
     @Test fun chargeMonteApresSeancesReussies() {
         val id = "hammer"; Prog.computeLoads(emptyList(), st); val k0 = Prog.kgOf(id, 1, st)
-        val log = (1..3).map { seance(it.toLong(), id, k0, 10, 10) }
+        val log = listOf(0, 7, 15).map { seance(it * Prog.DAY, id, k0, 10, 10) }
         Prog.computeLoads(log, st)
         assertTrue("${Prog.kgOf(id, 1, st)} <= $k0", Prog.kgOf(id, 1, st) > k0)
+    }
+
+    @Test fun plafondPetitesChargesUnCranToutesLesDeuxSemaines() {
+        // 4,8 → 5,8 kg = + 21 % : au-delà du plafond, permis seulement 14 jours après le premier essai ou la dernière hausse
+        GearStore.g.value = base.copy(level = 1)
+        val id = "hammer"; Prog.computeLoads(emptyList(), st); val k0 = Prog.kgOf(id, 1, st)
+        Prog.computeLoads(listOf(0, 2, 4).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
+        assertEquals(k0, Prog.kgOf(id, 1, st), 1e-6)
+        Prog.computeLoads(listOf(0, 2, 4, 14).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
+        assertTrue(Prog.kgOf(id, 1, st) > k0)
+    }
+
+    @Test fun plafondHebdoPlusPrudentApres50Ans() {
+        val fixe = base.copy(level = 1, dbMode = "fixed", fixed = listOf(20.0, 21.0, 22.0, 24.0))
+        val id = "hammer"
+        fun apres(g: Gear): Double {
+            GearStore.g.value = g; Prog.computeLoads(emptyList(), st)
+            var log = listOf(0L, 1L, 2L).map { seance(it * Prog.DAY, id, 20.0, 10, 10) }
+            Prog.computeLoads(log, st); val k1 = Prog.kgOf(id, 1, st)
+            log = log + listOf(3L, 4L, 5L).map { seance(it * Prog.DAY, id, k1, 10, 10) }
+            Prog.computeLoads(log, st); return Prog.kgOf(id, 1, st)
+        }
+        // standard (+ 10 %) : 20 → 21 → 22 dans la semaine ; 50 ans et plus (+ 5 %) : 20 → 21 seulement
+        assertEquals(22.0, apres(fixe), 1e-6)
+        assertEquals(21.0, apres(fixe.copy(born = java.time.LocalDate.now().year - 55)), 1e-6)
+        assertEquals(21.0, apres(fixe.copy(level = 0)), 1e-6)
     }
 
     @Test fun chargeBaisseApresDeuxEchecs() {

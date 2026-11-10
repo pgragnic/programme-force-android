@@ -245,21 +245,49 @@ object Prog {
     fun unitOf(id: String) = if (EX[id]?.lt == "band") "" else " kg"
     fun loadTxt(id: String, v: Double) = if (EX[id]?.lt == "band") t("niveau ${v.toInt()}/${gear.bands}", "level ${v.toInt()}/${gear.bands}") else "${fk(v)} kg"
 
+    // ---------- plafond de progression hebdomadaire ----------
+    // Demande de Philippe (10 novembre 2026) : « Oui pour un plafond de progression hebdomadaire, plus prudent pour les débutants et après 50 ans ».
+    // + 10 % par semaine au plus ; + 5 % pour un débutant ou à partir de 50 ans. Si le plus petit cran disponible dépasse
+    // le plafond (petites charges), ce cran est permis au plus une fois toutes les deux semaines.
+    const val DAY = 86_400_000L
+
+    /** Profil prudent : débutant ou 50 ans et plus. */
+    fun prudent(g: Gear = gear) = g.level == 0 || (g.age() ?: 0) >= 50
+
+    /** Hausse de charge maximale sur 7 jours glissants (0,05 ou 0,10). */
+    fun weeklyCap(g: Gear = gear) = if (prudent(g)) .05 else .10
+
+    /** Hausse permise ? hist = charges successives de l'exercice (date, charge), last = date de la dernière hausse ou du premier essai. */
+    fun capOk(id: String, nk: Double, d: Long, hist: List<Pair<Long, Double>>, last: Long, g: Gear = gear): Boolean {
+        val wait = d - last >= 14 * DAY
+        if (EX[id]?.lt == "band") return d - last >= (if (prudent(g)) 14 else 7) * DAY   // niveaux d'élastique : pas de pourcentage
+        val ref = hist.lastOrNull { it.first <= d - 7 * DAY }?.second ?: hist.firstOrNull()?.second ?: return true
+        return nk <= ref * (1 + weeklyCap(g)) + 1e-6 || wait
+    }
+
     fun computeLoads(log: List<Entry>, st: Settings) {
         val L = HashMap<String, DoubleArray>()
         EX.values.forEach { if (hasDb(it.id)) L[it.id] = doubleArrayOf(startLoad(it.id), 0.0, 0.0) }
         ups.clear()
+        val hist = HashMap<String, MutableList<Pair<Long, Double>>>(); val last = HashMap<String, Long>()
         log.sortedBy { it.d }.forEach { e ->
             if (e.w == 7) return@forEach
             e.ex.forEach { x ->
                 val q = L[x.id] ?: return@forEach
                 if (x.kg <= 0) return@forEach
                 q[0] = x.kg
+                val h = hist.getOrPut(x.id) { mutableListOf() }; if (h.lastOrNull()?.second != x.kg) h += e.d to x.kg
+                last.putIfAbsent(x.id, e.d)
                 val fe = x.f
                 if (x.done >= x.target && fe == "Difficile") q[2] = 0.0
                 else if (x.done >= x.target) {
                     q[2] = 0.0; q[1] += if (fe == "Facile") 2.0 else 1.0
-                    if (q[1] >= need(x.id)) { val nk = nextStep(x.id, q[0], 1); if (nk > q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${loadTxt(x.id, nk)}") }; q[1] = 0.0 }
+                    if (q[1] >= need(x.id)) {
+                        val nk = nextStep(x.id, q[0], 1)
+                        if (nk > q[0] && !capOk(x.id, nk, e.d, h, last[x.id]!!)) { q[1] = need(x.id).toDouble(); return@forEach } // plafond atteint : la hausse attend
+                        if (nk > q[0]) { q[0] = nk; h += e.d to nk; last[x.id] = e.d; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${loadTxt(x.id, nk)}") }
+                        q[1] = 0.0
+                    }
                 } else if (x.done < x.target - 1) {
                     q[1] = 0.0; q[2]++
                     if (q[2] >= 2) { val nk = nextStep(x.id, q[0], -1); if (nk < q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↓ ${x.n} ${loadTxt(x.id, nk)}") }; q[2] = 0.0 }
