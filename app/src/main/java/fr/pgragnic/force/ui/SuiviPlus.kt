@@ -32,7 +32,7 @@ object Bilan {
         val cur = L.filter { it.d >= m0 }; val prev = L.filter { it.d >= m0 - wk && it.d < m0 }
         val out = ArrayList<String>()
         val names = cur.map { it.s }.distinct().sorted().joinToString(", ")
-        out += t("Séances : ${cur.size} sur 4 cette semaine", "Sessions: ${cur.size} of 4 this week") + if (names.isNotBlank()) " ($names)." else "."
+        out += t("Séances : ${cur.size} sur ${GearStore.g.value.perWeek} cette semaine", "Sessions: ${cur.size} of ${GearStore.g.value.perWeek} this week") + if (names.isNotBlank()) " ($names)." else "."
         val v = cur.sumOf { volOf(it) }; val vp = prev.sumOf { volOf(it) }
         if (v > 0) out += t("Volume soulevé : ${Prog.fk((v).roundToInt().toDouble())} kg", "Volume lifted: ${Prog.fk((v).roundToInt().toDouble())} kg") + if (vp > 0) t(" (${if (v >= vp) "+" else "−"}${(kotlin.math.abs(v - vp) / vp * 100).roundToInt()} % par rapport à la semaine dernière).", " (${if (v >= vp) "+" else "−"}${(kotlin.math.abs(v - vp) / vp * 100).roundToInt()}% vs last week).") else "."
         // charges en hausse

@@ -59,6 +59,28 @@ object Prog {
 
     /** Version du programme en cours : 0 = celle livrée avec l'appli, sinon numéro de la version en base. */
     var version = 0L
+
+    /** Part de la séance (pondérée par muscle principal) qui sollicite des muscles pas encore récupérés (< 75 %), et ces muscles. */
+    fun tired(ids: List<String>, R: Map<String, Int>): Pair<Double, List<String>> {
+        val w = HashMap<String, Double>(); ids.forEach { id -> MAP[id]?.forEach { (k, v) -> w[k] = (w[k] ?: 0.0) + v } }
+        val tot = w.values.sum().takeIf { it > 0 } ?: return 0.0 to emptyList()
+        val t = w.filter { (k, v) -> v >= .7 && (R[k] ?: 100) < 75 }
+        return t.values.sum() / tot to t.keys.sortedBy { R[it] ?: 100 }
+    }
+
+    /** Prochaine séance : celle qui ménage le mieux les muscles en récupération ; à égalité, celle faite il y a le plus longtemps. */
+    fun nextSess(st: Settings, log: List<Entry>, days: List<DayRec>): String {
+        val R = Recovery.muscles(log, days).R
+        val last = sess(st.c).keys.associateWith { s -> log.filter { it.s == s }.maxOfOrNull { it.d } ?: 0L }
+        return sess(st.c).keys.minWith(compareBy<String>({ (tired(orderEx(st.c, it, st.w, st), R).first * 10).roundToInt() }, { last[it] })) 
+    }
+
+    /** Lundi 0 h (heure locale) de la semaine de « t ». */
+    fun mondayOf(t: Long): Long {
+        val c = java.util.Calendar.getInstance().apply { timeInMillis = t; set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }
+        while (c.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) c.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        return c.timeInMillis
+    }
     /** étirement d'un seul côté (drapeau « sides » de la pose 3D) : changement de côté à mi-temps */
     fun sides(id: String?) = id != null && raw["POSES3"]?.jsonObject?.get(id)?.jsonObject?.get("sides")?.jsonPrimitive?.booleanOrNull == true
 

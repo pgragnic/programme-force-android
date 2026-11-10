@@ -35,6 +35,10 @@ data class Gear(
     val born: Int? = null,
     /** durée maximale d'une séance en minutes (null = sans limite) ; demande de Philippe : « Plafond au choix dans Infos » */
     val maxMin: Int? = null,
+    /** séances par semaine (3 à 6) et lundi où la semaine du programme en cours a commencé (la semaine avance au calendrier).
+     *  Philippe : « Et si je souhaite faire une séance par jour ? », choix « 2 et 3 ». */
+    val perWeek: Int = 4,
+    val wkStart: Long? = null,
     /** objectif : poids, muscle, forme, mobilite, sante */
     val obj: String? = null,
     /** zones à travailler en priorité : bras, ventre, jambes, poitrine, dos */

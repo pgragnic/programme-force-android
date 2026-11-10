@@ -106,6 +106,19 @@ object Store {
             put("rem", buildJsonObject { put("on", r.on); put("h", r.h); put("m", r.m); put("days", r.days) })
         }
     }
+    /** La semaine du programme avance au calendrier : un nouveau lundi fait passer à la semaine suivante si au moins une séance
+     *  de la semaine en cours a été faite depuis son début (sinon la semaine est simplement reprise). */
+    fun rollWeek() {
+        val a = app ?: return; val g = GearStore.g.value; val m = Prog.mondayOf(System.currentTimeMillis())
+        val start = g.wkStart
+        if (start == null) { GearStore.save(a, g.copy(wkStart = m)); return }
+        if (start >= m) return
+        val s = st.value
+        if (log.value.any { it.c == s.c && it.w == s.w && it.d >= start }) setSettings { if (it.w < 7) it.w++ else { it.c++; it.w = 0 } }
+        setSettings { it.s = Prog.nextSess(st.value, log.value, days.value) }
+        GearStore.save(a, GearStore.g.value.copy(wkStart = m))
+    }
+
     /** Affichage ou rappels changés sur ce téléphone : à envoyer en ligne. */
     fun devChanged() {
         prefs.edit().putBoolean("devdirty", true).apply()

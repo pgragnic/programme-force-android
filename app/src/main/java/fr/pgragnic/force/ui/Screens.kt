@@ -77,6 +77,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
     var weeks by remember { mutableStateOf(false) }; var list by remember { mutableStateOf(false) }
+    LaunchedEffect(log) { Store.rollWeek() }
     val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
     val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
     val nSets = P.count { it.k == "work" }
@@ -84,12 +85,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     // alerte avant de démarrer, avec une autre séance proposée)
     val days by Store.days.collectAsState()
     val MU = remember(log, days) { Recovery.muscles(log, days) }
-    fun tired(ids: List<String>): Pair<Double, List<String>> {
-        val w = HashMap<String, Double>(); ids.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> w[k] = (w[k] ?: 0.0) + v } }
-        val tot = w.values.sum().takeIf { it > 0 } ?: return 0.0 to emptyList()
-        val t = w.filter { (k, v) -> v >= .7 && (MU.R[k] ?: 100) < 75 }
-        return t.values.sum() / tot to t.keys.sortedBy { MU.R[it] ?: 100 }
-    }
+    fun tired(ids: List<String>) = Prog.tired(ids, MU.R)
     val (share, sore) = remember(order, MU) { tired(order) }
     val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Prog.orderEx(st.c, it, st.w, st)).first }.minByOrNull { it.second }?.takeIf { it.second < share - .2 }?.first }
     var warn by remember { mutableStateOf(false) }
@@ -107,7 +103,8 @@ fun SeanceScreen(onStart: () -> Unit) {
     val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column {
-            Text(t("Cycle ${st.c} · semaine ${st.w + 1} sur 8", "Cycle ${st.c} · week ${st.w + 1} of 8"), color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            val nWk = remember(log) { val m = Prog.mondayOf(System.currentTimeMillis()); log.count { it.d >= m } }
+            Text(t("Cycle ${st.c} · semaine ${st.w + 1} sur 8 · $nWk/${gear.perWeek} cette semaine", "Cycle ${st.c} · week ${st.w + 1} of 8 · $nWk/${gear.perWeek} this week"), color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Text(t("Ta prochaine séance", "Your next workout"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
         }
         // sélecteur compact : semaine (déplie cycles et semaines) et séance
@@ -243,8 +240,9 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
             val ex = recsOf(rows); val b = bw.replace(',', '.').toDoubleOrNull()
             val e = Entry(d = System.currentTimeMillis(), c = ses.c, w = ses.w, s = ses.s, f = overall(ex), rest = st.rest, ex = ex, bw = b, kcal = Prog.sessKcal(ses.P, b ?: 80.0))
             Store.add(e)
-            val order = listOf("A", "B", "C", "D"); val ni = order.indexOf(ses.s)
-            Store.setSettings { if (ni < 3) it.s = order[ni + 1] else if (it.w < 7) { it.w++; it.s = "A" } else { it.c++; it.w = 0; it.s = "A" } }
+            // prochaine séance : celle qui ménage le mieux les muscles qui viennent de travailler ; la semaine avance au calendrier (Store.rollWeek)
+            val nx = Prog.nextSess(Store.st.value, Store.log.value, Store.days.value)
+            Store.setSettings { it.s = nx }
             onDone()
         }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(16.dp)) { Text("Enregistrer la séance", fontWeight = FontWeight.Black) }
         TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Quitter sans enregistrer", color = C.muted) }
@@ -365,7 +363,7 @@ fun ReglagesScreen() {
                     NewsPanel(); LegalPanel()
                     Panel {
                         Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
-                        Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
+                        Text("8 semaines, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
                         Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0)."), color = C.muted, fontSize = 12.sp)
                     }
                 }
@@ -421,6 +419,7 @@ val REG = listOf(
 /** Sous-page « Mon programme » : tout ce qui change les séances. */
 @Composable
 fun ProgrammePage() {
+    val ctx0 = androidx.compose.ui.platform.LocalContext.current; fun ctxOf() = ctx0
     val g by GearStore.g.collectAsState(); val st by Store.st.collectAsState()
     val names = remember { Prog.raw["EQ"]?.jsonArray?.flatMap { s -> s.jsonArray[1].jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }?.toMap() ?: emptyMap() }
     Text(t("Tout ce qui change tes séances, au même endroit. Une modification met le programme à jour.", "Everything that shapes your workouts, in one place. Any change updates your program."), color = C.muted, fontSize = 13.sp)
@@ -444,6 +443,16 @@ fun ProgrammePage() {
             }
             if (i < rows.size - 1) HorizontalDivider(color = C.line)
         }
+    }
+    Panel {
+        Text(t("Séances par semaine", "Workouts per week"), color = C.ink, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(3, 4, 5, 6).forEach { n -> val on = g.perWeek == n
+                Text("$n", color = if (on) C.bg else C.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (on) C.ink else C.bg).clickable { GearStore.save(ctxOf(), g.copy(perWeek = n)) }.padding(vertical = 10.dp)) }
+        }
+        Text(t("La semaine du programme avance chaque lundi. La prochaine séance est choisie pour laisser récupérer les muscles déjà travaillés.",
+            "The program week moves on every Monday. Your next workout is picked to let recently worked muscles recover."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
     }
     DureePanel()
     Panel {
