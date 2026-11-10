@@ -257,7 +257,7 @@ fun SetupScreen(onDone: () -> Unit) {
         Button(onClick = { if (tabs) save() else go(1) }, enabled = okNext, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp)) {
             Text(if (tabs || step == 3) "Enregistrer" else "Continuer", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
-        if (!cur.done && step == 0) Text(t("Tout est modifiable plus tard dans Infos → Matériel et profil.", "Everything can be changed later in Info → Equipment and profile."),
+        if (!cur.done && step == 0) Text(t("Tout est modifiable plus tard dans Réglages → Mon programme.", "Everything can be changed later in Settings → My program."),
             color = C.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }

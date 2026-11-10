@@ -62,7 +62,7 @@ object Kcal {
 private val ACTS = listOf("Aucune", "Marche lestée", "Randonnée", "Trail")
 
 @Composable
-fun ActiviteScreen() {
+fun ActiviteScreen(inProgres: Boolean = false) {
     val ctx = LocalContext.current; val scope = rememberCoroutineScope()
     val days by Store.days.collectAsState(); val log by Store.log.collectAsState()
     val hcStatus by Health.status.collectAsState(); val granted by Health.granted.collectAsState()
@@ -88,7 +88,7 @@ fun ActiviteScreen() {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column {
-            Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            if (!inProgres) Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
             Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
@@ -211,7 +211,7 @@ fun ActiviteScreen() {
                 Text(t("Au repos : ${Kcal.kr(rest)} par jour", "At rest: ${Kcal.kr(rest)} per day"), color = C.ink, fontWeight = FontWeight.Bold)
                 Text(t("Soit ${Kcal.kr(rest * 7)} sur 7 jours, ${Kcal.kr(rest * 7 + tot)} en tout avec l'activité. Métabolisme de base estimé d'après ta taille, ton âge, ton sexe et ton poids (formule de Mifflin-St Jeor).",
                     "That is ${Kcal.kr(rest * 7)} over 7 days, ${Kcal.kr(rest * 7 + tot)} in total with activity. Basal metabolic rate estimated from your height, age, sex and weight (Mifflin-St Jeor equation)."), color = C.muted, fontSize = 12.sp)
-            } else Text(t("Renseigne ta taille, ton âge et ton sexe dans Infos → Matériel et profil pour voir aussi ta dépense au repos.", "Add your height, age and sex in Info → Equipment and profile to also see your resting burn."), color = C.muted, fontSize = 12.sp)
+            } else Text(t("Renseigne ta taille, ton âge et ton sexe dans Réglages → Mon programme pour voir aussi ta dépense au repos.", "Add your height, age and sex in Settings → My program to also see your resting burn."), color = C.muted, fontSize = 12.sp)
         }
     }
 }

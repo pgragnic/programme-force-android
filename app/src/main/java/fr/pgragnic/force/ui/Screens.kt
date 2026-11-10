@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -63,6 +66,8 @@ fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, onClick: () -> Uni
 }
 
 // ---------------- Séance ----------------
+// Écran centré sur la prochaine séance (maquette « ② Séance » validée par Philippe : « Ok pour ces écrans ! »)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SeanceScreen(onStart: () -> Unit) {
     val st by Store.st.collectAsState(); val log by Store.log.collectAsState()
@@ -71,61 +76,91 @@ fun SeanceScreen(onStart: () -> Unit) {
     remember(log, gear) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Eyebrow("Haltères réglables · 4 séances par semaine")
-        Text("UpRep", fontSize = 30.sp, fontWeight = FontWeight.Black, color = C.ink)
-        Store.progNote.collectAsState().value.takeIf { it.isNotBlank() }?.let { Text(it, color = C.effort, fontSize = 13.sp) }
+    var weeks by remember { mutableStateOf(false) }; var list by remember { mutableStateOf(false) }
+    val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
+    val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+    val nSets = P.count { it.k == "work" }
+    // muscles les plus sollicités par la séance
+    val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column {
+            Text(t("Cycle ${st.c} · semaine ${st.w + 1} sur 8", "Cycle ${st.c} · week ${st.w + 1} of 8"), color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(t("Ta prochaine séance", "Your next workout"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+        }
+        // sélecteur compact : semaine (déplie cycles et semaines) et séance
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
-            Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            (0 until 8).forEach { w ->
-                val n = listOf("A", "B", "C", "D").count { "${st.c}-$w-$it" in done }
-                WeekChip(w, n, st.w == w, Modifier.weight(1f)) { Store.setSettings { it.w = w } }
+            Row(Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(20.dp)).clickable { weeks = !weeks }.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Icon(if (weeks) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
             }
-        }
-        Eyebrow(t("Cycle ${st.c} · semaine ${st.w + 1} · ${W.t}", "Cycle ${st.c} · week ${st.w + 1} · ${tr(W.t)}"))
-        Text(t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"), color = C.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text(W.note, color = C.muted)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            S.keys.forEach { s ->
-                val on = st.s == s
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { Store.setSettings { it.s = s } }
-                    .background(if (on) C.surface else Color.Transparent).padding(8.dp)) {
-                    Text(s + if ("${st.c}-${st.w}-$s" in done) " ✓" else "", color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                    Text(S[s]!!.t, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp)
-                    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).background(if (on) C.effort else C.line))
-                }
-            }
-        }
-        val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
-        val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
-        Panel {
-            order.forEachIndexed { i, id ->
-                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", color = C.muted, modifier = Modifier.width(22.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(e.n, color = C.ink, fontWeight = FontWeight.Bold)
-                        Text(Prog.load(id, st.w, st) + " · " + e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp)
+            Row(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(20.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(20.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                S.keys.forEach { s ->
+                    val on = st.s == s; val ok = "${st.c}-${st.w}-$s" in done
+                    Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(17.dp)).background(if (on) C.effort else Color.Transparent).clickable { Store.setSettings { it.s = s } }, contentAlignment = Alignment.Center) {
+                        Text(s + if (ok) " ✓" else "", color = if (on) C.onColor else C.muted, fontWeight = if (on) FontWeight.Black else FontWeight.Bold, fontSize = 13.sp)
                     }
-                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                if (i < order.size - 1) HorizontalDivider(color = C.line)
             }
         }
-        gear.maxMin?.let { m -> if (P.count { it.k == "work" } < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
-            Text(t("Séance raccourcie pour tenir en $m min : une série de moins sur certains exercices. Réglage dans Infos → Durée des séances.", "Workout shortened to fit in $m min: one set fewer on some exercises. Setting in Info → Workout length."), color = C.muted, fontSize = 12.sp) }
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp)) {
-            Icon(Icons.Default.PlayArrow, null) // le texte du bouton suffit; Spacer(Modifier.width(8.dp))
-            Text(t("Démarrer la séance ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}", "Start workout ${st.s} · ${Prog.fmt(P.sumOf { it.dur })}"), fontWeight = FontWeight.Black, fontSize = 17.sp)
+        if (weeks) Panel {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
+                Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                (0 until 8).forEach { w ->
+                    val n = listOf("A", "B", "C", "D").count { "${st.c}-$w-$it" in done }
+                    WeekChip(w, n, st.w == w, Modifier.weight(1f)) { Store.setSettings { it.w = w } }
+                }
+            }
+            Text(tr(W.t) + " · " + t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"),
+                color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(W.note, color = C.muted, fontSize = 12.sp)
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Pause entre séries", color = C.muted, modifier = Modifier.weight(1f))
-            listOf(30, 45, 60, 90).forEach { r -> Box(Modifier.padding(start = 4.dp)) { PChip("${r}s", st.rest == r) { Store.setSettings { it.rest = r } } } }
+        // carte de la séance
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(22.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(t("SÉANCE ${st.s}", "WORKOUT ${st.s}"), color = C.effort, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+                Text("≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", color = C.muted, fontSize = 13.sp)
+            }
+            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 31.sp)
+            if (mus.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                mus.forEach { Text(tr(it), color = C.ink, fontSize = 12.sp, modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(C.bg).padding(horizontal = 10.dp, vertical = 5.dp)) }
+            }
+            Text(t("${order.size} exercices · $nSets séries · ${W.r} reps", "${order.size} exercises · $nSets sets · ${W.r} reps"), color = C.muted, fontSize = 13.sp)
+            gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
+                Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) {
+                Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
+                Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)
+            }
         }
-        Text(Store.sync.collectAsState().value, color = C.muted, fontSize = 12.sp)
+        // exercices, repliés
+        Column {
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { list = !list }, verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Ce que tu vas faire", "What you'll do"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Text(if (list) t("Réduire", "Less") else t("Voir", "Show"), color = C.muted, fontSize = 13.sp)
+                Icon(if (list) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
+            }
+            HorizontalDivider(color = C.line)
+            val shown = if (list) order else order.take(2)
+            shown.forEach { id ->
+                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(e.n, color = C.ink, fontSize = 14.sp)
+                        if (list) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp)
+                    }
+                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                        color = C.muted, fontSize = 13.sp, textAlign = TextAlign.End, modifier = Modifier.padding(start = 8.dp).widthIn(max = 170.dp))
+                }
+                HorizontalDivider(color = C.line)
+            }
+            if (!list && order.size > 2) Text(t("+ ${order.size - 2} autres exercices", "+ ${order.size - 2} more exercises"), color = C.muted, fontSize = 14.sp,
+                modifier = Modifier.fillMaxWidth().clickable { list = true }.padding(vertical = 10.dp))
+        }
     }
 }
 
@@ -197,7 +232,7 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
 
 // ---------------- Suivi ----------------
 @Composable
-fun SuiviScreen() {
+fun SuiviScreen(inProgres: Boolean = false) {
     val log by Store.log.collectAsState()
     var open by remember { mutableStateOf<Long?>(null) }
     var edit by remember { mutableStateOf<Long?>(null) }
@@ -205,12 +240,12 @@ fun SuiviScreen() {
     val df = remember { SimpleDateFormat("EEE d MMM", fr.pgragnic.force.L.loc) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Text("Suivi", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            if (!inProgres) Text("Suivi", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
             val wk = log.count { it.d > System.currentTimeMillis() - 7 * 86400000L }
             Text(t("${log.size} séances au total · $wk ces 7 derniers jours", "${log.size} sessions in total · $wk in the last 7 days"), color = C.muted, modifier = Modifier.padding(bottom = 6.dp))
         }
         item { BilanPanel() }
-        item { ProgressPanel() }
+        if (!inProgres) item { ProgressPanel() }
         item { Box(Modifier.padding(top = 8.dp)) { Eyebrow("Historique") } }
         items(log.sortedByDescending { it.d }, key = { it.d }) { e ->
             Panel {
@@ -251,17 +286,162 @@ fun SuiviScreen() {
     }
 }
 
-// ---------------- Infos ----------------
+// ---------------- Progrès ----------------
+// Suivi et Activité réunis (maquette « ④ Progrès » validée par Philippe : « Ok pour ces écrans ! »)
 @Composable
-fun InfosScreen() {
-    val user by Store.user.collectAsState(); val st by Store.st.collectAsState()
+fun ProgresScreen() {
+    var sub by rememberSaveable { mutableIntStateOf(Demo.sub?.toIntOrNull() ?: 0) }
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(t("Progrès", "Progress"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            Seg3(listOf(t("Semaine", "Week"), t("Courbes", "Charts"), t("Activité", "Activity")), sub) { sub = it }
+        }
+        Box(Modifier.weight(1f)) {
+            when (sub) {
+                0 -> SuiviScreen(inProgres = true)
+                1 -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) { ProgressPanel() }
+                else -> ActiviteScreen(inProgres = true)
+            }
+        }
+    }
+}
+
+/** Sélecteur segmenté (sous-onglets). */
+@Composable
+fun Seg3(opts: List<String>, sel: Int, onSel: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth().height(42.dp).clip(RoundedCornerShape(14.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(14.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        opts.forEachIndexed { i, o ->
+            val on = i == sel
+            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(11.dp)).background(if (on) C.line else Color.Transparent).clickable { onSel(i) }, contentAlignment = Alignment.Center) {
+                Text(o, color = if (on) C.ink else C.muted, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+            }
+        }
+    }
+}
+
+// ---------------- Réglages ----------------
+// Infos devient « Réglages » : une liste courte et des sous-pages (maquette « ① Réglages » validée par Philippe : « Ok pour ces écrans ! »)
+/** sous-page ouverte de Réglages ; gardée en dehors de l'écran pour y revenir après la modification du matériel ou du profil */
+val regSub = mutableStateOf<String?>(null)
+
+@Composable
+fun ReglagesScreen() {
+    var sub by regSub
+    if (sub != null) {
+        androidx.activity.compose.BackHandler { sub = null }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).clickable { sub = null }.padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ChevronLeft, null, tint = C.muted); Text(t("Réglages", "Settings"), color = C.muted, fontWeight = FontWeight.SemiBold)
+            }
+            Text(REG.first { it.k == sub }.t(), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            when (sub) {
+                "prog" -> ProgrammePage()
+                "rappels" -> RappelPanel()
+                "compte" -> { AccountPanel(); ExportPanel() }
+                "affichage" -> ThemePanel()
+                "avis" -> FeedbackPanel()
+                else -> {
+                    NewsPanel(); LegalPanel()
+                    Panel {
+                        Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
+                        Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
+                        Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0)."), color = C.muted, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        return
+    }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val user by Store.user.collectAsState(); val g by GearStore.g.collectAsState(); val sync by Store.sync.collectAsState()
+    val rem = remember(sub) { Reminder.get(ctx) }
+    fun subOf(k: String): String = when (k) {
+        "prog" -> t("Matériel, charges, santé, profil, durée", "Equipment, loads, health, profile, length")
+        "rappels" -> if (rem.on) t("LMMJVSD", "MTWTFSS").filterIndexed { i, _ -> (rem.days shr i) and 1 == 1 } + " · ${rem.h} h ${rem.m.toString().padStart(2, '0')}" else t("Désactivés", "Off")
+        "compte" -> if (user != null) user!! else t("Non connecté · sauvegarde en ligne", "Not signed in · online backup")
+        "affichage" -> (when (C.mode) { "light" -> t("Thème clair", "Light theme"); "dark" -> t("Thème sombre", "Dark theme"); else -> t("Thème du téléphone", "Phone theme") }) + " · " +
+            when (fr.pgragnic.force.L.mode) { "fr" -> "Français"; "en" -> "English"; else -> t("Langue du téléphone", "Phone language") }
+        "avis" -> t("Une idée, un souci ?", "An idea, a problem?")
+        else -> t("Nouveautés, version, confidentialité", "What's new, version, privacy")
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(t("Réglages", "Settings"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+        listOf(REG.take(3), REG.drop(3)).forEach { grp ->
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(18.dp))) {
+                grp.forEachIndexed { i, r ->
+                    Row(Modifier.fillMaxWidth().clickable { sub = r.k }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(if (r.k == "prog") C.effort.copy(alpha = .18f) else C.bg), contentAlignment = Alignment.Center) {
+                            Icon(r.ic, null, tint = if (r.k == "prog") C.effort else C.muted, modifier = Modifier.size(20.dp))
+                        }
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text(r.t(), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(subOf(r.k), color = C.muted, fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.Default.ChevronRight, null, tint = C.muted)
+                    }
+                    if (i < grp.size - 1) HorizontalDivider(color = C.line)
+                }
+            }
+        }
+        if (user != null && sync.isNotBlank()) Text(sync, color = C.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text("UpRep ${BuildConfig.VERSION_NAME}", color = C.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+class RegItem(val k: String, val fr: String, val en: String, val ic: androidx.compose.ui.graphics.vector.ImageVector) { fun t() = t(fr, en) }
+val REG = listOf(
+    RegItem("prog", "Mon programme", "My program", Icons.Default.FitnessCenter),
+    RegItem("rappels", "Rappels", "Reminders", Icons.Default.NotificationsNone),
+    RegItem("compte", "Compte et sauvegarde", "Account and backup", Icons.Default.CloudDone),
+    RegItem("affichage", "Affichage", "Display", Icons.Default.DarkMode),
+    RegItem("avis", "Donner mon avis", "Send feedback", Icons.Default.ChatBubbleOutline),
+    RegItem("apropos", "À propos et confidentialité", "About and privacy", Icons.Default.Info))
+
+/** Sous-page « Mon programme » : tout ce qui change les séances. */
+@Composable
+fun ProgrammePage() {
+    val g by GearStore.g.collectAsState(); val st by Store.st.collectAsState()
+    val names = remember { Prog.raw["EQ"]?.jsonArray?.flatMap { s -> s.jsonArray[1].jsonArray.map { it.jsonArray[0].jsonPrimitive.content to it.jsonArray[1].jsonPrimitive.content } }?.toMap() ?: emptyMap() }
+    Text(t("Tout ce qui change tes séances, au même endroit. Une modification met le programme à jour.", "Everything that shapes your workouts, in one place. Any change updates your program."), color = C.muted, fontSize = 13.sp)
+    val rows = listOf(
+        t("Mon matériel", "My equipment") to g.items.mapNotNull { names[it]?.let { n -> tr(n) } }.ifEmpty { listOf(t("Poids du corps seulement", "Bodyweight only")) }.joinToString(" · "),
+        t("Tes charges", "Your loads") to (listOfNotNull(
+            if ("db" in g.items) (if (g.dbMode == "fixed") t("Haltères ", "Dumbbells ") + g.fixed.joinToString(", ") { Prog.fk(it) } + " kg" else t("Haltères jusqu'à ${Prog.fk(g.dbWeights().last())} kg", "Dumbbells up to ${Prog.fk(g.dbWeights().last())} kg")) else null,
+            if ("kb" in g.items) "Kettlebell " + g.kbs.joinToString(", ") { Prog.fk(it) } + " kg" else null,
+            if ("barbell" in g.items) t("Barre jusqu'à ${Prog.fk(g.bbWeights().last())} kg", "Barbell up to ${Prog.fk(g.bbWeights().last())} kg") else null).joinToString(" · ").ifBlank { t("Rien à régler", "Nothing to set") }),
+        t("Ta santé", "Your health") to (if (g.limits.isEmpty()) t("Aucune zone à ménager", "No area to protect") else t("À ménager : ", "Protect: ") + Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { tr(it.second) }),
+        t("Ton profil", "Your profile") to listOfNotNull(g.height?.let { "$it cm" }, g.age()?.let { t("$it ans", "$it years old") }, when (g.sex) { "m" -> t("homme", "male"); "f" -> t("femme", "female"); else -> null }, g.bw?.let { "${Prog.fk(it)} kg" })
+            .ifEmpty { listOf(t("Taille, sexe, âge, poids", "Height, sex, age, weight")) }.joinToString(" · "))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(18.dp))) {
+        rows.forEachIndexed { i, (h, d) ->
+            Row(Modifier.fillMaxWidth().clickable { Demo.setupStep = i; setupOpen.value = true }.padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(h, color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(d, color = C.muted, fontSize = 12.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+                Icon(Icons.Default.ChevronRight, null, tint = C.muted)
+            }
+            if (i < rows.size - 1) HorizontalDivider(color = C.line)
+        }
+    }
+    DureePanel()
+    Panel {
+        Text(t("Pause entre séries", "Rest between sets"), color = C.ink, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(30, 45, 60, 90).forEach { r -> val on = st.rest == r
+                Text("$r s", color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (on) C.ink else C.bg).clickable { Store.setSettings { it.rest = r } }.padding(vertical = 10.dp)) }
+        }
+    }
+}
+
+/** Compte et sauvegarde en ligne. */
+@Composable
+fun AccountPanel() {
+    val user by Store.user.collectAsState()
     var email by remember { mutableStateOf("") }; var pw by remember { mutableStateOf("") }; var pw2 by remember { mutableStateOf("") }
     var show by remember { mutableStateOf(false) }; var create by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Infos", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-        GearPanel()
-        DureePanel()
         Panel {
             Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
             val rec by Store.recovery.collectAsState()
@@ -324,17 +504,6 @@ fun InfosScreen() {
                 msg?.let { Text(it, color = C.muted, fontSize = 13.sp) }
             }
         }
-        FeedbackPanel()
-        RappelPanel()
-        ThemePanel()
-        LegalPanel()
-        ExportPanel()
-        Panel {
-            Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
-            Text("8 semaines, 4 séances (A, B, C, D), adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
-            Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0)."), color = C.muted, fontSize = 12.sp)
-        }
-    }
 }
 
 @Composable

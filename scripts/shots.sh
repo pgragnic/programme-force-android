@@ -9,10 +9,10 @@ shot() { n=$1; shift; adb shell am force-stop fr.pgragnic.force; sleep 2; adb sh
 sw() { adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/$1.png; }
 QUICK=0; case " $POSES " in *" quick "*) QUICK=1;; esac
 if [ $QUICK = 0 ]; then
-for t in 0 1 2 3 4; do shot fr-tab$t --es lang fr --ez seed true --ei tab $t; done
+for t in 0 1 2 3; do shot fr-tab$t --es lang fr --ez seed true --ei tab $t; done
 shot fr-play5 --es lang fr --ez seed true --ei play 5
 shot en-setup --es lang en --es gear new; sw en-setup-b
-for t in 0 1 2 3 4; do shot en-tab$t --es lang en --ez seed true --ei tab $t; sw en-tab$t-b; sw en-tab$t-c; done
+for t in 0 1 2 3; do shot en-tab$t --es lang en --ez seed true --ei tab $t; sw en-tab$t-b; sw en-tab$t-c; done
 shot en-kb0 --es lang en --es gear kb --ei tab 0; sw en-kb0-b
 shot en-play5 --es lang en --ez seed true --ei play 5
 adb shell cmd statusbar expand-notifications; sleep 4; adb exec-out screencap -p > shots/en-notif.png; adb shell cmd statusbar collapse
@@ -29,16 +29,24 @@ case " $POSES " in *" clips "*)
     rec v-$L-play 14 none --es lang $L --ez seed true --ei play 6
     rec v-$L-seance 7 scroll --es lang $L --ez seed true --ei tab 0
     rec v-$L-corps 5 none --es lang $L --ez seed true --ei tab 1
-    rec v-$L-suivi 7 scroll --es lang $L --ez seed true --ei tab 3
+    rec v-$L-suivi 7 scroll --es lang $L --ez seed true --ei tab 2
     rec v-$L-profil 5 none --es lang $L --es gear kb --ei setupstep 0 --ez opensetup true
   done
   for d in kbswing pushup lunge press; do rec v-demo-$d 5 none --es lang fr --es demo $d --ez clean true; done
   adb shell wm size reset; adb shell wm density reset;;
 esac
 case " $POSES " in *" muscle "*) shot fr-muscle --es lang fr --ez seed true --ei tab 1 --es muscle Quadriceps; sw fr-muscle-b; sw fr-muscle-c;; esac
+# nouvelle ergonomie : 4 onglets, sous-onglets de Progrès, sous-pages de Réglages, lecteur
+case " $POSES " in *" ergo "*)
+  for t in 0 1 2 3; do shot ergo-tab$t --es lang fr --ez seed true --ei tab $t; sw ergo-tab$t-b; done
+  for s in 1 2; do shot ergo-prog$s --es lang fr --ez seed true --ei tab 2 --es sub $s; done
+  for s in prog rappels compte affichage apropos; do shot ergo-reg-$s --es lang fr --ez seed true --ei tab 3 --es sub $s; done
+  shot ergo-en-tab0 --es lang en --ez seed true --ei tab 0
+  shot ergo-play5 --es lang fr --ez seed true --ei play 5; shot ergo-play7 --es lang fr --ez seed true --ei play 7;;
+esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3

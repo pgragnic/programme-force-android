@@ -8,6 +8,8 @@ object Demo {
     var setupStep = 0
     /** muscle ouvert directement dans l'onglet Corps (captures) */
     var muscle: String? = null
+    /** sous-page ouverte directement (captures) : Réglages "prog", "rappels", "compte"… ou sous-onglet de Progrès "0".."2" */
+    var sub: String? = null
     /** Matériel fictif : "kb" = kettlebell, élastiques, chaise, banc ; "bw" = poids du corps, chaise et mur ; "new" = premier lancement. */
     fun gear(code: String) {
         GearStore.g.value = when (code) {

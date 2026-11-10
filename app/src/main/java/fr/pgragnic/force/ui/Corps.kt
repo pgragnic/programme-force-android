@@ -25,6 +25,7 @@ import kotlin.math.roundToInt
 private fun Int.col() = Color(0xFF000000 or this.toLong())
 
 /** Onglet Corps : récupération des muscles, de face et de dos. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CorpsScreen() {
     val log by Store.log.collectAsState(); val days by Store.days.collectAsState()
@@ -35,12 +36,11 @@ fun CorpsScreen() {
     // « Détails pour chaque muscle, en cliquant dessus »)
     var sel by remember { mutableStateOf(Demo.muscle) }
     val colors = remember(MU, C.dark, sel) { Recovery.MUS.associateWith { if (sel != null && it != sel) C.rgb(C.line) else Recovery.recCol(MU.R[it]!!, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort)) } }
-    var open by remember { mutableStateOf(Demo.muscle != null) }
     val st by Store.st.collectAsState(); val gear by GearStore.g.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("Muscles", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Spacer(Modifier.weight(1f)); Text("Récupération maintenant", color = C.muted, fontSize = 13.sp)
+            Text(t("Corps", "Body"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            Spacer(Modifier.weight(1f)); Text(t("Récupération", "Recovery"), color = C.muted, fontSize = 13.sp)
         }
         Row(Modifier.fillMaxWidth().height(330.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Face" to 0f, "Dos" to PI.toFloat()).forEach { (t, az) ->
@@ -55,27 +55,39 @@ fun CorpsScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(10.dp).clip(CircleShape).background(c)); Text(" $t", color = C.muted, fontSize = 12.sp) }
             }
         }
-        Text("Fais glisser pour tourner, touche deux fois pour revenir.", color = C.muted, fontSize = 12.sp)
-        Panel {
-            Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-                Text("Détail par muscle · séries des 7 derniers jours", color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(if (open) "▲" else "▼", color = C.muted)
+        // liste allégée (maquette « ⑤ Corps allégé » validée par Philippe : « Ok pour ces écrans ! ») : le détail seulement pour les muscles
+        // à laisser reposer, les autres en pastilles ; toucher un muscle ouvre son détail
+        val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }
+        if (tired.isNotEmpty()) {
+            Text(t("À laisser reposer", "Let these recover"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            tired.forEach { m ->
+                val r = MU.R[m]!!; val c = if (r >= 60) C.warm else C.danger; val h = MU.ready[m] ?: 120
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(width = 6.dp, height = 32.dp).clip(RoundedCornerShape(3.dp)).background(c))
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text(fr.pgragnic.force.tr(m), color = C.ink, fontWeight = FontWeight.Bold)
+                            Text(t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = C.muted, fontSize = 12.sp)
+                        }
+                        Text("$r %", color = c, fontWeight = FontWeight.Bold)
+                        Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
+                    }
+                    if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
+                }
             }
-            if (open) Text(t("Touche un muscle pour voir son détail.", "Tap a muscle to see its details."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-            if (open) Recovery.MUS.forEach { m ->
-                val r = MU.R[m]!!; val c = if (r >= 90) C.effort else if (r >= 60) C.warm else C.danger; val h = MU.ready[m] ?: 120
-                val stt = if (r >= 90) "Prêt" else "Prêt dans ~" + if (h >= 24) "${h / 24} j ${h % 24} h" else "$h h"
-                val v = MU.V[m]!!; val sh = if (MU.tot > 0) (100 * v / MU.tot).roundToInt() else 0
-                Column(Modifier.padding(top = 10.dp).clip(RoundedCornerShape(10.dp)).clickable { sel = if (sel == m) null else m }) {
-                    Row { Text(m, color = C.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text("$r %  " + (if (sel == m) "▲" else "▼"), color = c, fontWeight = FontWeight.Bold) }
-                    Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(C.line)) {
-                        Box(Modifier.fillMaxWidth(r / 100f).fillMaxHeight().background(c))
-                    }
-                    Row {
-                        Text(stt, color = C.muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                        Text(if (v > 0) t("${Prog.fk(v)} séries · $sh % du volume", "${Prog.fk(v)} sets · $sh% of volume") else if (r < 100) "Fatigue due à la marche" else "Pas travaillé cette semaine", color = C.muted, fontSize = 12.sp)
-                    }
-                    if (sel == m) MuscleDetail(m, log, st, gear)
+        } else Text(t("Tous tes muscles sont prêts.", "All your muscles are ready."), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        if (ready.isNotEmpty()) {
+            Text(t("Prêts", "Ready"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ready.forEach { m -> val on = sel == m
+                    Text(fr.pgragnic.force.tr(m), color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) C.ink else C.surface).clickable { sel = if (on) null else m }.padding(horizontal = 14.dp, vertical = 9.dp))
+                }
+            }
+            sel?.takeIf { it in ready }?.let { m ->
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Text(fr.pgragnic.force.tr(m) + " · " + t("prêt", "ready"), color = C.ink, fontWeight = FontWeight.Bold)
+                    MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
                 }
             }
         }
@@ -87,12 +99,13 @@ fun BodyState.th() = copy(bg = C.rgb(C.stage), ground = C.rgb(C.stage2), mat = C
 
 /** Détail d'un muscle : dernier travail, exercices des 7 derniers jours, exercices prévus cette semaine. */
 @Composable
-private fun MuscleDetail(m: String, log: List<Entry>, st: Settings, gear: Gear) {
+private fun MuscleDetail(m: String, log: List<Entry>, st: Settings, gear: Gear, v: Double, tot: Double) {
     val now = System.currentTimeMillis(); val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d", fr.pgragnic.force.L.loc)
     fun role(id: String) = Prog.MAP[id]?.get(m) ?: 0.0
     val recent = log.filter { now - it.d <= 7 * 864e5 }.sortedByDescending { it.d }.flatMap { e -> e.ex.filter { role(it.id) > 0 }.map { e to it } }
     val last = log.filter { e -> e.ex.any { role(it.id) >= .3 } }.maxByOrNull { it.d }
     Column(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(10.dp)).background(C.bg).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (v > 0) Text(t("${Prog.fk(v)} séries ces 7 derniers jours · ${(100 * v / tot).roundToInt()} % du volume", "${Prog.fk(v)} sets in the last 7 days · ${(100 * v / tot).roundToInt()}% of volume"), color = C.muted, fontSize = 12.sp)
         Text(last?.let { e -> val d = ((now - e.d) / 864e5).toInt(); t("Dernier travail : ", "Last worked: ") + (if (d == 0) t("aujourd'hui", "today") else if (d == 1) t("hier", "yesterday") else t("il y a $d jours", "$d days ago")) + t(" (séance ${e.s})", " (workout ${e.s})") }
             ?: t("Pas encore travaillé.", "Not worked yet."), color = C.ink, fontSize = 13.sp)
         if (recent.isNotEmpty()) {

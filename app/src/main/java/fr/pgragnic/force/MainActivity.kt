@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
         Demo.muscle = intent.getStringExtra("muscle")
+        Demo.sub = intent.getStringExtra("sub")
+        Demo.sub?.takeIf { it.toIntOrNull() == null }?.let { fr.pgragnic.force.ui.regSub.value = it }
         if (intent.getBooleanExtra("opensetup", false)) fr.pgragnic.force.ui.setupOpen.value = true
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
         runCatching {
@@ -102,8 +104,9 @@ class MainActivity : ComponentActivity() {
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
                     NavigationBar(containerColor = C.surface) {
-                        val items = listOf<Pair<String, ImageVector>>("Séance" to Icons.Default.FitnessCenter, "Corps" to Icons.Default.Accessibility,
-                            "Activité" to Icons.Default.BarChart, "Suivi" to Icons.Default.Article, "Infos" to Icons.Default.Info)
+                        // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
+                        val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.PlayCircleOutline, t("Corps", "Body") to Icons.Default.Accessibility,
+                            t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
                         items.forEachIndexed { i, (t, ic) ->
                             NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = C.effort, selectedTextColor = C.effort, indicatorColor = C.bg, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
@@ -119,9 +122,8 @@ class MainActivity : ComponentActivity() {
                                 Live.begin(this@MainActivity, fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)))
                             })
                             1 -> CorpsScreen()
-                            2 -> ActiviteScreen()
-                            3 -> SuiviScreen()
-                            else -> InfosScreen()
+                            2 -> ProgresScreen()
+                            else -> ReglagesScreen()
                         }
                     }
                 }

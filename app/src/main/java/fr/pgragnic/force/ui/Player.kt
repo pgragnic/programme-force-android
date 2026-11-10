@@ -124,6 +124,17 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         return Triple(0.0, false, "")
     }
 
+    /** répétition en cours et objectif (null hors répétitions : maintien, pause, changement de côté) */
+    fun repNum(): Pair<Int, Int>? {
+        val q = P[pi]; if (q.k != "work" || q.m == "time") return null
+        if (q.m == "alt") return min(q.reps * 2, floor(pt / q.rt).toInt() + 1) to q.reps * 2
+        val (_, lt, gap) = if (q.m == "uni") Prog.uniPos(q, pt) else Triple(0, pt, false)
+        if (gap) return null
+        return min(q.reps, floor(lt / q.rt).toInt() + 1) to q.reps
+    }
+    /** exercice en cours (0 pour l'échauffement) */
+    fun exIdx(): Int { for (i in pi downTo 0) if (P[i].ei >= 0) return P[i].ei; return 0 }
+
     fun repTxt(): String {
         val q = P[pi]; if (q.k != "work" || q.m == "time") return ""
         if (q.m == "alt") { val n = floor(pt / q.rt).toInt(); return t("Rép ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alterné", "Rep ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alternating") }
@@ -133,56 +144,70 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     }
 }
 
+// lecteur épuré (maquette « ③ Lecteur épuré » validée par Philippe : « Ok pour ces écrans ! ») : progression de la séance en haut,
+// personnage en grand, un seul gros compteur, trois boutons
 @Composable
 fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
     LaunchedEffect(ses) { ses.start(); while (true) { withFrameNanos { }; ses.tick(); if (ses.done) { onEnd(); break } } }
     val p = ses.P[ses.pi]
     val col = C.phase(p.k)
     val (k, mir, mv) = ses.anim()
-    Column(Modifier.fillMaxSize().background(C.bg).padding(horizontal = 16.dp, vertical = 10.dp)) {
+    val ex = ses.exIdx().coerceIn(0, max(0, ses.nex - 1))
+    Column(Modifier.fillMaxSize().background(C.bg).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(PLAB[p.k] ?: "", color = C.onColor, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
-                modifier = Modifier.clip(RoundedCornerShape(50)).background(col).padding(horizontal = 14.dp, vertical = 6.dp))
-            Spacer(Modifier.weight(1f))
-            Text(p.blk, color = C.muted, fontSize = 12.sp, letterSpacing = 1.sp, textAlign = TextAlign.End, modifier = Modifier.padding(end = 8.dp).weight(2f))
-            IconButton(onClick = onClose, modifier = Modifier.size(44.dp).border(1.dp, C.line, CircleShape)) { Icon(Icons.Default.Close, fr.pgragnic.force.tr("Fermer"), tint = C.ink) }
+            IconButton(onClick = onClose, modifier = Modifier.size(44.dp)) { Icon(Icons.Default.Close, fr.pgragnic.force.tr("Fermer"), tint = C.ink) }
+            Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(ses.nex) { i ->
+                    val c = when { i < ex || (i == ex && p.k == "cool") -> C.effort; i == ex && p.k != "warm" -> C.effort.copy(alpha = .4f); else -> C.line }
+                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(c))
+                }
+            }
+            Text(if (p.k == "warm") t("Échauff.", "Warm-up") else if (p.k == "cool") t("Calme", "Cool") else "${ex + 1} / ${ses.nex}", color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = { ses.voice.on = !ses.voice.on }, modifier = Modifier.size(44.dp)) {
+                Icon(if (ses.voice.on) Icons.Default.VolumeUp else Icons.Default.VolumeOff, fr.pgragnic.force.tr("Son"), tint = C.muted)
+            }
         }
-        if (p.k == "switch") Text(if (p.ei == 0) "PREMIER EXERCICE" else "NOUVEL EXERCICE", color = col, letterSpacing = 2.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
-        Text(p.n, color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-        if (p.det.isNotBlank()) Text(p.det, color = C.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp))) {
+        Text((if (p.k == "switch") (if (p.ei == 0) "PREMIER EXERCICE" else "NOUVEL EXERCICE") else PLAB[p.k] ?: "").let { fr.pgragnic.force.tr(it) },
+            color = col, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
+        Text(p.n, color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, modifier = Modifier.padding(horizontal = 8.dp))
+        Text(p.det.ifBlank { p.blk }, color = C.muted, fontSize = 14.sp, maxLines = 2, modifier = Modifier.padding(horizontal = 8.dp))
+        Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 10.dp).clip(RoundedCornerShape(22.dp))) {
             val ghost = p.k in listOf("prep", "rest", "switch")
             Body3D(BodyState(pose = p.pose ?: "calf", k = k, mirror = mir, ghost = ghost, nodb = p.nodb || p.pose == null, hl = if (p.k == "prep") null else (p.ex ?: p.pose), ex = p.ex).th(), Modifier.fillMaxSize())
-            if (mv.isNotBlank()) Text(mv, color = col, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
         }
         val prevW = ses.P.getOrNull(ses.pi - 1)
-        if (prevW?.k == "work" && p.k in listOf("rest", "switch", "cool") && prevW.ex != null) SetPanel(ses, prevW)
-        else {
+        val left = ceil(max(0.0, p.dur - ses.pt)).toInt()
+        if (prevW?.k == "work" && p.k in listOf("rest", "switch", "cool") && prevW.ex != null) {
+            SetPanel(ses, prevW)
+            Text(t("Reprise dans $left s", "Back in $left s"), color = col, fontSize = 22.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+        } else {
+            val rn = ses.repNum()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                if (rn != null) {
+                    Text("${rn.first}", color = C.ink, fontSize = 72.sp, fontWeight = FontWeight.Black, lineHeight = 74.sp)
+                    Text(" / ${rn.second}", color = C.muted, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
+                } else Text("$left", color = col, fontSize = 72.sp, fontWeight = FontWeight.Black, lineHeight = 74.sp)
+            }
+            val sub = if (mv.isNotBlank()) mv else if (rn == null && ses.repTxt().isNotBlank()) ses.repTxt() else ""
+            if (sub.isNotBlank()) Text(sub, color = col, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             val tip = if (p.k == "rest") (p.chg ?: "") else p.tip
-            if (ses.repTxt().isNotBlank()) Text(ses.repTxt(), color = C.ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-            if (tip.isNotBlank()) Text(tip, color = if (p.chg != null && p.k != "work") C.warm else C.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+            if (tip.isNotBlank()) Text(tip, color = if (p.chg != null && p.k != "work") C.warm else C.muted, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 3, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
         }
-        Text("${ceil(max(0.0, p.dur - ses.pt)).toInt()}", color = col, fontSize = 84.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        LinearProgressIndicator(progress = { (ses.pt / max(1.0, p.dur)).toFloat().coerceIn(0f, 1f) }, color = col, trackColor = C.line, modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)))
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text(t("Écoulé ${Prog.fmt(ses.elapsed)}", "Elapsed ${Prog.fmt(ses.elapsed)}"), color = C.muted, fontSize = 13.sp); Spacer(Modifier.weight(1f))
-            Text(t("Restant ${Prog.fmt(ses.totalDur - ses.elapsed)}", "Left ${Prog.fmt(ses.totalDur - ses.elapsed)}"), color = C.muted, fontSize = 13.sp)
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        LinearProgressIndicator(progress = { (ses.pt / max(1.0, p.dur)).toFloat().coerceIn(0f, 1f) }, color = col, trackColor = C.line, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).height(6.dp).clip(RoundedCornerShape(3.dp)))
+        Text(t("Fin dans ${Prog.fmt(ses.totalDur - ses.elapsed)}", "Ends in ${Prog.fmt(ses.totalDur - ses.elapsed)}"), color = C.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             RoundBtn(Icons.Default.SkipPrevious, "Précédent") { ses.prev() }
-            FilledIconButton(onClick = { ses.toggle() }, modifier = Modifier.size(width = 92.dp, height = 64.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = C.ink)) {
-                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, fr.pgragnic.force.tr(if (ses.run) "Pause" else "Reprendre"), tint = C.bg, modifier = Modifier.size(34.dp))
+            FilledIconButton(onClick = { ses.toggle() }, modifier = Modifier.size(76.dp), shape = CircleShape, colors = IconButtonDefaults.filledIconButtonColors(containerColor = C.effort)) {
+                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, fr.pgragnic.force.tr(if (ses.run) "Pause" else "Reprendre"), tint = C.onColor, modifier = Modifier.size(34.dp))
             }
             RoundBtn(Icons.Default.SkipNext, "Suivant") { ses.next() }
-            RoundBtn(if (ses.voice.on) Icons.Default.VolumeUp else Icons.Default.VolumeOff, "Son") { ses.voice.on = !ses.voice.on }
         }
     }
 }
 
 @Composable
 private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(60.dp).border(1.dp, C.line, CircleShape)) { Icon(icon, label, tint = C.ink) }
+    IconButton(onClick = onClick, modifier = Modifier.size(54.dp).border(1.dp, C.line, CircleShape)) { Icon(icon, label, tint = C.ink) }
 }
 
 /** Panneau « série par série » affiché pendant la pause qui suit une série. */
