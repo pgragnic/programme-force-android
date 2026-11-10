@@ -44,6 +44,8 @@ android {
         getByName("debug") { signingConfig = signingConfigs.getByName("debug") }
         getByName("release") {
             isMinifyEnabled = false
+            // symboles de débogage des bibliothèques natives dans le paquet Google Play (avertissement de la Play Console)
+            ndk { debugSymbolLevel = "FULL" }
             if (System.getenv("UPLOAD_KS") != null) signingConfig = signingConfigs.getByName("upload")
         }
     }
