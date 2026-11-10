@@ -124,7 +124,13 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             val alt = q.m == "alt" && floor(pt / q.rt).toInt() % 2 == 1
             return Triple(k, h == 1 || alt, side + mv)
         }
-        if (q.k == "warm") return Triple(Prog.cycleK(pt, q.tp ?: listOf(1.0, 0.0, 1.2, 0.0)), false, "")
+        if (q.k == "warm") {
+            // échauffement : les mouvements alternés ou d'un seul côté (bird dog, fente) changent de côté à chaque répétition
+            // (Philippe : « Le bird dog à l'échauffement n'est que dans un sens »)
+            val tp = q.tp ?: listOf(1.0, 0.0, 1.2, 0.0)
+            val other = Prog.alternates(q.pose) && floor(pt / tp.sum().coerceAtLeast(.1)).toInt() % 2 == 1
+            return Triple(Prog.cycleK(pt, tp), other, "")
+        }
         if (q.k == "cool" && Prog.sides(q.pose)) return Triple(0.0, pt >= q.dur / 2, if (pt >= q.dur / 2) t("CÔTÉ DROIT", "RIGHT SIDE") else t("CÔTÉ GAUCHE", "LEFT SIDE"))
         q.ghostTp?.let { return Triple(Prog.cycleK(pt, it), false, "") }
         return Triple(0.0, false, "")

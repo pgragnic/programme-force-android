@@ -75,6 +75,9 @@ object Prog {
         return sess(st.c).keys.minWith(compareBy<String>({ (tired(orderEx(st.c, it, st.w, st), R).first * 10).roundToInt() }, { last[it] })) 
     }
 
+    /** pose d'un exercice alterné ou d'un seul côté (bird dog, dead bug, fentes…) : à faire des deux côtés */
+    fun alternates(pose: String?) = pose != null && EX.values.any { it.pose == pose && (it.m == "alt" || it.m == "uni") }
+
     /** Lundi 0 h (heure locale) de la semaine de « t ». */
     fun mondayOf(t: Long): Long {
         val c = java.util.Calendar.getInstance().apply { timeInMillis = t; set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }
