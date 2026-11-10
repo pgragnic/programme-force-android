@@ -61,6 +61,8 @@ def fix(P3):
     # s'écartent juste assez pour qu'aucun disque ne traverse le corps sur tout le mouvement (+ 1 cm de marge)
     for id in ('curl', 'hammer', 'rdl', 'sldl', 'calf', 'lunge', 'fwdlunge', 'row1', 'row2', 'lateral'):
         if id in P3: clear_db(P3, id)
+    # bird dog : bras d'appui tendu sous l'épaule (Philippe : « Et le bras qui touche le sol n'est pas droit »)
+    for k in P3['birddog']['k']: straighten(k, '12' if k['t'] < .5 else '1', ['shinL'])
     # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
     for k in P3['plank']['k']:
         for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
