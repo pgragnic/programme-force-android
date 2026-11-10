@@ -148,13 +148,10 @@ fun SeanceScreen(onStart: () -> Unit) {
             val shown = if (list) order else order.take(2)
             shown.forEach { id ->
                 val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
-                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(e.n, color = C.ink, fontSize = 14.sp)
-                        if (list) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp)
-                    }
-                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
-                        color = C.muted, fontSize = 13.sp, textAlign = TextAlign.End, modifier = Modifier.padding(start = 8.dp).widthIn(max = 170.dp))
+                Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                    Text(e.n, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(), color = C.muted, fontSize = 13.sp)
+                    if (list) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 2.dp))
                 }
                 HorizontalDivider(color = C.line)
             }

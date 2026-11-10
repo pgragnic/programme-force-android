@@ -184,14 +184,14 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
             val rn = ses.repNum()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
                 if (rn != null) {
-                    Text("${rn.first}", color = C.ink, fontSize = 72.sp, fontWeight = FontWeight.Black, lineHeight = 74.sp)
+                    Text("${rn.first}", color = C.ink, fontSize = 64.sp, fontWeight = FontWeight.Black, lineHeight = 66.sp)
                     Text(" / ${rn.second}", color = C.muted, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
-                } else Text("$left", color = col, fontSize = 72.sp, fontWeight = FontWeight.Black, lineHeight = 74.sp)
+                } else Text("$left", color = col, fontSize = 64.sp, fontWeight = FontWeight.Black, lineHeight = 66.sp)
             }
             val sub = if (mv.isNotBlank()) mv else if (rn == null && ses.repTxt().isNotBlank()) ses.repTxt() else ""
             if (sub.isNotBlank()) Text(sub, color = col, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             val tip = if (p.k == "rest") (p.chg ?: "") else p.tip
-            if (tip.isNotBlank()) Text(tip, color = if (p.chg != null && p.k != "work") C.warm else C.muted, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 3, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+            if (tip.isNotBlank()) Text(tip, color = if (p.chg != null && p.k != "work") C.warm else C.muted, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
         }
         LinearProgressIndicator(progress = { (ses.pt / max(1.0, p.dur)).toFloat().coerceIn(0f, 1f) }, color = col, trackColor = C.line, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp).height(6.dp).clip(RoundedCornerShape(3.dp)))
         Text(t("Fin dans ${Prog.fmt(ses.totalDur - ses.elapsed)}", "Ends in ${Prog.fmt(ses.totalDur - ses.elapsed)}"), color = C.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
