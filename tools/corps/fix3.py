@@ -42,7 +42,7 @@ def fix(P3):
             touch(k, ['W1', 'W2', 'F1', 'F2'], ['handR', 'handL', 'finAR', 'finAL', 'finBR', 'finBL'], ref, 0.6)
     # rowings penchés : bras tendus à la verticale sous l'épaule en bas du mouvement (Philippe, capture du rowing penché deux bras :
     # « Le bras n'est pas droit à la fin du mouvement »)
-    for id, sides in (('row2', '12'), ('bbrow', '12'), ('row1', '1')):
+    for id, sides in (('row2', '12'), ('bbrow', '12'), ('row1', '2')):   # rowing un bras : c'est la main gauche (W2) qui tient l'haltère
         for k in P3[id]['k']:
             if k['t'] < .5: hang(k, sides)
     # pompes (classiques, sur les genoux) : bras tendus en haut du mouvement (même retour que pour le rowing, capture des pompes
@@ -57,6 +57,10 @@ def fix(P3):
                 if key in ('t',) or not isinstance(k0[key], list) or key not in k1: continue
                 k[key] = [round(a + (b - a) * u, 2) for a, b in zip(k0[key], k1[key])]
         for k in ks[1:]: elbows(k, '12')   # coudes à 45° du corps, vers l'arrière, quand les bras plient
+    # haltères qui rentraient dans le corps (Philippe, capture du curl biceps : « Les haltères rentrent dans le corps ») : les mains
+    # s'écartent juste assez pour qu'aucun disque ne traverse le corps sur tout le mouvement (+ 1 cm de marge)
+    for id in ('curl', 'hammer', 'rdl', 'sldl', 'calf', 'lunge', 'fwdlunge', 'row1', 'row2', 'lateral'):
+        if id in P3: clear_db(P3, id)
     # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
     for k in P3['plank']['k']:
         for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
@@ -75,6 +79,39 @@ def hang(k, sides):
         sh = T[nm.index('uarm' + ('R' if s == '1' else 'L'))]
         k['E' + s] = [round(float(sh[0]), 2), round(float(sh[1] - 25), 2), round(float(sh[2] + 0.5), 2)]
         k['W' + s] = [round(float(sh[0]), 2), round(float(sh[1] - 50), 2), round(float(sh[2] + 1.0), 2)]
+
+def db_pen(P3, id, dx, ax_i=0):
+    """Nombre de points des disques d'haltère qui traversent le corps (mains écartées de dx), sur 5 instants du mouvement."""
+    global _B
+    import rt
+    from scipy.spatial import cKDTree
+    if _B is None: _B = rt.Body(__file__.replace('fix3.py', 'corps2.bin'))
+    nm = [b['n'] for b in _B.B]; Hh = _B.hdr['hand']; tot = 0
+    for t in (0, .25, .5, .75, 1):
+        Q = {k: v for k, v in rt.at(P3[id], t).items() if k != 't'}
+        for s, sx in [('1', 1) if w == 'W1' else ('2', -1) for w in P3[id].get('db', ['W1', 'W2'])]:
+            for kk, f in (('W', 1.0), ('E', .5)):
+                if kk + s in Q: v = list(Q[kk + s]); v[ax_i] += (sx if ax_i == 0 else 1) * dx * f; Q[kk + s] = v
+        out, R, T = _B.skin(Q); V, N = out[0][0], out[0][1]; tr = cKDTree(V)
+        for sd in [('R' if w == 'W1' else 'L') for w in P3[id].get('db', ['W1', 'W2'])]:
+            i = nm.index('hand' + sd); g = T[i] + R[i] @ np.array(Hh[sd]['g']); ax = R[i] @ np.array(Hh[sd]['l']); ax /= np.linalg.norm(ax)
+            u = np.cross(ax, [0, 1, 0]); u = u / np.linalg.norm(u) if np.linalg.norm(u) > .1 else np.cross(ax, [1, 0, 0]); w = np.cross(ax, u)
+            pts = np.array([g + ax * o + (u * np.cos(a) + w * np.sin(a)) * r for o in (-10, -8, -6, 6, 8, 10)
+                            for a in np.linspace(0, 2 * np.pi, 12, endpoint=False) for r in (3, 6.5)])
+            d, j = tr.query(pts); tot += int(((((pts - V[j]) * N[j]).sum(1) < 0) & (d < 4)).sum())
+    return tot
+
+def clear_db(P3, id, ax_i=0):
+    dx = 0
+    while dx < 16 and db_pen(P3, id, dx, ax_i) > 0: dx += 1
+    if dx == 0: return
+    dx += 1
+    hs = [('1', 1) if w == 'W1' else ('2', -1) for w in P3[id].get('db', ['W1', 'W2'])]
+    for k in P3[id]['k']:
+        for s, sx in hs:
+            for kk, f in (('W', 1.0), ('E', .5), ('F', 1.0)):
+                if kk + s in k: v = list(k[kk + s]); v[ax_i] = round(v[ax_i] + (sx if ax_i == 0 else 1) * dx * f, 2); k[kk + s] = v
+    print('haltères', 'écartés' if ax_i == 0 else 'levés', id, dx, 'cm')
 
 def elbows(k, sides):
     """Coude placé d'après les longueurs réelles du bras : entre l'épaule et la main, décalé vers l'extérieur, l'arrière et le haut."""
