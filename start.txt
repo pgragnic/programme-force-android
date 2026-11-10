@@ -1,0 +1,35 @@
+Starting: Intent { cmp=fr.pgragnic.force/.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: fr.pgragnic.force/.MainActivity
+TotalTime: 2791
+WaitTime: 2798
+Complete
+Starting: Intent { cmp=fr.pgragnic.force/.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: fr.pgragnic.force/.MainActivity
+TotalTime: 2253
+WaitTime: 2255
+Complete
+Starting: Intent { cmp=fr.pgragnic.force/.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: fr.pgragnic.force/.MainActivity
+TotalTime: 2382
+WaitTime: 2388
+Complete
+Starting: Intent { cmp=fr.pgragnic.force/.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: fr.pgragnic.force/.MainActivity
+TotalTime: 2063
+WaitTime: 2064
+Complete
+Starting: Intent { cmp=fr.pgragnic.force/.MainActivity (has extras) }
+Status: ok
+LaunchState: COLD
+Activity: fr.pgragnic.force/.MainActivity
+TotalTime: 1067
+WaitTime: 1068
+Complete
