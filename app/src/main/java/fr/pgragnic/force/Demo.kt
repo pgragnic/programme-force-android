@@ -22,13 +22,17 @@ object Demo {
         }
     }
 
+    /** captures : une séance faite il y a peu, pour voir l'alerte de récupération */
+    var tired = false
+
     fun seed() {
         if (!GearStore.g.value.done) GearStore.g.value = Gear(done = true)
         val now = System.currentTimeMillis(); val day = 86_400_000L
-        val plan = listOf(20 to "A", 18 to "B", 16 to "C", 15 to "D", 13 to "A", 11 to "B", 9 to "C", 8 to "D", 6 to "A", 4 to "B", 2 to "C", 1 to "D")
+        val plan = listOf(20.0 to "A", 18.0 to "B", 16.0 to "C", 15.0 to "D", 13.0 to "A", 11.0 to "B", 9.0 to "C", 8.0 to "D", 6.0 to "A", 4.0 to "B", 2.0 to "C", 1.0 to "D") +
+            (if (tired) listOf(0.1 to "A") else emptyList())   // captures : séance A faite il y a 2 h 30 (alerte de récupération)
         val log = plan.mapIndexed { i, (ago, s) ->
             val w = i / 4; val ids = Prog.sess(1)[s]!!.ex
-            Entry(d = now - ago * day, c = 1, w = w, s = s, f = "Juste bien", rest = 30, bw = 79.5 - i * 0.3,
+            Entry(d = now - (ago * day).toLong(), c = 1, w = w, s = s, f = "Juste bien", rest = 30, bw = 79.5 - i * 0.3,
                 ex = ids.map { id -> val kg = if (Prog.hasDb(id)) 5.0 + w else 0.0
                     ExRec(id, Prog.EX[id]!!.n, kg, 10, "reps", List(3) { SetRec(10, 2) }, 10, if (i % 5 == 4) "Difficile" else "Juste bien") })
         }

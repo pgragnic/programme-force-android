@@ -48,7 +48,7 @@ esac
 tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
 case " $POSES " in *" warn "*)
-  shot warn-a --es lang fr --ez seed true --ei tab 0; sw warn-b; tapt "Démarrer"; adb exec-out screencap -p > shots/warn-c.png;;
+  shot warn-a --es lang fr --ez seed true --ez tired true --ei tab 0; sw warn-b; tapt "Démarrer"; adb exec-out screencap -p > shots/warn-c.png;;
 esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
