@@ -119,7 +119,10 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             val mv = if (q.m == "alt") (if (floor(pt / q.rt).toInt() % 2 == 1) "DROITE" else "GAUCHE")
             else if (ph < tp[0]) (if (q.inv) "DESCENDS" else "MONTE") else if (ph < tp[0] + tp[1]) "TIENS" else if (ph < tp[0] + tp[1] + tp[2]) (if (q.inv) "MONTE" else "DESCENDS") else ""
             val side = if (q.m == "uni") (if (h == 0) "GAUCHE · " else "DROIT · ") else ""
-            return Triple(k, h == 1, side + mv)
+            // alterné (bird dog, dead bug, halo) : une répétition sur deux en miroir, du côté annoncé (Philippe : captures du bird dog,
+            // « GAUCHE » puis « DROITE » avec le même bras levé)
+            val alt = q.m == "alt" && floor(pt / q.rt).toInt() % 2 == 1
+            return Triple(k, h == 1 || alt, side + mv)
         }
         if (q.k == "warm") return Triple(Prog.cycleK(pt, q.tp ?: listOf(1.0, 0.0, 1.2, 0.0)), false, "")
         if (q.k == "cool" && Prog.sides(q.pose)) return Triple(0.0, pt >= q.dur / 2, if (pt >= q.dur / 2) t("CÔTÉ DROIT", "RIGHT SIDE") else t("CÔTÉ GAUCHE", "LEFT SIDE"))
