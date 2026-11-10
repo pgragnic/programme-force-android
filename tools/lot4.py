@@ -184,7 +184,9 @@ if os.path.exists(_p3):
     d = json.load(open(p)); d['POSES3'] = json.load(open(_p3))
     json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 
-# --- 10 novembre, 18 h 45 : pont fessier (capture de Philippe, « Oui et pied vers le bas ») ; corrections de pose dans corps/fix3.py.
+# --- 10 novembre, 18 h 45 : pont fessier (capture de Philippe, « Oui et pied vers le bas »), personnage posé au sol au pont fessier et à la planche
+# (« Et ça donne l'impression que le bonhomme est en lévitation », « Pour le gainage planche aussi d'ailleurs »), étirements d'un seul côté
+# des deux côtés (« Étirement quadriceps n'est que d'un côté ») ; corrections de pose dans corps/fix3.py.
 # Pont fessier mini-bande : pose à deux jambes « bridge2 » (il prenait la pose unilatérale). Programme livré version 14 (prime sur la base, version 13).
 d = json.load(open(p)); d['POSES']['bridge2'] = json.loads(json.dumps(d['POSES']['bridge'])); d['EX']['mbbridge']['pose'] = 'bridge2'; d['V'] = 14
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

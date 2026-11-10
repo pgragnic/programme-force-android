@@ -59,6 +59,8 @@ object Prog {
 
     /** Version du programme en cours : 0 = celle livrée avec l'appli, sinon numéro de la version en base. */
     var version = 0L
+    /** étirement d'un seul côté (drapeau « sides » de la pose 3D) : changement de côté à mi-temps */
+    fun sides(id: String?) = id != null && raw["POSES3"]?.jsonObject?.get(id)?.jsonObject?.get("sides")?.jsonPrimitive?.booleanOrNull == true
 
     /** Format de programme que cette version de l'appli sait lire : un programme en base marqué « FMT » plus grand est ignoré. */
     const val FORMAT = 1
@@ -451,7 +453,7 @@ object Prog {
                 else P += Phase("switch", ei = ei + 1, set = 0, blk = t("Exercice ${ei + 1}/${exo.size} terminé", "Exercise ${ei + 1}/${exo.size} done"), dur = max(45, restS + extra).toDouble())
             }
         }
-        S.cool.map { upg(COOL_UP, it, s) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · 40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
+        S.cool.map { upg(COOL_UP, it, s) }.forEachIndexed { i, cId -> P += Phase("cool", blk = "Retour au calme", n = COOLN[cId] ?: cId, det = "${i + 1}/3 · " + if (sides(cId)) t("20 s par côté", "20 s per side") else "40 s", tip = "Respire, relâche sans forcer", dur = 40.0, pose = cId) }
         P += Phase("end")
         P.forEachIndexed { i, p ->
             if (p.k == "rest" || p.k == "prep" || p.k == "switch") {

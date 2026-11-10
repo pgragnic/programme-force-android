@@ -25,6 +25,46 @@ def fix(P3):
     for k in b2['k']:
         for j in 'KAT': v = k[j + '1']; k[j + '2'] = [-v[0], v[1], v[2]]
     P3['bridge2'] = b2
+    # personnage « en lévitation » (Philippe : « Et ça donne l'impression que le bonhomme est en lévitation », « Pour le gainage
+    # planche aussi d'ailleurs ») : le haut du corps et les bras descendus jusqu'au sol, calculés sur le maillage déformé
+    # étirements d'un seul côté : l'appli change de côté à mi-temps (Philippe : « Étirement quadriceps n'est que d'un côté »)
+    for id in ('stquad', 'sttri', 'stlat'): P3[id]['sides'] = True
+    FEET = ['footR', 'footL', 'toesR', 'toesL']
+    for id in ('bridge', 'bridge2'):
+        for k in P3[id]['k']:
+            ref = ['footR', 'toesR']   # pied d'appui
+            if k['t'] >= .5:   # en haut : bassin un peu plus bas que les genoux, omoplates et tête au sol
+                k['P'] = [0.0, 26.0, k['P'][2]]; k['N'] = [0.0, -12.0, k['N'][2]]; k['H'] = [0.0, -6.0, k['H'][2]]
+            else: touch(k, ['P', 'N', 'H', 'S'], ['hips', 'chest'], ref)
+            touch(k, ['E1', 'E2', 'W1', 'W2'], ['farmR', 'farmL', 'handR', 'handL'], ref)
+            touch(k, ['W1', 'W2'], ['handR', 'handL', 'finAR', 'finAL', 'finBR', 'finBL', 'thmbR', 'thmbL'], ref, 0.5)
+    # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
+    for k in P3['plank']['k']:
+        for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
+        k['P'] = [k['P'][0], k['P'][1] - 6, k['P'][2]]
+        for s, sx in (('1', 1), ('2', -1)): k['E' + s] = [19.24 * sx, -4.0, 26.0]; k['W' + s] = [18.24 * sx, -4.0, 50.0]
     return P3
+
+_B = None
+def touch(k, keys, regions, ref, target=0.3):
+    """Abaisse les points « keys » jusqu'à ce que les « regions » soient au niveau du sol, c'est-à-dire à la hauteur de l'appui « ref »."""
+    global _B
+    import rt
+    if _B is None: _B = rt.Body(__file__.replace('fix3.py', 'corps2.bin'))
+    g = _B.G[0]; nm = [b['n'] for b in _B.B]
+    def mask(rs): return np.isin(g['bi'][:, 0], [nm.index(r) for r in rs]) & (g['bw'][:, 0] > .5)
+    m, mr = mask(regions), mask(ref)
+    base = {kk: list(k[kk]) for kk in keys if kk in k}
+    def gap(d):
+        Q = {kk: v for kk, v in k.items() if kk != 't'}
+        for kk, v in base.items(): Q[kk] = [v[0], v[1] - d, v[2]]
+        V = _B.skin(Q)[0][0][0]; return float(V[m][:, 1].min() - V[mr][:, 1].min())
+    if gap(0) <= target: return
+    lo, hi = 0.0, 60.0
+    for _ in range(20):
+        mid = (lo + hi) / 2
+        if gap(mid) > target: lo = mid
+        else: hi = mid
+    for kk, v in base.items(): k[kk] = [v[0], round(v[1] - hi, 2), v[2]]
 if __name__ == '__main__':
     P3 = json.load(open(sys.argv[1])); json.dump(fix(P3), open(sys.argv[1], 'w'), ensure_ascii=False, separators=(',', ':')); print('ok')

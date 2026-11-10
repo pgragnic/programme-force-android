@@ -92,6 +92,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         if (p.m == "uni") { val r = (p.dur - Prog.SWAP) / 2 + Prog.SWAP
             for (s in 3 downTo 1) if (prev < r - s && pt >= r - s) voice.beep(0)
             if (prev < r && pt >= r) { voice.beep(2); voice.buzz(350) } }
+        // étirements d'un seul côté : changement de côté à mi-temps (Philippe : « Étirement quadriceps n'est que d'un côté »)
+        if (p.k == "cool" && Prog.sides(p.pose) && prev < p.dur / 2 && pt >= p.dur / 2) { voice.beep(2); voice.buzz(350); voice.say(t("Change de côté", "Switch sides")) }
         if ((p.k == "rest" || p.k == "switch") && p.dur > 15 && prev < p.dur - 10 && pt >= p.dur - 10) voice.say("Dix secondes. Prépare-toi")
         P.getOrNull(pi + 1)?.let { nx -> if ((p.k == "rest" || p.k == "switch") && nx.k == "work" && p.dur > 8 && prev < p.dur - 6 && pt >= p.dur - 6)
             voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") t(", côté gauche", ", left side") else "") }
@@ -120,6 +122,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             return Triple(k, h == 1, side + mv)
         }
         if (q.k == "warm") return Triple(Prog.cycleK(pt, q.tp ?: listOf(1.0, 0.0, 1.2, 0.0)), false, "")
+        if (q.k == "cool" && Prog.sides(q.pose)) return Triple(0.0, pt >= q.dur / 2, if (pt >= q.dur / 2) t("CÔTÉ DROIT", "RIGHT SIDE") else t("CÔTÉ GAUCHE", "LEFT SIDE"))
         q.ghostTp?.let { return Triple(Prog.cycleK(pt, it), false, "") }
         return Triple(0.0, false, "")
     }
