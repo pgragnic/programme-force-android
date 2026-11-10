@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
+        Demo.muscle = intent.getStringExtra("muscle")
         if (intent.getBooleanExtra("opensetup", false)) fr.pgragnic.force.ui.setupOpen.value = true
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
         runCatching {
