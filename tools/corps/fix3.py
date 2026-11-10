@@ -40,6 +40,11 @@ def fix(P3):
             # mains à plat : poignet à la hauteur du coude, doigts vers les pieds, paume au sol
             for s in '12': k['W' + s][1] = k['E' + s][1]; k['F' + s] = [k['W' + s][0], k['W' + s][1], k['W' + s][2] + 9]
             touch(k, ['W1', 'W2', 'F1', 'F2'], ['handR', 'handL', 'finAR', 'finAL', 'finBR', 'finBL'], ref, 0.6)
+    # rowings penchés : bras tendus à la verticale sous l'épaule en bas du mouvement (Philippe, capture du rowing penché deux bras :
+    # « Le bras n'est pas droit à la fin du mouvement »)
+    for id, sides in (('row2', '12'), ('bbrow', '12'), ('row1', '1')):
+        for k in P3[id]['k']:
+            if k['t'] < .5: hang(k, sides)
     # planche : coudes sous les épaules, avant-bras à plat au sol, épaules plus basses (corps aligné des épaules aux chevilles)
     for k in P3['plank']['k']:
         for x in 'NH': k[x] = [k[x][0], k[x][1] - 12, k[x][2]]
@@ -48,6 +53,17 @@ def fix(P3):
     return P3
 
 _B = None
+def hang(k, sides):
+    """Bras pendants tendus : coude et poignet sur la verticale de l'épaule (position réelle de l'épaule calculée par le moteur)."""
+    global _B
+    import rt
+    if _B is None: _B = rt.Body(__file__.replace('fix3.py', 'corps2.bin'))
+    nm = [b['n'] for b in _B.B]; R, T = _B.solve({kk: v for kk, v in k.items() if kk != 't'})
+    for s in sides:
+        sh = T[nm.index('uarm' + ('R' if s == '1' else 'L'))]
+        k['E' + s] = [round(float(sh[0]), 2), round(float(sh[1] - 25), 2), round(float(sh[2] + 0.5), 2)]
+        k['W' + s] = [round(float(sh[0]), 2), round(float(sh[1] - 50), 2), round(float(sh[2] + 1.0), 2)]
+
 def touch(k, keys, regions, ref, target=0.3):
     """Abaisse les points « keys » jusqu'à ce que les « regions » soient au niveau du sol, c'est-à-dire à la hauteur de l'appui « ref »."""
     global _B
