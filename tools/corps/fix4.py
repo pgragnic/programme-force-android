@@ -420,3 +420,28 @@ def feet_fix(P3):
         if abs(dy) < .2: break
         for k in p['k']: shift(k, ['A2', 'T2'], dy); knee(k, '2')
     return P3
+
+def toes_back(P3):
+    """Pieds sur la pointe, talon poussé vers l'arrière (Philippe, capture de la planche en 0.1.168 puis choix « C » sur planche-pieds-essais.png) :
+    la pointe passait sous le tibia et le pied faisait un crochet ; le pied est maintenant presque vertical, talon un peu en arrière des orteils."""
+    f = np.array([0, -.95, -.32]); f /= np.linalg.norm(f)
+    def setf(k, s):
+        A = np.array(k['A' + s], float); A[1] = k['T' + s][1] + 12.6; k['A' + s] = A.round(2).tolist()
+        T = A + f * 11.7; k['T' + s] = T.round(2).tolist(); k['TT' + s] = (T + [0, .3, 4]).round(2).tolist()
+    for id, others in (('plank', ['farmR', 'farmL', 'twstR', 'twstL']), ('pushup', ['handR', 'handL'])):
+        for k in P3[id]['k']:
+            for s in '12': setf(k, s)
+            for _ in range(6):
+                V, _, _ = skin(P3, id, k); d = lowest(V, ['footR', 'toesR', 'footL', 'toesL']) - lowest(V, others)
+                if abs(d) < .3: break
+                for s in '12': shift(k, ['A' + s, 'T' + s, 'TT' + s], -d)
+    for id in ('lunge', 'kblunge', 'fwdlunge'):
+        for k in P3[id]['k']:
+            if 'TT2' not in k: continue
+            setf(k, '2'); knee(k, '2')
+            for _ in range(6):
+                V, _, _ = skin(P3, id, k); d = lowest(V, ['footL', 'toesL']) - lowest(V, ['footR', 'toesR'])
+                if abs(d) < .3: break
+                shift(k, ['A2', 'T2', 'TT2'], -d); knee(k, '2')
+            print(id, k['t'], round(d, 2))
+    return P3
