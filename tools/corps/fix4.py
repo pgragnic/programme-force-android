@@ -371,3 +371,52 @@ def free_arm(P3):
     for k in P3['kbfloor']['k']:
         k['E2'] = [-24.0, 4.0, -22.0]; k['W2'] = [-26.0, 3.0, 2.0]; k['U2'] = [0, -1, 0]; k['c2'] = .1; k.pop('F2', None)
     return P3
+
+def feet_fix(P3):
+    """Pieds (Philippe, capture de la planche du 11 novembre : « Les pieds sont bizarrement positionnés ») : dans les poses allongées ou
+    jambe en arrière, le pied gardait l'orientation « debout » et se retrouvait replié sous le tibia. Trois positions naturelles :
+    sur la pointe (planche, pompes, pied arrière des fentes), pointe tendue dans le prolongement du tibia (à plat ventre, à genoux,
+    pied tenu ou posé sur la chaise), cheville neutre (jambe en l'air)."""
+    def shin(k, s): K = np.array(k['K' + s], float); A = np.array(k['A' + s], float); d = A - K; return A, d / np.linalg.norm(d)
+    def on_toes(k, s, sg=1.0, h=11.0):
+        k['A' + s] = [k['A' + s][0], round(k['T' + s][1] + h + 2.0, 2), k['A' + s][2]]; A = np.array(k['A' + s], float)
+        T = A + np.array([0, -.94, .34 * sg]) * 11.7; k['T' + s] = T.round(2).tolist(); k['TT' + s] = (T + np.array([0, -.1, sg]) * 4).round(2).tolist()
+    def pointed(k, s, up=.12):
+        A, d = shin(k, s); f = d + np.array([0, up, 0]); f /= np.linalg.norm(f); k['T' + s] = (A + f * 11.7).round(2).tolist(); k.pop('TT' + s, None)
+    def neutral(k, s, relax=.4):
+        A, d = shin(k, s); f = np.array([0, d[2], -d[1]]) * .9 + d * relax; f /= np.linalg.norm(f); k['T' + s] = (A + f * 11.7).round(2).tolist(); k.pop('TT' + s, None)
+    for id in ('plank', 'pushup'):
+        for k in P3[id]['k']:
+            for s in '12': on_toes(k, s)
+    for id in ('lunge', 'kblunge'):
+        for k in P3[id]['k']:
+            if k['A2'][2] < -30: on_toes(k, '2')
+    for k in P3['fwdlunge']['k']:
+        if k['A1'][2] - k['A2'][2] > 40: on_toes(k, '2')
+    for id in ('pronet', 'superman', 'abwheel'):
+        for k in P3[id]['k']:
+            for s in '12': pointed(k, s, .05)
+    for k in P3['stquad']['k']: pointed(k, '1', 0)
+    for k in P3['bulgarian']['k']:
+        A = np.array(k['A2'], float); k['T2'] = (A + np.array([0, -.15, -1.]) / np.linalg.norm([0, -.15, -1.]) * 11.7).round(2).tolist()
+    for k in P3['sldl']['k']:
+        if k['A1'][1] > 20: neutral(k, '1')
+    for id in ('deadbug', 'dbugw', 'ballcurl'):
+        for k in P3[id]['k']:
+            for s in '12':
+                if k['A' + s][1] > 8: neutral(k, s, .15)
+    # contact au sol après changement : pointes de pieds au niveau des mains ou des avant-bras (planche, pompes), pied arrière des fentes
+    for id, others in (('plank', ['farmR', 'farmL', 'twstR', 'twstL']), ('pushup', ['handR', 'handL'])):
+        for k in P3[id]['k']:
+            for _ in range(6):
+                V, _, _ = skin(P3, id, k); d = lowest(V, ['footR', 'toesR', 'footL', 'toesL']) - lowest(V, others)
+                if abs(d) < .4: break
+                for s in '12': shift(k, ['A' + s, 'T' + s, 'TT' + s], -d)
+    plant_feet(P3, only={'lunge', 'kblunge', 'fwdlunge'})
+    # squat bulgare : dessus du pied arrière posé sur l'assise
+    p = P3['bulgarian']
+    for _ in range(4):
+        V, _, _ = skin(P3, 'bulgarian', p['k'][0]); dy = 45.5 + .3 - lowest(V, ['footL', 'toesL'])
+        if abs(dy) < .2: break
+        for k in p['k']: shift(k, ['A2', 'T2'], dy); knee(k, '2')
+    return P3
