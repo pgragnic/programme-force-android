@@ -78,6 +78,13 @@ def fix(P3):
     # rowing barre : écartement des mains constant (la barre ne s'allonge pas)
     for k in P3['bbrow']['k']:
         for s, sx in (('1', 1), ('2', -1)): k['W' + s] = [21 * sx, k['W' + s][1], k['W' + s][2]]; elbow(k, s)
+    # rouleau sur le haut du dos : mains derrière la tête, coudes ouverts (au lieu des bras tendus vers le plafond)
+    for k in P3['rollback']['k']:
+        H = np.array(k['H'], float); N = np.array(k['N'], float)
+        for s, sx in (('1', 1), ('2', -1)):
+            k['W' + s] = [round(7 * sx, 2), round(H[1] + 4, 2), round(H[2] + 3, 2)]; k['E' + s] = [round(34 * sx, 2), round(N[1] + 10, 2), round(N[2] - 4, 2)]
+            k['U' + s] = [-sx * .3, .2, -.93]; k['c' + s] = .5
+            elbow(k, s)
     return P3
 
 if __name__ == '__main__':
