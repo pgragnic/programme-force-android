@@ -195,3 +195,8 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # cohérents ») ; corrections dans corps/fix4.py (dips sur chaise, squat bulgare, montée sur chaise, bancs, rowing barre). Programme version 15.
 d = json.load(open(p)); d['POSES3'] = json.load(open(_p3)); d['V'] = 15
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 11 novembre, 10 h 50 : halo kettlebell en vrai tour autour de la tête (Philippe : « Sens du halo ? », « Oui ») ; pose dans corps/fix4.py (halo),
+# tempo propre à l'exercice : un tour par répétition, sans retour en arrière. Programme version 16.
+d = json.load(open(p)); d['POSES3'] = json.load(open(_p3)); d['EX']['kbhalo']['tp'] = [4.0, 0.0, 0.0, 0.0]; d['V'] = 16
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

@@ -244,3 +244,25 @@ def kneepush_feet(P3):
             f = d + np.array([0, .25, 0]); f /= np.linalg.norm(f)
             k['T' + s] = (A + f * 14.5).round(2).tolist()
     return P3
+
+def halo(P3):
+    """Halo kettlebell (Philippe : « Sens du halo ? » puis « Oui ») : la kettlebell fait un vrai tour autour de la tête (devant, côté droit,
+    derrière, côté gauche, devant) ; avant, elle passait seulement de l'avant à l'arrière par-dessus la tête. Une répétition = un tour
+    (tempo de l'exercice : montée seule), une répétition sur deux en miroir = tour dans l'autre sens."""
+    base = dict(P3['kbhalo']['k'][0]); Hd = B.G[0]['bi'][:, 0] == NM.index('head')
+    V0 = B.skin(Q_(base))[0][0][0]; hc = V0[Hd].mean(0); dy = B.dy
+    for R_ in np.arange(19, 30, 1.):
+        ks = []; worst = 0
+        for i in range(9):
+            th = 2 * np.pi * i / 8; k = json.loads(json.dumps(base)); k['t'] = i / 8
+            c = np.array([R_ * np.sin(th), hc[1] + 9 - dy, hc[2] + R_ * np.cos(th)])
+            for s, sx in (('1', 1), ('2', -1)):
+                k['W' + s] = (c + [4.5 * sx, 0, 0]).round(2).tolist(); k.pop('F' + s, None)
+                k['U' + s] = [-sx, 0, 0]; k['c' + s] = .85
+                k['E' + s] = [26 * sx, c[1] - 14, c[2] * .5 + 12]; elbow(k, s)
+            ks.append(k); P3['kbhalo']['k'] = ks + [dict(x) for x in ks[len(ks):]]
+        P3['kbhalo']['k'] = ks
+        worst = max(tool_pen(P3, 'kbhalo', k, 'kb')[0] for k in ks)
+        if worst <= 1: break
+    print('halo : rayon', R_, 'cm, points dans le corps', worst)
+    return P3
