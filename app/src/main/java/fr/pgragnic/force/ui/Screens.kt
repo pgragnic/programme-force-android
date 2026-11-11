@@ -56,13 +56,14 @@ fun PChip(label: String, on: Boolean, sub: String? = null, onClick: () -> Unit) 
 
 /** Pastille de semaine compacte : « S1 » sur une ligne, puis 4 points (séances faites) sur une ligne. */
 @Composable
-fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+fun WeekChip(w: Int, n: Int, on: Boolean, modifier: Modifier, total: Int = 4, onClick: () -> Unit) {
     Column(modifier.clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.surface).border(1.dp, C.line, RoundedCornerShape(10.dp))
         .clickable(onClick = onClick).padding(vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(t("S${w + 1}", "W${w + 1}"), color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
-        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(if (total > 4) 1.5.dp else 2.dp)) {
             val c = if (on) C.bg else C.effort
-            repeat(4) { i -> Box(Modifier.size(5.dp).clip(CircleShape).then(if (i < n) Modifier.background(c) else Modifier.border(1.dp, c, CircleShape))) }
+            // autant de points que de séances prévues par semaine (Philippe, 5 séances choisies et 4 points affichés : « J'ai choisi 5 séances »)
+            repeat(total) { i -> Box(Modifier.size(if (total > 4) 4.dp else 5.dp).clip(CircleShape).then(if (i < n) Modifier.background(c) else Modifier.border(1.dp, c, CircleShape))) }
         }
     }
 }
@@ -125,6 +126,11 @@ fun SeanceScreen(onStart: () -> Unit) {
                 }
             }
         }
+        // plus (ou moins) de séances par semaine que les 4 séances A à D : on dit comment l'appli s'y prend
+        if (gear.perWeek != S.size) Text(if (gear.perWeek > S.size)
+            t("${gear.perWeek} séances par semaine : après A, B, C et D, l'appli te repropose la séance qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: after A, B, C and D, the app suggests again the workout that best spares your muscles.")
+            else t("${gear.perWeek} séances par semaine : l'appli propose à chaque fois celle qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: each time, the app suggests the one that best spares your muscles."),
+            color = C.muted, fontSize = 12.sp, lineHeight = 16.sp)
         if (weeks) Panel {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
@@ -132,8 +138,8 @@ fun SeanceScreen(onStart: () -> Unit) {
             }
             Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 (0 until 8).forEach { w ->
-                    val n = listOf("A", "B", "C", "D").count { "${st.c}-$w-$it" in done }
-                    WeekChip(w, n, st.w == w, Modifier.weight(1f)) { Store.setSettings { it.w = w } }
+                    val n = log.count { it.c == st.c && it.w == w }.coerceAtMost(gear.perWeek)
+                    WeekChip(w, n, st.w == w, Modifier.weight(1f), gear.perWeek) { Store.setSettings { it.w = w } }
                 }
             }
             Text(tr(W.t) + " · " + t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"),
