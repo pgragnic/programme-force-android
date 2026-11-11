@@ -266,3 +266,38 @@ def halo(P3):
         if worst <= 1: break
     print('halo : rayon', R_, 'cm, points dans le corps', worst)
     return P3
+
+def bridge_align(P3):
+    """Pont fessier, unilatéral et à deux jambes (Philippe, capture du 11 novembre : « Le pied n'est pas dans une position normale et le
+    bassin n'est pas aligné comme la consigne l'indique ») : en haut, épaules, bassin et genou d'appui sur une même ligne (le bassin
+    montait trop haut, dos cambré) ; pied d'appui à plat ; jambe libre dans le prolongement de la cuisse, pied détendu (il pointait vers le bas)."""
+    def joints(k):
+        R, T = B.solve(Q_(k)); th = B.B[NM.index('thghR')]; sh = B.B[NM.index('shinR')]
+        hip = T[NM.index('thghR')]; knee = hip + R[NM.index('thghR')] @ (sh['a'] - th['a']); return T[NM.index('clavR')], hip, knee
+    def dev(k):
+        s, h, kn = joints(k); u = (h[2] - s[2]) / (kn[2] - s[2]); return h[1] - (s[1] + (kn[1] - s[1]) * u)
+    for id in ('bridge', 'bridge2'):
+        k = P3[id]['k'][-1]
+        for _ in range(40):
+            d = dev(k)
+            if abs(d) < .4: break
+            k['P'] = [k['P'][0], round(k['P'][1] - d * .7, 2), k['P'][2]]
+            for s in ('1',) if id == 'bridge' else ('1', '2'): knee(k, s)
+        for kk in P3[id]['k']:
+            # pied d'appui à plat au même niveau que les épaules
+            for _ in range(4):
+                V, _, _ = skin(P3, id, kk)
+                for s, sd in (('1', 'R'),) if id == 'bridge' else (('1', 'R'), ('2', 'L')):
+                    dy = APP_DY - lowest(V, ['foot' + sd, 'toes' + sd])
+                    if abs(dy) > .2: shift(kk, ['A' + s, 'T' + s], dy); knee(kk, s)
+            if id == 'bridge':
+                # jambe libre : cuisse parallèle à la cuisse d'appui, jambe tendue dans son prolongement, pied détendu
+                R, T = B.solve(Q_(kk)); th = B.B[NM.index('thghL')]; sh = B.B[NM.index('shinL')]; ft = B.B[NM.index('footL')]
+                hipL = T[NM.index('thghL')]; K1 = np.array(kk['K1'], float); hipR = T[NM.index('thghR')]
+                d = (K1 - hipR); d[0] = -d[0]; d /= np.linalg.norm(d)
+                L1 = np.linalg.norm(sh['a'] - th['a']); L2 = np.linalg.norm(ft['a'] - sh['a'])
+                K2 = hipL + d * L1; A2 = K2 + d * L2
+                f = np.array([0, d[2], -d[1]]) * .8 + d * .45; f /= np.linalg.norm(f)
+                kk['K2'] = K2.round(2).tolist(); kk['A2'] = A2.round(2).tolist(); kk['T2'] = (A2 + f * 14.5).round(2).tolist(); kk.pop('TT2', None)
+        print(id, 'bassin : écart à la ligne épaules-genou', round(float(dev(P3[id]['k'][-1])), 1), 'cm')
+    return P3
