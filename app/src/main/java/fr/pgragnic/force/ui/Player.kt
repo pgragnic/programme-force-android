@@ -116,7 +116,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             if (gap) return Triple(0.0, true, t("CHANGE DE CÔTÉ", "SWITCH SIDES"))
             val k = Prog.cycleK(lt, q.tp!!)
             val ph = lt % q.rt; val tp = q.tp
-            val mv = if (q.m == "alt") (if (floor(pt / q.rt).toInt() % 2 == 1) "DROITE" else "GAUCHE")
+            // côté annoncé = celui de la jambe levée, la plus visible à l'écran (Philippe, captures du bird dog : « Gauche et droite sont inversés »)
+            val mv = if (q.m == "alt") (if (floor(pt / q.rt).toInt() % 2 == 1) "GAUCHE" else "DROITE")
             else if (ph < tp[0]) (if (q.inv) "DESCENDS" else "MONTE") else if (ph < tp[0] + tp[1]) "TIENS" else if (ph < tp[0] + tp[1] + tp[2]) (if (q.inv) "MONTE" else "DESCENDS") else ""
             val side = if (q.m == "uni") (if (h == 0) "GAUCHE · " else "DROIT · ") else ""
             // alterné (bird dog, dead bug, halo) : une répétition sur deux en miroir, du côté annoncé (Philippe : captures du bird dog,
