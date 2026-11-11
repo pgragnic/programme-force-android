@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         Demo.sub = intent.getStringExtra("sub")
         Demo.sub?.takeIf { it.toIntOrNull() == null }?.let { fr.pgragnic.force.ui.regSub.value = it }
         if (intent.getBooleanExtra("opensetup", false)) fr.pgragnic.force.ui.setupOpen.value = true
-        if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).apply()
+        if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).putBoolean("tour", !intent.getBooleanExtra("tour", false)).apply()
         runCatching {
             getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { Store.autoSync() }
@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dk = C.dark
             LaunchedEffect(dk) { androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).run { isAppearanceLightStatusBars = !dk; isAppearanceLightNavigationBars = !dk } }
-            ForceTheme { App(); HealthNotice() }
+            ForceTheme { App(); HealthNotice(); TourOverlay() }
         }
     }
 
@@ -88,6 +88,9 @@ class MainActivity : ComponentActivity() {
         val gear by GearStore.g.collectAsState(); val setup by setupOpen.collectAsState()
         val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
         LaunchedEffect(cur) { keepOn(cur != null) }
+        // visite guidée au premier lancement (aide contextuelle, maquette ⑧), toujours sur l'onglet Séance
+        LaunchedEffect(gear.done, setup, cur) { if (gear.done && !setup && cur == null && !Tour.seen(this@MainActivity) && Tour.step.value < 0) { kotlinx.coroutines.delay(900); Tour.start() } }
+        LaunchedEffect(Tour.step.value) { if (Tour.step.value >= 0) tab = 0 }
         LaunchedEffect(Unit) {
             val pi = intent.getIntExtra("play", -1)
             if (pi >= 0 && Live.ses == null) {
@@ -109,7 +112,7 @@ class MainActivity : ComponentActivity() {
                         val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.PlayCircleOutline, t("Corps", "Body") to Icons.Default.Accessibility,
                             t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
                         items.forEachIndexed { i, (t, ic) ->
-                            NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
+                            NavigationBarItem(selected = tab == i, onClick = { tab = i }, modifier = Modifier.tourTarget(if (i == 1) "corps" else null), icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = C.effort, selectedTextColor = C.effort, indicatorColor = C.bg, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
                         }
                     }

@@ -200,3 +200,8 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # tempo propre à l'exercice : un tour par répétition, sans retour en arrière. Programme version 16.
 d = json.load(open(p)); d['POSES3'] = json.load(open(_p3)); d['EX']['kbhalo']['tp'] = [4.0, 0.0, 0.0, 0.0]; d['V'] = 16
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 11 novembre, 12 h 15 : aide contextuelle (Philippe : « Est-ce qu'on ne rajouterait pas une aide contextuelle ? ») ; consignes du dead bug
+# (il n'en avait pas) ; les « À éviter » de chaque exercice sont ajoutés par tools/avoid.py, leurs traductions par tools/en.py.
+d = json.load(open(p)); d['EX']['deadbug']['cues'] = ['Bas du dos au sol', 'Bras et jambe opposés', 'Expire en tendant la jambe']
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

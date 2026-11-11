@@ -39,9 +39,10 @@ fun CorpsScreen() {
     val colors = remember(MU, C.dark, sel) { Recovery.MUS.filter { sel == null || it == sel }.associateWith { Recovery.recCol(MU.R[it]!!, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort)) } }   // muscle choisi seul en couleur, les autres gris clair
     val st by Store.st.collectAsState(); val gear by GearStore.g.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(t("Corps", "Body"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Spacer(Modifier.weight(1f)); Text(t("Récupération", "Recovery"), color = C.muted, fontSize = 13.sp)
+            Spacer(Modifier.weight(1f)); Text(t("Récupération", "Recovery"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(end = 10.dp))
+            HelpButton("corps")
         }
         Row(Modifier.fillMaxWidth().height(330.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Face" to 0f, "Dos" to PI.toFloat()).forEach { (t, az) ->

@@ -48,6 +48,8 @@ data class Gear(
     /** accord pour sauvegarder les restrictions de santé avec le compte en ligne */
     val limitsOnline: Boolean = false,
     val done: Boolean = false,
+    /** remplacements choisis à la main dans la fiche d'un exercice : exercice proposé → exercice préféré (Philippe : « ok pour le raccourci "Remplacer" ») */
+    val swaps: Map<String, String> = emptyMap(),
 ) {
     fun has(e: String) = e in items || e.isEmpty()
 

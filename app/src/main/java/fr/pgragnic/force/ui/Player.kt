@@ -176,6 +176,10 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
                 }
             }
             Text(if (p.k == "warm") t("Échauff.", "Warm-up") else if (p.k == "cool") t("Calme", "Cool") else "${ex + 1} / ${ses.nex}", color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            // fiche de l'exercice en cours (aide contextuelle)
+            var info by remember { mutableStateOf<String?>(null) }
+            p.ex?.let { xid -> IconButton(onClick = { info = xid }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Info, t("Fiche de l'exercice", "Exercise sheet"), tint = C.muted) } }
+            info?.let { xid -> ExSheet(xid, null, emptyList(), swap = false) { info = null } }
             IconButton(onClick = { ses.voice.on = !ses.voice.on }, modifier = Modifier.size(44.dp)) {
                 Icon(if (ses.voice.on) Icons.Default.VolumeUp else Icons.Default.VolumeOff, fr.pgragnic.force.tr("Son"), tint = C.muted)
             }

@@ -78,7 +78,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     remember(log, gear) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
-    var weeks by remember { mutableStateOf(false) }; var list by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
+    var weeks by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(log) { Store.rollWeek() }
     val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
     val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
@@ -104,11 +104,11 @@ fun SeanceScreen(onStart: () -> Unit) {
     // muscles les plus sollicités par la séance
     val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column {
+        Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) {
             val nWk = remember(log) { val m = Prog.mondayOf(System.currentTimeMillis()); log.count { it.d >= m } }
             Text(t("Cycle ${st.c} · semaine ${st.w + 1} sur 8 · $nWk/${gear.perWeek} cette semaine", "Cycle ${st.c} · week ${st.w + 1} of 8 · $nWk/${gear.perWeek} this week"), color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Text(t("Ta prochaine séance", "Your next workout"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-        }
+        }; HelpButton("seance") }
         // sélecteur compact : semaine (déplie cycles et semaines) et séance
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(20.dp)).clickable { weeks = !weeks }.padding(horizontal = 12.dp),
@@ -154,7 +154,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
             if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
-            Button(onClick = { if (share >= .4) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp), shape = RoundedCornerShape(16.dp),
+            Button(onClick = { if (share >= .4) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).tourTarget("start"), shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
                 Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)
@@ -167,18 +167,19 @@ fun SeanceScreen(onStart: () -> Unit) {
                 Text(t("Ce que tu vas faire", "What you'll do"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 Text(t("${order.size} exercices", "${order.size} exercises"), color = C.muted, fontSize = 13.sp)
             }
-            order.forEach { id ->
-                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w); val open = list && sel == id
-                Row(Modifier.fillMaxWidth().clickable { if (sel == id && list) list = false else { sel = id; list = true } }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ExThumb(id, 96.dp)
+            order.forEachIndexed { i, id ->
+                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
+                val line = "${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+                // toucher un exercice ouvre sa fiche (aide contextuelle, maquette ⑥)
+                Row(Modifier.fillMaxWidth().tourTarget(if (i == 0) "info" else null).clickable { sel = id }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ExThumb(id, 96.dp, info = true)
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(e.n, color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
-                        Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
-                            color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
-                        if (open) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(line, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                 }
                 HorizontalDivider(color = C.line, modifier = Modifier.padding(start = 110.dp))
+                if (sel == id) ExSheet(id, line, order, swap = true) { sel = null }
             }
         }
     }
@@ -186,7 +187,7 @@ fun SeanceScreen(onStart: () -> Unit) {
 
 /** Vignette d'un exercice : le personnage 3D dans la pose du mouvement, muscles travaillés en couleur (rendu une fois, gardé en cache). */
 @Composable
-fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp) {
+fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp, info: Boolean = false) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val pose = Prog.EX[id]?.pose ?: id
     val st = fr.pgragnic.force.gl.BodyState(pose = pose, ex = id, hl = id, k = .55, thumb = true).th()
@@ -195,6 +196,9 @@ fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp) {
     val bm by produceState(fr.pgragnic.force.gl.Thumbs.cached(key), key) { value = fr.pgragnic.force.gl.Thumbs.get(ctx, key, st, px) }
     Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(C.stage)) {
         bm?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, Modifier.fillMaxSize()) }
+        if (info) Box(Modifier.align(Alignment.BottomEnd).padding(5.dp).size(24.dp).clip(CircleShape).background(C.effort), contentAlignment = Alignment.Center) {
+            Text("i", color = C.onColor, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+        }
     }
 }
 
@@ -328,7 +332,7 @@ fun ProgresScreen() {
     var sub by rememberSaveable { mutableIntStateOf(Demo.sub?.toIntOrNull() ?: 0) }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(t("Progrès", "Progress"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            Row(verticalAlignment = Alignment.CenterVertically) { Text(t("Progrès", "Progress"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink, modifier = Modifier.weight(1f)); HelpButton("progres") }
             // ordre demandé par Philippe : « Je veux les onglets dans l'ordre activité, courbe, semaine »
             Seg3(listOf(t("Activité", "Activity"), t("Courbes", "Charts"), t("Semaine", "Week")), sub) { sub = it }
         }
@@ -377,6 +381,11 @@ fun ReglagesScreen() {
                 "affichage" -> ThemePanel()
                 "avis" -> FeedbackPanel()
                 else -> {
+                    Panel {
+                        Text(t("Visite guidée", "Guided tour"), color = C.ink, fontWeight = FontWeight.Bold)
+                        Text(t("Les bulles d'aide du premier lancement, à revoir quand tu veux.", "The first-launch help bubbles, to watch again whenever you like."), color = C.muted, fontSize = 13.sp)
+                        TextButton(onClick = { sub = null; Tour.start() }) { Text(t("Revoir la visite guidée", "Watch the tour again"), color = C.effort, fontWeight = FontWeight.Bold) }
+                    }
                     NewsPanel(); LegalPanel()
                     Panel {
                         Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
@@ -401,7 +410,7 @@ fun ReglagesScreen() {
         else -> t("Nouveautés, version, confidentialité", "What's new, version, privacy")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(t("Réglages", "Settings"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+        Row(verticalAlignment = Alignment.CenterVertically) { Text(t("Réglages", "Settings"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink, modifier = Modifier.weight(1f)); HelpButton("reglages") }
         listOf(REG.take(3), REG.drop(3)).forEach { grp ->
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(18.dp))) {
                 grp.forEachIndexed { i, r ->

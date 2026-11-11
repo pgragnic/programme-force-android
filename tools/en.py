@@ -5,7 +5,8 @@ sys.path.insert(0, 'tools')
 from en_ui import UI
 from en_data import DATA
 p = sys.argv[1]; d = json.load(open(p))
-EN = {}; EN.update(DATA); EN.update(UI)
+from avoid import EN as AVOID
+EN = {}; EN.update(DATA); EN.update(UI); EN.update(AVOID)
 EN.update({'Langue': 'Language', 'Français': 'Français', 'English': 'English'})
 d['EN'] = EN
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

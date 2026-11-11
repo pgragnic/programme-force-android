@@ -11,7 +11,9 @@ class Ex(val id: String, val n: String, val l: String, val tip: String, val m: S
          val eq: List<String> = emptyList(), val lt: String = "bw", val tool: String = "", val stress: List<String> = emptyList(),
          val pose: String = id, val band: List<List<String>> = emptyList(), val f0: Double? = null,
          /** rythme propre (mouvements explosifs : swing, slam), à la place du tempo de la semaine */
-         val tp: List<Double>? = null)
+         val tp: List<Double>? = null,
+         /** erreurs à éviter, affichées dans la fiche de l'exercice (tools/avoid.py) */
+         val avoid: List<String> = emptyList())
 
 class Week(val t: String, val s: Int, val r: Int, val tp: List<Double>, val pl: Int, val note: String)
 
@@ -145,7 +147,7 @@ object Prog {
                 o["pose"]?.jsonPrimitive?.contentOrNull ?: id,
                 o["band"]?.jsonArray?.map { b -> b.jsonArray.map { it.jsonPrimitive.content } } ?: emptyList(),
                 o["f0"]?.jsonPrimitive?.doubleOrNull,
-                o["tp"]?.jsonArray?.map { it.jsonPrimitive.double })
+                o["tp"]?.jsonArray?.map { it.jsonPrimitive.double }, o.list("avoid"))
         }
         raw["WEEKS"]!!.jsonArray.forEach { v ->
             val o = v.jsonObject
@@ -227,9 +229,26 @@ object Prog {
         }
         // 2e passage : un emplacement restant prend son exercice propre principal (premier de la liste) si le matériel est là, sinon le choix habituel
         val out = S.keys.sorted().associateWith { s ->
-            S[s]!!.ex.mapIndexedNotNull { i, slot -> chosen[s to i] ?: cands[s]!![i].firstOrNull()?.takeIf { it == sig[s]?.get(slot)?.firstOrNull() } ?: pick(slot, g) }.distinct()
+            S[s]!!.ex.mapIndexedNotNull { i, slot -> chosen[s to i] ?: cands[s]!![i].firstOrNull()?.takeIf { it == sig[s]?.get(slot)?.firstOrNull() } ?: pick(slot, g) }
+                // remplacements choisis à la main dans la fiche de l'exercice (« Remplacer »)
+                .map { x -> g.swaps[x]?.takeIf { ok(it, g) } ?: x }.distinct()
         }
         weekCache = Triple(c, g, out); return out
+    }
+
+    /** Exercice d'origine quand celui-ci est un remplacement choisi à la main. */
+    fun origin(id: String, g: Gear = gear): String? = g.swaps.entries.firstOrNull { it.value == id }?.key
+    /** Remplaçants possibles : même famille (variantes et remplaçants du programme), faisables avec le matériel, pas déjà dans la séance. */
+    fun alternatives(id: String, inSess: List<String>, g: Gear = gear): List<String> {
+        val base = origin(id, g) ?: id; val fam = LinkedHashSet<String>()
+        if (base != id) fam += base
+        EX.keys.forEach { b -> val grp = (UP[b] ?: emptyList()) + b + (ALT[b] ?: emptyList()); if (base in grp || id in grp) fam += grp }
+        return fam.filter { it != id && ok(it, g) && (it == base || it !in inSess) }
+    }
+    /** Remplace un exercice par un autre dans toutes les séances (revenir à l'exercice d'origine annule le remplacement). */
+    fun swap(ctx: android.content.Context, id: String, to: String) {
+        val g = gear; val base = origin(id, g) ?: id
+        GearStore.save(ctx, g.copy(swaps = (g.swaps - base).let { if (to != base) it + (base to to) else it }))
     }
 
     private fun JsonObject.s(k: String) = this[k]?.jsonPrimitive?.contentOrNull ?: ""
