@@ -255,7 +255,7 @@ def halo(P3):
         ks = []; worst = 0
         for i in range(9):
             th = 2 * np.pi * i / 8; k = json.loads(json.dumps(base)); k['t'] = i / 8
-            c = np.array([R_ * np.sin(th), hc[1] + 9 - dy, hc[2] + R_ * np.cos(th)])
+            c = np.array([R_ * np.sin(th), hc[1] + 9 - dy - 3, hc[2] + R_ * np.cos(th)])   # la prise est un peu au-dessus du poignet
             for s, sx in (('1', 1), ('2', -1)):
                 k['W' + s] = (c + [4.5 * sx, 0, 0]).round(2).tolist(); k.pop('F' + s, None)
                 k['U' + s] = [-sx, 0, 0]; k['c' + s] = .85
