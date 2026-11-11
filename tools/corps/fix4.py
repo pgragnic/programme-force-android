@@ -234,3 +234,13 @@ def bbpress_start(P3):
     for k in p['k']:
         if 0 < k['t'] < 1: clear(k)
     return P3
+
+def kneepush_feet(P3):
+    """Pompes sur les genoux (Philippe, captures du 11 novembre : « Les pieds ont un positionnement bizarre ») : pieds détendus dans le
+    prolongement des jambes, pointes vers l'arrière (ils étaient repliés vers les tibias)."""
+    for k in P3['incline']['k']:
+        for s in '12':
+            K = np.array(k['K' + s], float); A = np.array(k['A' + s], float); d = (A - K) / np.linalg.norm(A - K)
+            f = d + np.array([0, .25, 0]); f /= np.linalg.norm(f)
+            k['T' + s] = (A + f * 14.5).round(2).tolist()
+    return P3
