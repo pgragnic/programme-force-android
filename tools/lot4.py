@@ -205,3 +205,18 @@ json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
 # (il n'en avait pas) ; les « À éviter » de chaque exercice sont ajoutés par tools/avoid.py, leurs traductions par tools/en.py.
 d = json.load(open(p)); d['EX']['deadbug']['cues'] = ['Bas du dos au sol', 'Bras et jambe opposés', 'Expire en tendant la jambe']
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 11 novembre, 14 h 40 : séances E et F pour 5 et 6 séances par semaine (Philippe : « J'ai choisi 5 séances », puis
+# « une E et une F avec leurs propres exercices »). E : bas du corps, chaîne arrière ; F : haut du corps, bras et abdos.
+# Les exercices diffèrent de ceux de la séance du même thème dans le même cycle. Programme version 17.
+d = json.load(open(p))
+d['SESS1']['E'] = {'t': 'Bas · fessiers & ischios', 'ex': ['sldl', 'fwdlunge', 'squat', 'bridge', 'calf1', 'dbugw'], 'cool': ['stquad', 'stham', 'stlat'], 'warm': ['bwsquat', 'hinge', 'lungev']}
+d['SESS2']['E'] = {'t': 'Bas · fessiers & ischios', 'ex': ['rdl', 'lunge', 'squat', 'bridge', 'calf', 'crunch'], 'cool': ['stquad', 'stham', 'stlat'], 'warm': ['bwsquat', 'hinge', 'lungev']}
+d['SESS1']['F'] = {'t': 'Haut · bras & abdos', 'ex': ['pushup', 'pull', 'revfly', 'curl', 'skull', 'plank'], 'cool': ['stpec', 'stlat', 'sttri'], 'warm': ['circle', 'catcow', 'rowv']}
+d['SESS2']['F'] = {'t': 'Haut · bras & abdos', 'ex': ['incline', 'row2', 'lateral', 'hammer', 'ohtri', 'crunch'], 'cool': ['stpec', 'stlat', 'sttri'], 'warm': ['circle', 'pressv', 'rowv']}
+d['SIG']['SESS1']['E'] = {'sldl': ['kbswing', 'bbrdl', 'ballcurl'], 'fwdlunge': ['stepup', 'bulgarian'], 'squat': ['kbsumo', 'bosusquat', 'mbsquat'], 'bridge': ['mbbridge', 'ballcurl'], 'dbugw': ['abwheel', 'medcrunch']}
+d['SIG']['SESS2']['E'] = {'rdl': ['bbrdl', 'kbswing', 'ballcurl'], 'lunge': ['bulgarian', 'stepup'], 'squat': ['kbsumo', 'bosusquat', 'mbsquat'], 'bridge': ['mbbridge', 'ballcurl'], 'crunch': ['abwheel', 'kneeraise', 'medcrunch']}
+d['SIG']['SESS1']['F'] = {'pushup': ['benchpress', 'inclinepress'], 'pull': ['towelrow'], 'revfly': ['bandpull'], 'curl': ['bbcurl'], 'skull': ['dips', 'chairdip'], 'plank': ['mbslam']}
+d['SIG']['SESS2']['F'] = {'incline': ['inclinepress', 'benchpress'], 'row2': ['pullup', 'bbrow'], 'lateral': ['bandlat'], 'hammer': ['bbcurl'], 'ohtri': ['dips', 'chairdip'], 'crunch': ['abwheel', 'kneeraise', 'medcrunch']}
+d['V'] = 17
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

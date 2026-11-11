@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
         Demo.tired = intent.getBooleanExtra("tired", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
+        intent.getIntExtra("perweek", 0).takeIf { it in 3..6 }?.let { GearStore.save(this, GearStore.g.value.copy(perWeek = it)) }
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
         Demo.muscle = intent.getStringExtra("muscle")
         Demo.sub = intent.getStringExtra("sub")

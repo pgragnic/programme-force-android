@@ -84,6 +84,7 @@ X = {
  'kbswing': 'brasswing squatswing', 'kbhalo': 'tetehalo cambrer',
 }
 EN = {fr: en for fr, en in A.values()}
+EN.update({"Bas · fessiers & ischios": "Lower · glutes & hamstrings", "Haut · bras & abdos": "Upper · arms & abs"})
 EN.update({"La force vient des hanches": "The power comes from the hips", "Kettlebell près de la tête": "Kettlebell close to the head", "Pousse sur les talons": "Push through the heels",
            "À éviter": "Avoid", "Comment faire": "How to do it", "Muscles travaillés": "Muscles worked"})
 if __name__ == '__main__':

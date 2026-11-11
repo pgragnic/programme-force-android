@@ -79,6 +79,8 @@ fun SeanceScreen(onStart: () -> Unit) {
     remember(log, gear) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
+    // séance E ou F sélectionnée puis moins de séances par semaine : on revient à une séance existante
+    if (st.s !in S) { LaunchedEffect(st.s, gear.perWeek) { Store.setSettings { it.s = Prog.nextSess(Store.st.value, Store.log.value, Store.days.value) } }; return }
     var weeks by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(log) { Store.rollWeek() }
     val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }

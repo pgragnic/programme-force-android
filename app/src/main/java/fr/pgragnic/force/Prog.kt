@@ -215,7 +215,7 @@ object Prog {
      */
     fun week(c: Int, g: Gear = gear): Map<String, List<String>> {
         weekCache?.let { if (it.first == c && it.second == g) return it.third }
-        val S = sess(c); val sig = SIG[if (c % 2 == 0) "SESS2" else "SESS1"] ?: emptyMap()
+        val S = sess(c, g); val sig = SIG[if (c % 2 == 0) "SESS2" else "SESS1"] ?: emptyMap()
         val cands = S.keys.sorted().associateWith { s -> S[s]!!.ex.map { slot -> (sig[s]?.get(slot) ?: emptyList()).filter { ok(it, g) && toolKey(it).isNotEmpty() } } }
         val count = HashMap<String, Int>(); cands.values.flatten().forEach { l -> l.map { toolKey(it) }.toSet().forEach { count[it] = (count[it] ?: 0) + 1 } }
         val used = HashSet<String>(); val chosen = HashMap<Pair<String, Int>, String>()
@@ -255,7 +255,8 @@ object Prog {
     private fun JsonObject.i(k: String) = this[k]?.jsonPrimitive?.intOrNull ?: 0
     private fun JsonObject.list(k: String) = this[k]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
 
-    fun sess(c: Int): Map<String, Sess> = if (c % 2 == 0) SESS2 else SESS1
+    /** Séances du cycle : A à D, plus E à partir de 5 séances par semaine et F à 6 (Philippe : « une E et une F avec leurs propres exercices »). */
+    fun sess(c: Int, g: Gear = gear): Map<String, Sess> = (if (c % 2 == 0) SESS2 else SESS1).filterKeys { it <= "D" || (it == "E" && g.perWeek >= 5) || (it == "F" && g.perWeek >= 6) }
 
     // ---------- charges ----------
     var loads = HashMap<String, DoubleArray>() // id -> [kg, ok, miss]
@@ -451,7 +452,7 @@ object Prog {
     }
 
     private fun build(c: Int, w: Int, s: String, restS: Int, st: Settings, log: List<Entry>, nsOver: Map<String, Int>): ArrayList<Phase> {
-        val S = sess(c)[s]!!; val W = WEEKS[w]; val P = ArrayList<Phase>()
+        val S = sess(c)[s] ?: sess(c).values.first(); val W = WEEKS[w]; val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
         val first = exo.firstOrNull { kgOf(it, w, st) > 0 && toolOf(it) == "db" }

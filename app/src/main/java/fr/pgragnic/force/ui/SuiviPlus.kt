@@ -54,7 +54,7 @@ object Bilan {
         out += if (tired.isEmpty() && mid.isEmpty()) "Tous les muscles sont prêts." else
             (if (tired.isNotEmpty()) t("Encore fatigués : ${tired.joinToString(", ")}. ", "Still tired: ${tired.joinToString(", ") { tr(it) }}. ") else "") + (if (mid.isNotEmpty()) t("En récupération : ${mid.joinToString(", ")}.", "Recovering: ${mid.joinToString(", ") { tr(it) }}.") else "")
         val doneS = cur.map { it.s }.toSet()
-        val left = listOf("A", "B", "C", "D").filter { it !in doneS }
+        val left = Prog.sess(st.c).keys.filter { it !in doneS }
         if (left.isNotEmpty() && L.isNotEmpty()) {
             val best = left.maxBy { Recovery.sessScore(st.c, it, MU.R) }
             out += t("Prochaine séance conseillée : ${best} · ${Prog.sess(st.c)[best]?.t ?: ""} (muscles les plus reposés).", "Suggested next workout: ${best} · ${tr(Prog.sess(st.c)[best]?.t ?: "")} (most rested muscles).")
