@@ -25,7 +25,7 @@ jobs:
       - id: c
         name: Contrôle de toutes les poses
         run: |
-          set +e; python3 tools/corps/check.py | tee controle/resume.txt; rc=${PIPESTATUS[0]}; set -e
+          mkdir -p controle; set +e; python3 tools/corps/check.py | tee controle/resume.txt; rc=${PIPESTATUS[0]}; set -e
           p=$(cat controle/modifiees.txt | tr ' ' '\n' | head -20 | sed 's/.*/&@0 &@0.5 &@1/' | tr '\n' ' ')
           echo "poses=$p" >> "$GITHUB_OUTPUT"
           exit $rc
