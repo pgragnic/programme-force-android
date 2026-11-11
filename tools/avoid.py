@@ -84,7 +84,8 @@ X = {
  'kbswing': 'brasswing squatswing', 'kbhalo': 'tetehalo cambrer',
 }
 EN = {fr: en for fr, en in A.values()}
-EN.update({"À éviter": "Avoid", "Comment faire": "How to do it", "Muscles travaillés": "Muscles worked"})
+EN.update({"La force vient des hanches": "The power comes from the hips", "Kettlebell près de la tête": "Kettlebell close to the head", "Pousse sur les talons": "Push through the heels",
+           "À éviter": "Avoid", "Comment faire": "How to do it", "Muscles travaillés": "Muscles worked"})
 if __name__ == '__main__':
     p = sys.argv[1]; d = json.load(open(p)); miss = [k for k in d['EX'] if k not in X]
     assert not miss, miss

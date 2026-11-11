@@ -47,12 +47,26 @@ esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
 tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
+# aide contextuelle : visite guidée, « ? » de l'écran, fiche d'un exercice
+cap() { adb exec-out screencap -p > shots/$1.png; }
+case " $POSES " in *" aide "*)
+  shot aide-tour1 --es lang fr --ez seed true --ei tab 0 --ez tour true
+  for n in 2 3 4; do tapt "Suivant"; cap aide-tour$n; done
+  tapt "Terminer"; tapt '\\?'; sleep 2; cap aide-help
+  adb shell input keyevent 4; sleep 2
+  adb shell input swipe 160 500 160 150 500; sleep 3; tapt "Floor press"; sleep 4; cap aide-fiche
+  adb shell input swipe 160 560 160 200 500; sleep 3; cap aide-fiche-b
+  tapt "Remplacer"; sleep 2; adb shell input swipe 160 560 160 300 500; sleep 2; cap aide-fiche-c
+  adb shell input keyevent 4; sleep 2
+  shot aide-corps --es lang fr --ez seed true --ei tab 1; tapt '\\?'; sleep 2; cap aide-corps-help
+  shot aide-en --es lang en --ez seed true --ei tab 0 --ez tour true;;
+esac
 case " $POSES " in *" warn "*)
   shot warn-a --es lang fr --ez seed true --ez tired true --ei tab 0; sw warn-b; tapt "Démarrer"; adb exec-out screencap -p > shots/warn-c.png;;
 esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = warn ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = warn ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3
