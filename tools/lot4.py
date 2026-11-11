@@ -190,3 +190,8 @@ if os.path.exists(_p3):
 # Pont fessier mini-bande : pose à deux jambes « bridge2 » (il prenait la pose unilatérale). Programme livré version 14 (prime sur la base, version 13).
 d = json.load(open(p)); d['POSES']['bridge2'] = json.loads(json.dumps(d['POSES']['bridge'])); d['EX']['mbbridge']['pose'] = 'bridge2'; d['V'] = 14
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+# --- 11 novembre : contrôle de tous les mouvements (Philippe : « pourrais-tu vérifier pour tous les exercices que les mouvements sont bien
+# cohérents ») ; corrections dans corps/fix4.py (dips sur chaise, squat bulgare, montée sur chaise, bancs, rowing barre). Programme version 15.
+d = json.load(open(p)); d['POSES3'] = json.load(open(_p3)); d['V'] = 15
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

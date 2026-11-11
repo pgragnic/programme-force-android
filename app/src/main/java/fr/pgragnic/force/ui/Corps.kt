@@ -56,41 +56,31 @@ fun CorpsScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(10.dp).clip(CircleShape).background(c)); Text(" $t", color = C.muted, fontSize = 12.sp) }
             }
         }
-        // liste allégée (maquette « ⑤ Corps allégé » validée par Philippe : « Ok pour ces écrans ! ») : le détail seulement pour les muscles
-        // à laisser reposer, les autres en pastilles ; toucher un muscle ouvre son détail
-        val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }
+        // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,
+        // puis les muscles prêts avec la même ligne détaillée ; toucher un muscle ouvre son détail
+        val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
+        @Composable fun row(m: String) {
+            val r = MU.R[m]!!; val c = if (r >= 90) C.effort else if (r >= 60) C.warm else C.danger; val h = MU.ready[m] ?: 0
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 9.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(width = 6.dp, height = 32.dp).clip(RoundedCornerShape(3.dp)).background(c))
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontWeight = FontWeight.Bold)
+                        Text(if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = C.muted, fontSize = 12.sp)
+                    }
+                    Text("$r %", color = c, fontWeight = FontWeight.Bold)
+                    Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
+                }
+                if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
+            }
+        }
         if (tired.isNotEmpty()) {
             Text(t("À laisser reposer", "Let these recover"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            tired.forEach { m ->
-                val r = MU.R[m]!!; val c = if (r >= 60) C.warm else C.danger; val h = MU.ready[m] ?: 120
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(width = 6.dp, height = 32.dp).clip(RoundedCornerShape(3.dp)).background(c))
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(fr.pgragnic.force.tr(m), color = C.ink, fontWeight = FontWeight.Bold)
-                            Text(t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = C.muted, fontSize = 12.sp)
-                        }
-                        Text("$r %", color = c, fontWeight = FontWeight.Bold)
-                        Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
-                    }
-                    if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
-                }
-            }
+            tired.forEach { row(it) }
         } else Text(t("Tous tes muscles sont prêts.", "All your muscles are ready."), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         if (ready.isNotEmpty()) {
             Text(t("Prêts", "Ready"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                ready.forEach { m -> val on = sel == m
-                    Text(fr.pgragnic.force.tr(m), color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) C.ink else C.surface).clickable { sel = if (on) null else m }.padding(horizontal = 14.dp, vertical = 9.dp))
-                }
-            }
-            sel?.takeIf { it in ready }?.let { m ->
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).padding(horizontal = 14.dp, vertical = 12.dp)) {
-                    Text(fr.pgragnic.force.tr(m) + " · " + t("prêt", "ready"), color = C.ink, fontWeight = FontWeight.Bold)
-                    MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
-                }
-            }
+            ready.forEach { row(it) }
         }
     }
 }

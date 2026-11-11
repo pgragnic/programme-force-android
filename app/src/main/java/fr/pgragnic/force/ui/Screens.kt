@@ -313,13 +313,14 @@ fun ProgresScreen() {
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(t("Progrès", "Progress"), fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
-            Seg3(listOf(t("Semaine", "Week"), t("Courbes", "Charts"), t("Activité", "Activity")), sub) { sub = it }
+            // ordre demandé par Philippe : « Je veux les onglets dans l'ordre activité, courbe, semaine »
+            Seg3(listOf(t("Activité", "Activity"), t("Courbes", "Charts"), t("Semaine", "Week")), sub) { sub = it }
         }
         Box(Modifier.weight(1f)) {
             when (sub) {
-                0 -> SuiviScreen(inProgres = true)
+                0 -> ActiviteScreen(inProgres = true)
                 1 -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) { ProgressPanel() }
-                else -> ActiviteScreen(inProgres = true)
+                else -> SuiviScreen(inProgres = true)
             }
         }
     }

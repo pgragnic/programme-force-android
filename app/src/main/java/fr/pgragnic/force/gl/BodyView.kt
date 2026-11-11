@@ -383,14 +383,16 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             val z = x - 100f; val pc = rgb(s.prop)
             when (t) {
                 "chair" -> {
-                    objs += Triple(box, mat(V3(0f, 44f, z), 42f, 3f, 40f), pc)
-                    listOf(-18f, 18f).forEach { lx -> listOf(-17f, 17f).forEach { lz -> objs += Triple(box, mat(V3(lx, 21.5f, z + lz), 2.5f, 43f, 2.5f), pc) } }
+                    val dy = (b.propTop(id) ?: 45.5f) - 45.5f
+                    objs += Triple(box, mat(V3(0f, 44f + dy, z), 42f, 3f, 40f), pc)
+                    listOf(-18f, 18f).forEach { lx -> listOf(-17f, 17f).forEach { lz -> objs += Triple(box, mat(V3(lx, (43f + dy) / 2, z + lz), 2.5f, 43f + dy, 2.5f), pc) } }
                     val back = if (x < 100f) -19f else 19f
-                    objs += Triple(box, mat(V3(0f, 66f, z + back * 1.0f), 42f, 40f, 2.5f), pc)
+                    objs += Triple(box, mat(V3(0f, 66f + dy, z + back * 1.0f), 42f, 40f, 2.5f), pc)
                 }
                 "bench" -> {
-                    objs += Triple(box, mat(V3(0f, 40f, z), 28f, 6f, 115f), pc)
-                    listOf(-45f, 45f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
+                    val dy = (b.propTop(id) ?: 43f) - 43f
+                    objs += Triple(box, mat(V3(0f, 40f + dy, z), 28f, 6f, 115f), pc)
+                    listOf(-45f, 45f).forEach { lz -> objs += Triple(box, mat(V3(0f, (37f + dy) / 2, z + lz), 22f, 37f + dy, 4f), handle) }
                 }
                 "pullbar" -> {
                     val gr = b.grip("R"); val gl = b.grip("L"); val y = (gr.y + gl.y) / 2 + 1.5f; val zz = (gr.z + gl.z) / 2
@@ -402,10 +404,11 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     listOf(gr.x * sx, gl.x * sx).forEach { xx -> seg(V3(xx, y, zz - 30f), V3(xx, y, zz + 30f), 2f, handle); listOf(-26f, 26f).forEach { dz -> seg(V3(xx, 0f, zz + dz), V3(xx, y, zz + dz), 2.5f, pc) } }
                 }
                 "incbench" -> {
-                    objs += Triple(box, mat(V3(0f, 40f, z + 20f), 28f, 6f, 45f), pc)
+                    val dy = (b.propTop(id) ?: 43f) - 43f
+                    objs += Triple(box, mat(V3(0f, 40f + dy, z + 20f), 28f, 6f, 45f), pc)
                     val back = Q4.fromUnit(V3(0f, 0f, 1f), V3(0f, .7f, -.71f)).mat()
-                    objs += Triple(box, mat(V3(0f, 66f, z - 22f), 28f, 6f, 70f, floatArrayOf(back[0], back[1], back[2], 0f, back[3], back[4], back[5], 0f, back[6], back[7], back[8], 0f, 0f, 0f, 0f, 1f)), pc)
-                    listOf(-10f, 40f).forEach { lz -> objs += Triple(box, mat(V3(0f, 18.5f, z + lz), 22f, 37f, 4f), handle) }
+                    objs += Triple(box, mat(V3(0f, 66f + dy, z - 22f), 28f, 6f, 70f, floatArrayOf(back[0], back[1], back[2], 0f, back[3], back[4], back[5], 0f, back[6], back[7], back[8], 0f, 0f, 0f, 0f, 1f)), pc)
+                    listOf(-10f, 40f).forEach { lz -> objs += Triple(box, mat(V3(0f, (37f + dy) / 2, z + lz), 22f, 37f + dy, 4f), handle) }
                 }
                 "door" -> {
                     objs += Triple(box, mat(V3(0f, 100f, z + 3f), 82f, 200f, 4f), pc)
