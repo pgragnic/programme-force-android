@@ -120,6 +120,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private val proj = FloatArray(16); private val view = FloatArray(16); private val vp = FloatArray(16)
     private var lastKey = ""; private var lastId: String? = null
     private var az: Float? = null; private var ta = 1.05f; private var elx = 0f; private var dist = 360f
+    /** caméra remise à zéro (vignettes : une image par exercice, sans transition) */
+    fun reset() { az = null; lastId = null; lastKey = ""; snap = true; user = 0f; uel = 0f }
     private val tgt = V3(0f, 80f, 0f)
     private val t0 = System.currentTimeMillis()
     private var uMVP = 0; private var uM = 0; private var uN = 0; private var uCol = 0; private var uUse = 0; private var uAlpha = 0; private var uFlat = 0; private var uEye = 0

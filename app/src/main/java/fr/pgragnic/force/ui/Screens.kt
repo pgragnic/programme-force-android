@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.*
@@ -76,7 +78,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     remember(log, gear) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
-    var weeks by remember { mutableStateOf(false) }; var list by remember { mutableStateOf(false) }
+    var weeks by remember { mutableStateOf(false) }; var list by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(log) { Store.rollWeek() }
     val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
     val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
@@ -158,27 +160,41 @@ fun SeanceScreen(onStart: () -> Unit) {
                 Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)
             }
         }
-        // exercices, repliés
+        // tous les exercices, chacun avec sa vignette du personnage (muscles travaillés en couleur) — inspiré de la capture de Philippe :
+        // « Peux-tu t'inspirer de la première image pour la présentation des séances et on montre tous les exercices ? »
         Column {
-            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { list = !list }, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(t("Ce que tu vas faire", "What you'll do"), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                Text(if (list) t("Réduire", "Less") else t("Voir", "Show"), color = C.muted, fontSize = 13.sp)
-                Icon(if (list) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
+                Text(t("${order.size} exercices", "${order.size} exercises"), color = C.muted, fontSize = 13.sp)
             }
-            HorizontalDivider(color = C.line)
-            val shown = if (list) order else order.take(2)
-            shown.forEach { id ->
-                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w)
-                Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                    Text(e.n, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(), color = C.muted, fontSize = 13.sp)
-                    if (list) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 2.dp))
+            order.forEach { id ->
+                val e = Prog.EX[id]!!; val wk = Prog.work(id, st.w); val open = list && sel == id
+                Row(Modifier.fillMaxWidth().clickable { if (sel == id && list) list = false else { sel = id; list = true } }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ExThumb(id, 96.dp)
+                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text(e.n, color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
+                        Text("${P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: W.s} × ${wk.label}" + Prog.load(id, st.w, st).takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                            color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
+                        if (open) Text(e.tip, color = C.muted, fontSize = 12.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
                 }
-                HorizontalDivider(color = C.line)
+                HorizontalDivider(color = C.line, modifier = Modifier.padding(start = 110.dp))
             }
-            if (!list && order.size > 2) Text(t("+ ${order.size - 2} autres exercices", "+ ${order.size - 2} more exercises"), color = C.muted, fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth().clickable { list = true }.padding(vertical = 10.dp))
         }
+    }
+}
+
+/** Vignette d'un exercice : le personnage 3D dans la pose du mouvement, muscles travaillés en couleur (rendu une fois, gardé en cache). */
+@Composable
+fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val pose = Prog.EX[id]?.pose ?: id
+    val st = fr.pgragnic.force.gl.BodyState(pose = pose, ex = id, hl = id, k = .55).th()
+    val key = "$id-${if (C.dark) "s" else "c"}-${BuildConfig.VERSION_CODE}-${Prog.version}-${remember(pose, Prog.version) { Prog.raw["POSES3"]?.jsonObject?.get(pose)?.toString()?.hashCode() ?: 0 }}"
+    val px = with(androidx.compose.ui.platform.LocalDensity.current) { size.roundToPx() }
+    val bm by produceState(fr.pgragnic.force.gl.Thumbs.cached(key), key) { value = fr.pgragnic.force.gl.Thumbs.get(ctx, key, st, px) }
+    Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(C.stage)) {
+        bm?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, Modifier.fillMaxSize()) }
     }
 }
 
