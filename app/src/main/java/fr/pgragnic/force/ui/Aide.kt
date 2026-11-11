@@ -121,7 +121,10 @@ fun ExSheet(id: String, sub: String?, inSess: List<String>, swap: Boolean, onClo
             // animation en boucle (une répétition sur deux en miroir pour les exercices alternés)
             var tt by remember { mutableStateOf(0.0) }
             LaunchedEffect(id) { val t0 = System.nanoTime(); while (true) { withFrameNanos { }; tt = (System.nanoTime() - t0) / 1e9 } }
-            val tp = e.tp ?: listOf(1.2, .4, 1.6, .3)
+            // tempo réel (Philippe, « Partons sur 2,3,5 et 7 », point 3) : montée 1,5 s, courte tenue, descente lente 2,5 s, courte pause ;
+            // les mouvements qui commencent par la descente (squat, pompes, fentes…) démarrent par la phase lente
+            val base = listOf(1.5, .5, 2.5, .4)
+            val tp = e.tp ?: if (e.inv && e.m != "alt" && e.m != "time") listOf(base[2], base[1], base[0], base[3]) else base
             val k = if (e.m == "time") 0.0 else Prog.cycleK(tt, tp)
             val mir = e.m == "alt" && floor(tt / tp.sum().coerceAtLeast(.1)).toInt() % 2 == 1
             Box(Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(18.dp)).background(C.stage)) {

@@ -34,6 +34,9 @@ def frame(u, v):   # repère orthonormé : u principal, v secondaire
 UPV = np.array([0, 1., 0]); XV = np.array([1., 0, 0])
 def frame_rot(u0, v0, u1, v1): return frame(u1, v1) @ frame(u0, v0).T
 
+# prise : décalage de la poignée (repère de la poignée, cm), cible du bout du pouce, flexion des doigts par unité de fermeture
+GRIP_OFF = np.array([0., -2.8, .8]); THUMB_TGT = np.array([2.5, -2.5, 2.0]); FIN_A = 1.41; FIN_B = 1.76
+
 class Body:
     def __init__(self, p):
         self.hdr, self.B, self.G = load(p)
@@ -55,6 +58,14 @@ class Body:
             thumb = self.B[self.idx['thmb' + k]]['b'] - c
             if np.dot(n, thumb) < 0: n = -n
             self.palm0[k] = n; self.__dict__['hl' + k] = nrm(np.cross(n, u))
+        # prise (Philippe, « Partons sur 2,3,5 et 7 », point 2 : mains qui serrent la charge) : repère de la poignée au repos
+        # (x = axe des jointures, index → auriculaire ; y = vers le poignet ; z = côté paume), identique main droite / main gauche en miroir.
+        # La poignée descend vers la base des doigts (elle était près du poignet) et le pouce vient se poser en travers, devant les doigts.
+        self.gframe = {}; self.grip0 = {}
+        for k, sg in (('R', 1.), ('L', -1.)):
+            h = self.hdr['hand'][k]; l = np.array(h['l']) * sg; n = np.array(h['n'])
+            z = nrm(n - l * (n @ l)); y = np.cross(z, l) * sg; F = np.stack([l, y, z])
+            self.gframe[k] = F; self.grip0[k] = np.array(h['g']) + GRIP_OFF @ F
 
     def solve(self, Q):
         """Q : pose 3D (points en unités du maillage, repère : droite +x, haut +y, face +z).
@@ -111,10 +122,16 @@ class Body:
             c = float(Q.get('c' + s, .3))
             # doigts : rotation qui amène la direction de la main vers la paume (fermeture), pouce vers la paume aussi
             pn = Rh @ self.palm0[k]; ax_f = nrm(np.cross(Rh @ hu0, pn))
-            setb(I['finA' + k], axis_angle(ax_f, c * 1.35) @ Rh)
-            setb(I['finB' + k], axis_angle(ax_f, c * 1.6) @ R[I['finA' + k]])
+            setb(I['finA' + k], axis_angle(ax_f, c * FIN_A) @ Rh)
+            setb(I['finB' + k], axis_angle(ax_f, c * FIN_B) @ R[I['finA' + k]])
             tb = B[I['thmb' + k]]; td = Rh @ nrm(tb['b'] - tb['a']); ax_t = nrm(np.cross(td, pn))
             setb(I['thmb' + k], axis_angle(ax_t, c * .8) @ Rh)
+            # main qui tient une charge : pouce posé en travers de la poignée, devant les doigts (il partait à l'horizontale)
+            w = min(1., max(0., (c - .5) / .35))
+            if w > 0:
+                ti = I['thmb' + k]; u = R[ti] @ nrm(tb['b'] - tb['a'])
+                tgt = T[I['hand' + k]] + Rh @ (self.grip0[k] + THUMB_TGT @ self.gframe[k])
+                v = nrm(u * (1 - w) + nrm(tgt - T[ti]) * w); setb(ti, rot_between(u, v) @ R[ti])
             # jambe
             K = np.asarray(Q['K' + s], float); A = np.asarray(Q['A' + s], float)
             swing(I['thgh' + k], K - hp(I['thgh' + k]))

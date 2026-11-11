@@ -106,6 +106,8 @@ class Body(ctx: Context) {
     var labels: List<String> = emptyList()
     private val I = HashMap<String, Int>()
     private val palm0 = HashMap<String, V3>(); private val hlat0 = HashMap<String, V3>(); private val grip0 = HashMap<String, V3>()
+    private val gx = HashMap<String, V3>(); private val gy = HashMap<String, V3>(); private val gz = HashMap<String, V3>()
+    private val GRIP_OFF = floatArrayOf(0f, -2.8f, .8f); private val THUMB_TGT = floatArrayOf(2.5f, -2.5f, 2f)
     private var lastKey = ""; private var lastJ: HashMap<String, V3> = HashMap()
 
     init {
@@ -122,6 +124,15 @@ class Body(ctx: Context) {
         }
         labels = hdr["labels"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
         hdr["hand"]!!.jsonObject.forEach { (k, v) -> val h = v.jsonObject; palm0[k] = v3(h["n"]!!); hlat0[k] = v3(h["l"]!!); grip0[k] = v3(h["g"]!!) }
+        // prise (Philippe, « Partons sur 2,3,5 et 7 », point 2 : mains qui serrent la charge) : repère de la poignée au repos
+        // (x = jointures index → auriculaire, y = vers le poignet, z = côté paume), en miroir pour la main gauche ; même calcul que tools/corps/rt.py.
+        // La poignée descend vers la base des doigts et le pouce se pose en travers, devant les doigts.
+        for (k in listOf("R", "L")) {
+            val sg = if (k == "R") 1f else -1f; val l = hlat0[k]!! * sg; val n = palm0[k]!!
+            val z = nz(n - l * n.dot(l)); val y = z.cross(l) * sg
+            gx[k] = l; gy[k] = y; gz[k] = z
+            grip0[k] = grip0[k]!! + l * GRIP_OFF[0] + y * GRIP_OFF[1] + z * GRIP_OFF[2]
+        }
         hdr["groups"]!!.jsonArray.forEach { gj ->
             val g = gj.jsonObject; val nv = g["nv"]!!.jsonPrimitive.int; val ni = g["ni"]!!.jsonPrimitive.int
             val mn = g["mn"]!!.jsonArray.map { it.jsonPrimitive.float }; val mx = g["mx"]!!.jsonArray.map { it.jsonPrimitive.float }
@@ -145,6 +156,8 @@ class Body(ctx: Context) {
     fun isFront(id: String) = oldFlag(id, "front")?.jsonPrimitive?.booleanOrNull == true
     fun isFly(id: String) = oldFlag(id, "fly")?.jsonPrimitive?.let { it.booleanOrNull ?: (it.doubleOrNull?.let { v -> v != 0.0 }) } == true
     fun camOf(id: String) = P3(id)?.get("cam")?.jsonPrimitive?.floatOrNull
+    /** hauteur de la caméra (radians au-dessus de l'horizontale) propre à la pose, sinon réglage par défaut */
+    fun camElOf(id: String) = P3(id)?.get("el")?.jsonPrimitive?.floatOrNull
     fun isFree(id: String) = flag(id, "free")
     fun propOf(id: String): Pair<String, Float>? = P3(id)?.get("prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     /** hauteur du dessus de l'accessoire (assise, banc) quand la pose la précise (réglée sur le corps par tools/corps/fix4.py) */
@@ -221,9 +234,17 @@ class Body(ctx: Context) {
             setb(hi, Rh, P)
             val c = Q["c$s"]?.get(0) ?: .3f
             val pn = m3v(Rh, palm0[k]!!); val axf = nz(m3v(Rh, hb.u0).cross(pn))
-            val fa = I["finA$k"]!!; setb(fa, mm(axisAngle(axf, c * 1.35f), Rh), P)
-            setb(I["finB$k"]!!, mm(axisAngle(axf, c * 1.6f), bones[fa].A), P)
+            val fa = I["finA$k"]!!; setb(fa, mm(axisAngle(axf, c * 1.41f), Rh), P)
+            setb(I["finB$k"]!!, mm(axisAngle(axf, c * 1.76f), bones[fa].A), P)
             val tb = I["thmb$k"]!!; val td = m3v(Rh, bones[tb].u0); setb(tb, mm(axisAngle(nz(td.cross(pn)), c * .8f), Rh), P)
+            // main qui tient une charge : pouce posé en travers de la poignée, devant les doigts (il partait à l'horizontale)
+            val w = ((c - .5f) / .35f).coerceIn(0f, 1f)
+            if (w > 0f) {
+                val u = m3v(bones[tb].A, bones[tb].u0)
+                val loc = grip0[k]!! + gx[k]!! * THUMB_TGT[0] + gy[k]!! * THUMB_TGT[1] + gz[k]!! * THUMB_TGT[2]
+                val tgt = bones[hi].t + m3v(Rh, loc)
+                val v = nz(u * (1f - w) + nz(tgt - bones[tb].t) * w); setb(tb, mm(rotBetween(u, v), bones[tb].A), P)
+            }
             // jambe
             val K = q("K$s")!!; val A = q("A$s")!!
             val th_ = I["thgh$k"]!!; swing(th_, K - hp(th_))

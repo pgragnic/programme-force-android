@@ -280,7 +280,10 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         az = az!! + (ta - az!!) * .06f
         val f = if (snap || still) 1f else .08f
         tgt.set(tgt.lerp(want, f))
-        elx += ((if (lying) .3f else 0f) - elx) * f
+        // angle de vue choisi par exercice (Philippe, « Partons sur 2,3,5 et 7 », point 5) : hauteur de caméra propre à la pose si elle est donnée
+        // (planche, pompes : presque à hauteur du sol, de profil, pour voir l'alignement du corps)
+        val elT = if (s.thumb || s.map) null else b.camElOf(id)
+        elx += ((elT?.let { it - .32f } ?: if (lying) .3f else 0f) - elx) * f
         val A = az!! + user + if (still) 0f else (sin((System.currentTimeMillis() - t0) / 9000.0) * .12).toFloat()
         val E = min(1.35f, (if (s.map) .12f else .32f) + uel + elx + (if (s.thumb && lying) .12f else 0f))
         val asp = W.toFloat() / H

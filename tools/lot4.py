@@ -235,3 +235,14 @@ for x in ('E1', 'E2', 'W1', 'W2'): k1[x] = [k0[x][0], k0[x][1] + 10.0, k0[x][2]]
 d['WTP']['rope'] = [0.24, 0.0, 0.26, 0.06]; d['V'] = 18
 json.dump(d['POSES3'], open(_p3, 'w'), ensure_ascii=False, separators=(',', ':'))
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+
+# --- 11 novembre, 21 h 30 : tempo réel (Philippe : « Partons sur 2,3,5 et 7 », point 3 : descente lente, pause en bas, montée plus rapide).
+# Le lecteur suit le tempo de la semaine (montée 1,5 s, tenue, descente 3 à 4 s) ; « inv » dit que le mouvement commence par la descente.
+# Contrôle des 80 exercices (sens du bassin, des charges ou des pieds entre le début et la fin du mouvement) : 11 avaient le mauvais sens,
+# le personnage y descendait vite et remontait lentement (ou l'inverse pour les développés couché et incliné).
+d = json.load(open(p)); d['POSES3'] = json.load(open(_p3))
+for id in ('bbrdl', 'kbrdl', 'bandrdl', 'lungebw', 'kblunge', 'bulgarian', 'kbsumo', 'sldlbw', 'abwheel'): d['EX'][id]['inv'] = 1
+for id in ('benchpress', 'inclinepress'): d['EX'][id].pop('inv', None)
+d['V'] = 19
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))

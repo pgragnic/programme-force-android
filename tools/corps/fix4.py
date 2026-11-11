@@ -38,7 +38,7 @@ def tool_pen(P3, id, k, tool):
     from scipy.spatial import cKDTree
     Q = Q_(k); out, R, T = B.skin(Q); V, N = out[0][0][~HANDV], out[0][1][~HANDV]; tr = cKDTree(V)
     Hh = B.hdr['hand']
-    def grip(sd): i = NM.index('hand' + sd); return T[i] + R[i] @ np.array(Hh[sd]['g']) + [0, B.dy, 0]
+    def grip(sd): i = NM.index('hand' + sd); return T[i] + R[i] @ B.grip0[sd] + [0, B.dy, 0]
     def bell(g, s_):
         fore = np.array(Q['W' + s_], float) - Q['E' + s_]; fore /= np.linalg.norm(fore)
         off = np.array([0, -1., 0]) if fore[1] < -.3 else (-fore + [0, -1, 0]); off /= np.linalg.norm(off); return g + off * 9
@@ -136,7 +136,7 @@ def fix(P3):
     BODYK = ('P', 'N', 'H', 'S', 'K1', 'K2', 'A1', 'A2', 'T1', 'T2', 'TT1', 'TT2')
     for k in P3['pullup']['k']:
         V, R, T = skin(P3, 'pullup', k); Hh = B.hdr['hand']
-        g = [T[NM.index('hand' + sd)] + R[NM.index('hand' + sd)] @ np.array(Hh[sd]['g']) for sd in 'RL']
+        g = [T[NM.index('hand' + sd)] + R[NM.index('hand' + sd)] @ B.grip0[sd] for sd in 'RL']
         by = (g[0][1] + g[1][1]) / 2 + B.dy + APP_DY + 1.5; bz = (g[0][2] + g[1][2]) / 2
         m = ~ARM & (np.abs(V[:, 1] - by) < 4) & (np.abs(V[:, 0]) < 16)
         if m.any():
@@ -444,4 +444,14 @@ def toes_back(P3):
                 if abs(d) < .3: break
                 shift(k, ['A2', 'T2', 'TT2'], -d); knee(k, '2')
             print(id, k['t'], round(d, 2))
+    return P3
+
+def cams(P3):
+    """Angle de vue choisi par exercice (Philippe, « Partons sur 2,3,5 et 7 », point 5) : planche, pompes, pont, roue, presque de profil
+    et à hauteur du sol pour voir l'alignement du corps ; squats de trois quarts face pour voir les genoux."""
+    for id, a, e in (('plank', 1.5, .12), ('pushup', 1.5, .15), ('incline', 1.5, .15), ('pike', 1.45, .2), ('abwheel', 1.45, .18),
+                     ('bridge', 1.5, .15), ('bridge2', 1.5, .15), ('wallpush', 1.45, None)):
+        P3[id]['cam'] = a
+        if e is not None: P3[id]['el'] = e
+    for id in ('squat', 'bwsquat', 'bandsquat', 'bosusquat', 'kbsumo'): P3[id]['cam'] = .5
     return P3
