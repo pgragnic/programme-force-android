@@ -31,6 +31,52 @@ def shift(k, keys, dy):
     for x in keys:
         if x in k: k[x] = [k[x][0], round(k[x][1] + dy, 2), k[x][2]]
 
+HANDV = np.isin(PB, [NM.index(n + s) for n in ('hand', 'finA', 'finB', 'thmb', 'twst', 'farm') for s in 'RL'])
+DX = json.load(open(__file__.replace('tools/corps/fix4.py', 'app/src/main/assets/programme.json')))['EX']
+def tool_pen(P3, id, k, tool):
+    """Points de l'objet tenu (barre, kettlebell, médecine-ball) qui traversent le corps (mains et avant-bras exclus) et direction pour l'en sortir."""
+    from scipy.spatial import cKDTree
+    Q = Q_(k); out, R, T = B.skin(Q); V, N = out[0][0][~HANDV], out[0][1][~HANDV]; tr = cKDTree(V)
+    Hh = B.hdr['hand']
+    def grip(sd): i = NM.index('hand' + sd); return T[i] + R[i] @ np.array(Hh[sd]['g']) + [0, B.dy, 0]
+    def bell(g, s_):
+        fore = np.array(Q['W' + s_], float) - Q['E' + s_]; fore /= np.linalg.norm(fore)
+        off = np.array([0, -1., 0]) if fore[1] < -.3 else (-fore + [0, -1, 0]); off /= np.linalg.norm(off); return g + off * 9
+    sph = np.random.default_rng(0).normal(size=(200, 3)); sph /= np.linalg.norm(sph, axis=1, keepdims=True)
+    if tool == 'bb':
+        a, c = grip('R'), grip('L'); ax = (a - c) / np.linalg.norm(a - c); pts = np.array([(a + c) / 2 + ax * t for t in np.linspace(-60, 60, 121)])
+    elif P3[id].get('two'):
+        c = (grip('R') + grip('L')) / 2
+        if tool == 'kb':
+            f = sum((np.array(Q['W' + s_], float) - Q['E' + s_]) / np.linalg.norm(np.array(Q['W' + s_], float) - Q['E' + s_]) for s_ in '12') / 2
+            off = np.array([0, -1., 0]) if f[1] < -.3 else (-f + [0, -1, 0]); off /= np.linalg.norm(off); pts = c + off * 9 + sph * 8
+        else: pts = c + sph * 11
+    else:
+        pts = np.concatenate([bell(grip('R' if w == 'W1' else 'L'), w[1]) + sph * 8 for w in P3[id].get('db', [])])
+    d, j = tr.query(pts); ins = (((pts - V[j]) * N[j]).sum(1) < 0) & (d < 6)
+    return int(ins.sum()), (N[j[ins]].mean(0) if ins.any() else np.zeros(3))
+
+def clear_tools(P3):
+    """Barre, kettlebell et médecine-ball hors du corps : les mains s'écartent du corps (direction des normales touchées), coudes recalculés."""
+    for id, p in P3.items():
+        tools = {DX[e].get('tool') for e in DX if DX[e].get('pose', e) == id} & {'bb', 'kb', 'medball'}
+        if not tools or not p.get('db') and 'bb' not in tools or id == 'kbhalo': continue   # halo : la cloche tourne au ras de la tête
+        tool = sorted(tools)[0]
+        for k in p['k']:
+            n0, _ = tool_pen(P3, id, k, tool); moved = 0.
+            while moved < 14:
+                n, dr = tool_pen(P3, id, k, tool)
+                if n <= 1: break
+                dr = dr / (np.linalg.norm(dr) + 1e-9)
+                if id == 'kbsumo': dr = np.array([0, 0, 1.])   # kettlebell devant le bassin, pas plus bas
+                hs = ['1', '2'] if tool in ('bb',) or p.get('two') else [w[1] for w in p.get('db', [])]
+                for s_ in hs:
+                    for x in ('W', 'F'):
+                        if x + s_ in k: k[x + s_] = (np.array(k[x + s_], float) + dr).round(2).tolist()
+                    elbow(k, s_)
+                moved += 1
+            if moved: print(f'{id} t={k["t"]} : {tool} sorti du corps ({n0} → {tool_pen(P3, id, k, tool)[0]} points, mains déplacées de {moved:.0f} cm)')
+
 def fix(P3):
     # dips sur chaise : mains fixes sur le bord de l'assise (elles flottaient au-dessus en bas du mouvement)
     p = P3['chairdip']; top = 45.5
@@ -85,7 +131,75 @@ def fix(P3):
             k['W' + s] = [round(7 * sx, 2), round(H[1] + 4, 2), round(H[2] + 3, 2)]; k['E' + s] = [round(34 * sx, 2), round(N[1] + 10, 2), round(N[2] - 4, 2)]
             k['U' + s] = [-sx * .3, .2, -.93]; k['c' + s] = .5
             elbow(k, s)
+    # traction : à la montée, le corps passe derrière la barre (la barre traversait le cou) ; mains fixes sur la barre
+    ARM = np.isin(PB, [NM.index(n + s_) for n in ('clav', 'uarm', 'farm', 'twst', 'hand', 'finA', 'finB', 'thmb') for s_ in 'RL'])
+    BODYK = ('P', 'N', 'H', 'S', 'K1', 'K2', 'A1', 'A2', 'T1', 'T2', 'TT1', 'TT2')
+    for k in P3['pullup']['k']:
+        V, R, T = skin(P3, 'pullup', k); Hh = B.hdr['hand']
+        g = [T[NM.index('hand' + sd)] + R[NM.index('hand' + sd)] @ np.array(Hh[sd]['g']) for sd in 'RL']
+        by = (g[0][1] + g[1][1]) / 2 + B.dy + APP_DY + 1.5; bz = (g[0][2] + g[1][2]) / 2
+        m = ~ARM & (np.abs(V[:, 1] - by) < 4) & (np.abs(V[:, 0]) < 16)
+        if m.any():
+            dz = min(0., bz - 3.5 - V[m, 2].max())
+            if dz < 0:
+                for x in BODYK:
+                    if x in k: k[x] = [k[x][0], k[x][1], round(k[x][2] + dz, 2)]
+                for s_ in '12': elbow(k, s_)
+                print('traction t=%.3f : corps reculé de %.1f cm' % (k['t'], -dz))
+    # début de la montée : recul progressif (pas de saut entre deux images clés)
+    for k in P3['pullup']['k']:
+        if 0 < k['t'] < .375:
+            dz = -16.5 * k['t'] / .375
+            for x in BODYK:
+                if x in k: k[x] = [k[x][0], k[x][1], round(k[x][2] + dz, 2)]
+            for s_ in '12': elbow(k, s_)
+    # dips sur chaise : bassin devant le bord de l'assise (il entrait dans la chaise), mains toujours posées sur le bord
+    z0 = P3['chairdip']['prop']['x'] - 100; front = z0 + 20
+    for k in P3['chairdip']['k']:
+        V, _, _ = skin(P3, 'chairdip', k); m = ~ARM & (V[:, 1] > 42) & (V[:, 1] < 46) & (np.abs(V[:, 0]) < 21)
+        if m.any() and V[m, 2].min() < front + .5:
+            dz = front + .5 - V[m, 2].min()
+            for x in BODYK:
+                if x in k: k[x] = [k[x][0], k[x][1], round(k[x][2] + dz, 2)]
+            for s_ in '12': elbow(k, s_)
+            print('dips sur chaise t=%.3f : corps avancé de %.1f cm' % (k['t'], dz))
+    clear_tools(P3)
     return P3
 
 if __name__ == '__main__':
     P3 = json.load(open(sys.argv[1])); json.dump(fix(P3), open(sys.argv[1], 'w'), ensure_ascii=False, separators=(',', ':')); print('ok')
+
+def stepup_path(P3):
+    """Montée sur chaise : pied d'appui posé sur l'assise tout le long, pied arrière qui passe au-dessus du bord (il traversait l'assise)."""
+    p = P3['stepup']; top = 45.5; z0 = p['prop']['x'] - 100
+    have = {round(k['t'], 3) for k in p['k']}
+    for t in (.125, .25, .375, .625, .75, .875):
+        if t not in have:
+            k = {'t': t, **{kk: (np.asarray(v).round(3).tolist() if not np.isscalar(v) else v) for kk, v in rt.at(p, t).items()}}
+            p['k'].append(k)
+    p['k'].sort(key=lambda k: k['t'])
+    footL = ['footL', 'toesL']
+    for k in p['k']:
+        if k['t'] in (.5, .625):   # pied arrière encore devant le bord de l'assise tant qu'il est plus bas qu'elle
+            V, _, _ = skin(P3, 'stepup', k); P = V[np.isin(PB, [NM.index(b) for b in footL])]
+            dz = (z0 - 20 - 1) - P[:, 2].max()
+            if dz < 0:
+                for x in ('A2', 'T2', 'K2'): k[x] = [k[x][0], k[x][1], round(k[x][2] + dz, 2)]
+                knee(k, '2')
+    for k in p['k']:
+        if k['t'] == .625:   # puis il monte au-dessus de l'assise avant d'avancer
+            V, _, _ = skin(P3, 'stepup', k); P = V[np.isin(PB, [NM.index(b) for b in footL])]
+            dy = top + 3 - P[:, 1].min()
+            if dy > 0: shift(k, ['A2', 'T2', 'K2'], dy); knee(k, '2')
+        if k['t'] in (.75, .875):
+            V, _, _ = skin(P3, 'stepup', k); m = np.isin(PB, [NM.index(b) for b in footL]); P = V[m]
+            over = (P[:, 2] > z0 - 20) & (P[:, 2] < z0 + 20)
+            if over.any() and P[over, 1].min() < top + 1:
+                dy = top + 3 - P[over, 1].min()
+                shift(k, ['A2', 'T2', 'K2'], dy)
+            knee(k, '2')
+        for _ in range(4):
+            V, _, _ = skin(P3, 'stepup', k); dy = top + .3 - lowest(V, ['footR', 'toesR'])
+            if abs(dy) < .2: break
+            shift(k, ['A1', 'T1'], dy); knee(k, '1')
+    return P3
