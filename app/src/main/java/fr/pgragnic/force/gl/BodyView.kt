@@ -28,6 +28,8 @@ data class BodyState(
     val base: Int = 0xE8DAD5, val acc: Int = 0xE0453A,
     /** exercice affiché : donne l'outil (haltère, kettlebell, élastique) */
     val ex: String? = null, val band: Int = 0xE3A33E, val prop: Int = 0x6B7680,
+    /** vignette : cadrage serré, vue fixe ; les poses allongées sont vues plus de trois quarts pour paraître plus grandes */
+    val thumb: Boolean = false,
 )
 
 private fun fb(n: Int): FloatBuffer = ByteBuffer.allocateDirect(n * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
@@ -271,22 +273,23 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         // caméra (comme la page web)
         val Nc = J["Nc"]!!; val Pc = J["Pc"]!!; val tl = Nc - Pc
         val lying = !s.map && abs(tl.y) < .55f * tl.len()
-        if (id != lastId) { lastId = id; ta = b.camOf(id) ?: if (b.isFront(id) || b.isFly(id)) .35f else if (lying) 1.4f else 1.05f; if (az == null) az = ta }
-        val still = s.map
+        if (id != lastId) { lastId = id; ta = if (s.thumb && lying) .7f else b.camOf(id) ?: if (b.isFront(id) || b.isFly(id)) .35f else if (lying) 1.4f else 1.05f; if (az == null) az = ta }
+        val still = s.map || s.thumb
         if (s.az != null) { ta = s.az; if (az == null || snap) az = s.az }
         az = az!! + (ta - az!!) * .06f
         val f = if (snap || still) 1f else .08f
         tgt.set(tgt.lerp(want, f))
         elx += ((if (lying) .3f else 0f) - elx) * f
         val A = az!! + user + if (still) 0f else (sin((System.currentTimeMillis() - t0) / 9000.0) * .12).toFloat()
-        val E = min(1.35f, (if (s.map) .12f else .32f) + uel + elx)
+        val E = min(1.35f, (if (s.map) .12f else .32f) + uel + elx + (if (s.thumb && lying) .12f else 0f))
         val asp = W.toFloat() / H
         val dd = if (s.map) { val span = maxOf(mx.y - mn.y, mx.z - mn.z, mx.x - mn.x, 120f); span * 1.55f + 22 } else {
             val dv = V3(sin(A) * cos(E), sin(E), cos(A) * cos(E)); val rt = V3(0f, 1f, 0f).cross(dv).norm(); val up = dv.cross(rt).norm()
             var hx = 0f; var hy = 0f
             pts.forEach { val d = it - want; hx = max(hx, abs(d.dot(rt))); hy = max(hy, abs(d.dot(up))) }
             val tf = tan(16 * PI.toFloat() / 180)
-            maxOf(80f, (hy + 16) / tf, (hx + 16) / (tf * asp)) * 1.1f
+            val mg = if (s.thumb) 9f else 16f
+            maxOf(80f, (hy + mg) / tf, (hx + mg) / (tf * asp)) * (if (s.thumb) 1f else 1.1f)
         }
         dist = if (snap || still) dd else dist + (dd - dist) * .08f
         snap = false

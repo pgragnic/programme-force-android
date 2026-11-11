@@ -203,3 +203,34 @@ def stepup_path(P3):
             if abs(dy) < .2: break
             shift(k, ['A1', 'T1'], dy); knee(k, '1')
     return P3
+
+def bbpress_start(P3):
+    """Développé militaire à la barre (Philippe : « Ok pour Développé militaire à la barre : au départ, la barre est un peu haute, vers le
+    front plutôt qu'au menton ») : départ barre sous le menton, coudes sous la barre ; à la montée la barre passe devant le visage."""
+    p = P3['bbpress']; k0 = p['k'][0]
+    for s, sx in (('1', 1), ('2', -1)):
+        for x in ('W', 'F'):
+            if x + s in k0: k0[x + s] = [k0[x + s][0], round(k0[x + s][1] - 14, 2), k0[x + s][2]]
+        k0['E' + s] = [27 * sx, k0['W' + s][1] - 24, 12.0]; elbow(k0, s)
+    def clear(k):
+        for _ in range(14):
+            n, dr = tool_pen(P3, 'bbpress', k, 'bb')
+            if n == 0: break
+            for s in '12':
+                for x in ('W', 'F'):
+                    if x + s in k: k[x + s] = [k[x + s][0], k[x + s][1], round(k[x + s][2] + 1, 2)]
+                elbow(k, s)
+        for s in '12':   # 2 cm de marge devant le visage
+            for x in ('W', 'F'):
+                if x + s in k: k[x + s] = [k[x + s][0], k[x + s][1], round(k[x + s][2] + 2, 2)]
+            elbow(k, s)
+    clear(k0)
+    have = {round(k['t'], 3) for k in p['k']}
+    for t in (.25, .5, .75):
+        if t not in have:
+            k = {'t': t, **{kk: (np.asarray(v).round(3).tolist() if not np.isscalar(v) else v) for kk, v in rt.at(p, t).items()}}
+            p['k'].append(k)
+    p['k'].sort(key=lambda k: k['t'])
+    for k in p['k']:
+        if 0 < k['t'] < 1: clear(k)
+    return P3

@@ -189,7 +189,7 @@ fun SeanceScreen(onStart: () -> Unit) {
 fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val pose = Prog.EX[id]?.pose ?: id
-    val st = fr.pgragnic.force.gl.BodyState(pose = pose, ex = id, hl = id, k = .55).th()
+    val st = fr.pgragnic.force.gl.BodyState(pose = pose, ex = id, hl = id, k = .55, thumb = true).th()
     val key = "$id-${if (C.dark) "s" else "c"}-${BuildConfig.VERSION_CODE}-${Prog.version}-${remember(pose, Prog.version) { Prog.raw["POSES3"]?.jsonObject?.get(pose)?.toString()?.hashCode() ?: 0 }}"
     val px = with(androidx.compose.ui.platform.LocalDensity.current) { size.roundToPx() }
     val bm by produceState(fr.pgragnic.force.gl.Thumbs.cached(key), key) { value = fr.pgragnic.force.gl.Thumbs.get(ctx, key, st, px) }
