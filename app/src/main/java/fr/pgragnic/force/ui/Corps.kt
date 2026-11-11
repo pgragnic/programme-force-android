@@ -44,14 +44,19 @@ fun CorpsScreen() {
             Spacer(Modifier.weight(1f)); Text(t("Récupération", "Recovery"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(end = 10.dp))
             HelpButton("corps")
         }
-        Row(Modifier.fillMaxWidth().height(330.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Face" to 0f, "Dos" to PI.toFloat()).forEach { (t, az) ->
-                Column(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(C.stage)) {
-                    Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = az, map = true).th(), Modifier.fillMaxWidth().weight(1f))
-                    Text(t, color = C.muted, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(6.dp))
+        // un seul personnage, qu'on fait tourner au doigt ou avec Face / Dos (Philippe, capture du 11 novembre : « Un seul corps suffit
+        // puisqu'on peut le tourner »)
+        var back by remember { mutableStateOf(false) }
+        Box(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(16.dp)).background(C.stage)) {
+            Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true).th(), Modifier.fillMaxSize())
+            Row(Modifier.align(Alignment.BottomCenter).padding(8.dp).clip(RoundedCornerShape(18.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                listOf(t("Face", "Front") to false, t("Dos", "Back") to true).forEach { (lab, v) ->
+                    Text(lab, color = if (back == v) C.onColor else C.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(if (back == v) C.effort else Color.Transparent).clickable { back = v }.padding(horizontal = 18.dp, vertical = 7.dp))
                 }
             }
         }
+        Text(t("Fais tourner le personnage avec le doigt.", "Rotate the character with your finger."), color = C.muted, fontSize = 12.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf("Prêt" to C.effort, "En récupération" to C.warm, "Fatigué" to C.danger).forEach { (t, c) ->
                 Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(10.dp).clip(CircleShape).background(c)); Text(" $t", color = C.muted, fontSize = 12.sp) }

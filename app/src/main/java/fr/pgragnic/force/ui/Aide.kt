@@ -58,6 +58,7 @@ private fun helpOf(screen: String): Pair<String, List<HelpItem>> = when (screen)
         HelpItem(t("Les charges", "The loads"), t("Elles s'ajustent toutes seules : elles montent quand la série est réussie plusieurs fois, et baissent après deux échecs.", "They adjust on their own: they go up when the set is completed several times, and down after two misses.")),
         HelpItem(t("L'alerte de récupération", "The recovery warning"), t("Si la séance sollicite surtout des muscles pas encore récupérés, l'appli te prévient avant de démarrer et propose une autre séance.", "If the workout mostly uses muscles that haven't recovered yet, the app warns you before starting and suggests another workout.")))
     "corps" -> t("Comment lire cet écran", "How to read this screen") to listOf(
+        HelpItem(t("Le personnage", "The character"), t("Fais-le tourner avec le doigt, ou touche Face ou Dos.", "Rotate it with your finger, or tap Front or Back.")),
         HelpItem(t("Les couleurs", "The colors"), t("Vert : prêt. Orange : en récupération. Rouge : fatigué.", "Green: ready. Orange: recovering. Red: tired.")),
         HelpItem(t("Le pourcentage", "The percentage"), t("C'est la récupération du muscle depuis tes dernières séances. À 100 %, il est prêt à retravailler.", "It is the muscle's recovery since your last workouts. At 100%, it is ready to work again.")),
         HelpItem(t("« Prêt dans ~1 j 6 h »", "\"Ready in ~1 d 6 h\""), t("Le temps estimé avant que le muscle soit de nouveau prêt.", "The estimated time before the muscle is ready again.")),

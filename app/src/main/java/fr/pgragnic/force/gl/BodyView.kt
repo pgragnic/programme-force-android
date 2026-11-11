@@ -499,6 +499,6 @@ class BodyGL(ctx: Context) : GLSurfaceView(ctx) {
 /** Personnage 3D dans Compose. */
 @Composable
 fun Body3D(state: BodyState, modifier: Modifier = Modifier) {
-    AndroidView(factory = { BodyGL(it) }, modifier = modifier, update = { v -> v.r.state = state },
+    AndroidView(factory = { BodyGL(it) }, modifier = modifier, update = { v -> if (v.r.state.az != state.az) { v.r.user = 0f; v.r.uel = 0f }; v.r.state = state },   // Face / Dos : on repart de la vue demandée
         onRelease = { it.onPause() })
 }
