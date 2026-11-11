@@ -1,0 +1,67 @@
+name: Contrôle des poses
+# Contrôle automatique de toutes les poses à chaque modification (Philippe : « Partons sur 2,3,5 et 7 », point 7) :
+# tools/corps/check.py compare le contrôle strict à la référence, dessine la planche de toutes les poses,
+# puis les poses modifiées sont capturées dans l'appli sur téléphone virtuel (début, milieu, fin).
+# Résultats publiés sur la branche controle-<numéro de lancement>.
+on:
+  push:
+    branches: [main]
+    paths: ["tools/corps/**", "app/src/main/assets/programme.json", "app/src/main/java/fr/pgragnic/force/gl/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      poses: ${{ steps.c.outputs.poses }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q numpy scipy matplotlib
+      - id: c
+        name: Contrôle de toutes les poses
+        run: |
+          set +e; python3 tools/corps/check.py | tee controle/resume.txt; rc=${PIPESTATUS[0]}; set -e
+          p=$(cat controle/modifiees.txt | tr ' ' '\n' | head -20 | sed 's/.*/&@0 &@0.5 &@1/' | tr '\n' ' ')
+          echo "poses=$p" >> "$GITHUB_OUTPUT"
+          exit $rc
+      - name: Publier le contrôle
+        if: always()
+        run: |
+          cd controle && git init -q && git checkout -q -b controle && git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm "contrôle ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" controle:controle-${{ github.run_id }}
+  phone:
+    needs: check
+    if: needs.check.outputs.poses != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.11.1" }
+      - run: gradle :app:assembleDebug
+      - name: Activer KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash scripts/shots.sh "quick ${{ needs.check.outputs.poses }}"
+      - name: Publier les captures
+        if: always()
+        run: |
+          cd shots && git init -q && git checkout -q -b captures && git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm "captures ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" captures:captures-${{ github.run_id }}

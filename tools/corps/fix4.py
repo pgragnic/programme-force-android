@@ -455,3 +455,40 @@ def cams(P3):
         if e is not None: P3[id]['el'] = e
     for id in ('squat', 'bwsquat', 'bandsquat', 'bosusquat', 'kbsumo'): P3[id]['cam'] = .5
     return P3
+
+def feet_lock(P3, ids):
+    """Pieds fixes au sol (Philippe, « Et 1 en complément ») : aux squats et soulevés de terre, les pieds glissaient d'environ 4 cm pendant
+    le mouvement (la cheville réelle s'écartait de sa cible quand les longueurs de cuisse et de jambe ne collaient pas). Cheville et pied
+    du début du mouvement gardés sur toutes les images, genou recalculé à la bonne longueur, dans l'axe du pied (genou au-dessus des orteils)."""
+    for id in ids:
+        p = P3[id]; densify(p); k0 = p['k'][0]
+        for k in p['k']:
+            for s, sd in (('1', 'R'), ('2', 'L')):
+                for x in ('A', 'T', 'TT'):
+                    if x + s in k0: k[x + s] = list(k0[x + s])
+                R, T = B.solve(Q_(k))
+                th, sh, ft = (B.B[NM.index(n + sd)] for n in ('thgh', 'shin', 'foot'))
+                L1 = np.linalg.norm(sh['a'] - th['a']); L2 = np.linalg.norm(ft['a'] - sh['a'])
+                hip = T[NM.index('thgh' + sd)]; A = np.array(k['A' + s], float)
+                fwd = np.array(k['T' + s], float) - A; fwd[1] = 0; fwd /= np.linalg.norm(fwd) + 1e-9
+                K0 = np.array(k['K' + s], float); off = K0 - (hip + A) / 2
+                k['K' + s] = two_bone(hip, A, L1, L2, fwd * 3 + off).round(2).tolist()
+    return P3
+
+def hips_reach(P3, ids, bend=1.0):
+    """Soulevés de terre : le bassin était trop haut pour la longueur des jambes (6 à 10 cm), la cheville ne pouvait pas atteindre sa cible
+    et le pied glissait. Haut du corps descendu d'autant (genoux juste déverrouillés), genou recalculé."""
+    pts = ('P', 'S', 'N', 'H', 'E1', 'E2', 'W1', 'W2', 'F1', 'F2', 'Sh1', 'Sh2')
+    for id in ids:
+        for k in P3[id]['k']:
+            for _ in range(4):
+                R, T = B.solve(Q_(k)); gap = 0.
+                for s, sd in (('1', 'R'), ('2', 'L')):
+                    th, sh, ft = (B.B[NM.index(n + sd)] for n in ('thgh', 'shin', 'foot'))
+                    L = np.linalg.norm(sh['a'] - th['a']) + np.linalg.norm(ft['a'] - sh['a'])
+                    gap = max(gap, np.linalg.norm(np.array(k['A' + s]) - T[NM.index('thgh' + sd)]) - (L - bend))
+                if gap < .1: break
+                shift(k, list(pts), -gap)
+            feet_lock(P3, [])   # rien : le genou est recalculé ci-dessous
+        feet_lock(P3, [id])
+    return P3

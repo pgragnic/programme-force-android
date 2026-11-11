@@ -104,7 +104,7 @@ def db_pen(P3, id, dx, ax_i=0):
                 if kk + s in Q: v = list(Q[kk + s]); v[ax_i] += (sx if ax_i == 0 else 1) * dx * f; Q[kk + s] = v
         out, R, T = _B.skin(Q); V, N = out[0][0], out[0][1]; tr = cKDTree(V)
         for sd in [('R' if w == 'W1' else 'L') for w in P3[id].get('db', ['W1', 'W2'])]:
-            i = nm.index('hand' + sd); g = T[i] + R[i] @ np.array(Hh[sd]['g']); ax = R[i] @ np.array(Hh[sd]['l']); ax /= np.linalg.norm(ax)
+            i = nm.index('hand' + sd); g = T[i] + R[i] @ _B.grip0[sd]; ax = R[i] @ np.array(Hh[sd]['l']); ax /= np.linalg.norm(ax)
             u = np.cross(ax, [0, 1, 0]); u = u / np.linalg.norm(u) if np.linalg.norm(u) > .1 else np.cross(ax, [1, 0, 0]); w = np.cross(ax, u)
             pts = np.array([g + ax * o + (u * np.cos(a) + w * np.sin(a)) * r for o in (-10, -8, -6, 6, 8, 10)
                             for a in np.linspace(0, 2 * np.pi, 12, endpoint=False) for r in (3, 6.5)])
