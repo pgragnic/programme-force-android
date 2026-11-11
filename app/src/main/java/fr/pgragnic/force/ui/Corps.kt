@@ -47,9 +47,9 @@ fun CorpsScreen() {
         // un seul personnage, qu'on fait tourner au doigt ou avec Face / Dos (Philippe, capture du 11 novembre : « Un seul corps suffit
         // puisqu'on peut le tourner »)
         var back by remember { mutableStateOf(false) }
-        Box(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(16.dp)).background(C.stage)) {
-            Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true).th(), Modifier.fillMaxSize())
-            Row(Modifier.align(Alignment.BottomCenter).padding(8.dp).clip(RoundedCornerShape(18.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.stage), horizontalAlignment = Alignment.CenterHorizontally) {
+            Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true).th(), Modifier.fillMaxWidth().height(330.dp))
+            Row(Modifier.padding(8.dp).clip(RoundedCornerShape(18.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 listOf(t("Face", "Front") to false, t("Dos", "Back") to true).forEach { (lab, v) ->
                     Text(lab, color = if (back == v) C.onColor else C.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(if (back == v) C.effort else Color.Transparent).clickable { back = v }.padding(horizontal = 18.dp, vertical = 7.dp))
