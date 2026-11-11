@@ -68,7 +68,7 @@ def clear_tools(P3):
                 n, dr = tool_pen(P3, id, k, tool)
                 if n <= 1: break
                 dr = dr / (np.linalg.norm(dr) + 1e-9)
-                if id == 'kbsumo': dr = np.array([0, 0, 1.])   # kettlebell devant le bassin, pas plus bas
+                if id in ('kbsumo', 'kbrdl', 'bbrdl'): dr = np.array([0, 0, 1.])   # charge devant les cuisses (la direction calculée pouvait la faire passer derrière)
                 hs = ['1', '2'] if tool in ('bb',) or p.get('two') else [w[1] for w in p.get('db', [])]
                 for s_ in hs:
                     for x in ('W', 'F'):
@@ -321,4 +321,53 @@ def plant_feet(P3, only=None):
                 shift(k, ['A' + hi, 'T' + hi], -abs(d) / 2); shift(k, ['A' + low, 'T' + low], abs(d) / 2)
                 knee(k, '1'); knee(k, '2')
             if d0 is not None and abs(d0) >= 1.5: print(f'{id} t={k["t"]} : pied {"droit" if d0 > 0 else "gauche"} en l\'air de {abs(d0):.1f} cm → {abs(d):.1f} cm')
+    return P3
+
+def densify(p, n=8):
+    """Images clés tous les 1/8 de mouvement (interpolées), pour pouvoir corriger aussi le milieu du mouvement."""
+    have = {round(k['t'], 3) for k in p['k']}
+    for i in range(n + 1):
+        t = round(i / n, 3)
+        if t not in have: p['k'].append({'t': t, **{kk: (np.asarray(v).round(3).tolist() if not np.isscalar(v) else v) for kk, v in rt.at(p, t).items()}})
+    p['k'].sort(key=lambda k: k['t'])
+
+def pin(P3, id, hands=True, feet=True, ik_all=False):
+    """Appuis réellement posés sur tout le mouvement (deuxième contrôle de tous les exercices, 11 novembre) : mains et pieds visés au sol
+    ramenés au contact, coudes et genoux recalculés ; avec ik_all, les appuis ne glissent plus (cheville et poignet exactement sur leur cible)."""
+    p = P3[id]; densify(p); moved = 0.
+    for k in p['k']:
+        limbs = []
+        if feet: limbs += [('A', 'T', s, ['foot' + sd, 'toes' + sd], .7, knee) for s, sd in (('1', 'R'), ('2', 'L')) if k['A' + s][1] <= 4.5]
+        if hands: limbs += [('W', 'F', s, ['hand' + sd, 'finA' + sd, 'finB' + sd], 2.2, elbow) for s, sd in (('1', 'R'), ('2', 'L')) if k['W' + s][1] <= 6]
+        if ik_all:
+            for a, b_, s, bones, tg, ik in limbs: ik(k, s)
+        for _ in range(6):
+            V, _, _ = skin(P3, id, k); done = True
+            for a, b_, s, bones, tg, ik in limbs:
+                d = lowest(V, bones) - tg
+                if d > .3: shift(k, [a + s, b_ + s], -d); ik(k, s); done = False; moved = max(moved, d)
+            if done: break
+    print(f'{id} : appuis ramenés au contact (écart maximal corrigé {moved:.1f} cm)')
+
+
+def catcow_hands(P3):
+    """Chat-vache (deuxième contrôle, 11 novembre) : les mains flottaient jusqu'à 20 cm au-dessus du sol quand le dos s'arrondissait
+    (les épaules montaient plus haut que la longueur des bras). Épaules à hauteur de bras, mains posées ; le milieu du dos monte
+    (chat, tête rentrée) puis descend (vache, tête relevée), avec une amplitude que les bras permettent."""
+    p = P3['catcow']; base = json.loads(json.dumps(p['k'][-1])); ks = []
+    for t, Sy, Hy, Hz in ((0.0, 36.0, 24.0, 50.0), (1.0, 24.0, 47.0, 54.0)):
+        k = json.loads(json.dumps(base)); k['t'] = t
+        k['N'] = [0.0, 34.0, k['N'][2]]; k['S'] = [0.0, Sy, k['S'][2]]; k['H'] = [0.0, Hy, Hz]; ks.append(k)
+    p['k'] = ks
+    return P3
+
+def free_arm(P3):
+    """Exercices à une seule kettlebell (curl, développé militaire, développé au sol) : le bras sans charge imitait le mouvement, main vide.
+    Il reste maintenant le long du corps (deuxième contrôle de tous les exercices, 11 novembre)."""
+    hang = {x: P3['kbcurl']['k'][0][x] for x in ('W2', 'E2', 'U2', 'c2') if x in P3['kbcurl']['k'][0]}
+    for id in ('kbcurl', 'kbpress'):
+        for k in P3[id]['k']:
+            k.update(json.loads(json.dumps(hang))); k.pop('F2', None)
+    for k in P3['kbfloor']['k']:
+        k['E2'] = [-24.0, 4.0, -22.0]; k['W2'] = [-26.0, 3.0, 2.0]; k['U2'] = [0, -1, 0]; k['c2'] = .1; k.pop('F2', None)
     return P3
