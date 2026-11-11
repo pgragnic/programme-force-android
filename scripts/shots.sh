@@ -52,13 +52,13 @@ cap() { adb exec-out screencap -p > shots/$1.png; }
 case " $POSES " in *" aide "*)
   shot aide-tour1 --es lang fr --ez seed true --ei tab 0 --ez tour true
   for n in 2 3 4; do tapt "Suivant"; cap aide-tour$n; done
-  tapt "Terminer"; tapt '\\?'; sleep 2; cap aide-help
+  tapt "Terminer"; tapt '[?]'; sleep 2; cap aide-help
   adb shell input keyevent 4; sleep 2
   adb shell input swipe 160 500 160 150 500; sleep 3; tapt "Floor press"; sleep 4; cap aide-fiche
   adb shell input swipe 160 560 160 200 500; sleep 3; cap aide-fiche-b
   tapt "Remplacer"; sleep 2; adb shell input swipe 160 560 160 300 500; sleep 2; cap aide-fiche-c
   adb shell input keyevent 4; sleep 2
-  shot aide-corps --es lang fr --ez seed true --ei tab 1; tapt '\\?'; sleep 2; cap aide-corps-help
+  shot aide-corps --es lang fr --ez seed true --ei tab 1; tapt '[?]'; sleep 2; cap aide-corps-help
   shot aide-en --es lang en --ez seed true --ei tab 0 --ez tour true;;
 esac
 case " $POSES " in *" warn "*)
