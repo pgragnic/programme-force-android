@@ -123,7 +123,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 S.keys.forEach { s ->
                     val on = st.s == s; val ok = "${st.c}-${st.w}-$s" in done
                     Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(17.dp)).background(if (on) C.effort else Color.Transparent).clickable { Store.setSettings { it.s = s } }, contentAlignment = Alignment.Center) {
-                        Text(s + if (ok) " ✓" else "", color = if (on) C.onColor else C.muted, fontWeight = if (on) FontWeight.Black else FontWeight.Bold, fontSize = 13.sp)
+                        Text(s + if (ok) (if (S.size > 4) "✓" else " ✓") else "", color = if (on) C.onColor else C.muted, fontWeight = if (on) FontWeight.Black else FontWeight.Bold, fontSize = if (S.size > 4) 12.sp else 13.sp, maxLines = 1, softWrap = false)
                     }
                 }
             }
