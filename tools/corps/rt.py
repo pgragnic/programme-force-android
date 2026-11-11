@@ -14,7 +14,8 @@ def load(p):
         nr = take('i1', nv*3).reshape(-1, 3) / 127
         lab = take('u1', nv*4).reshape(-1, 4) if g['lab'] else None
         fib = take('u1', nv*4).reshape(-1, 4) if g.get('fib') else None
-        G.append(dict(g=g['g'], pos=pos, idx=idx.astype(int), bi=bi, bw=bw / bw.sum(1, keepdims=True), nrm=nr, lab=lab, fib=fib))
+        ph = (take('<u2', nv).astype(float) - 32768) / 100 if g.get('ph') else None
+        G.append(dict(g=g['g'], pos=pos, idx=idx.astype(int), bi=bi, bw=bw / bw.sum(1, keepdims=True), nrm=nr, lab=lab, fib=fib, ph=ph))
     B = [dict(n=b['n'], a=np.array(b['a']), b=np.array(b['b']), p=b['p']) for b in hdr['bones']]
     return hdr, B, G
 

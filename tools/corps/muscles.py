@@ -93,7 +93,8 @@ for k, f in enumerate(fine[1:], 1):
     m = lab == k
     if not m.any(): continue
     pts = f[3]; ax = np.linalg.svd(pts - pts.mean(0), full_matrices=False)[2][0]
-    if f[2] is None: fibp[m] = ax
+    if f[0][:-1] == 'obl': fibp[m] = [-0.55 if f[0].endswith('R') else 0.55, -0.83, 0.0]   # oblique externe : vers le bas et vers le milieu
+    elif f[2] is None: fibp[m] = ax
     else:
         X = np.abs(pts[:, 0]); Y = pts[:, 1]
         scr = {'pec': X + 0.4 * Y, 'low': -Y, 'lat': X, 'latup': X + 0.7 * Y, 'latlow': X - 0.5 * Y}[f[2]]
@@ -117,8 +118,42 @@ line[skin] = 1
 # sortie : groupes de l'appli (comme avant) + fibres
 groups = b.hdr['labels']; gi = np.array([groups.index(f[1]) for f in fine])
 shade = g['lab'][:, 3] if g['lab'] is not None else np.full(n, 255)
-L4 = np.stack([gi[lab], gi[lab], np.full(n, 255), shade], 1).astype('u1')
+# relief : muscle bombé au centre, creusé le long des sillons (déplacement le long de la normale au repos, en cm)
+bulge = np.clip(margin / 2.2, 0, 1); bulge = bulge * bulge * (3 - 2 * bulge)
+disp = np.where(lab > 0, 0.55 * (bulge - 0.35), 0.0)
+for _ in range(3): disp = Lm @ disp
+disp[skin] = 0
+# tendons : extrémités des muscles longs (bras, avant-bras, cuisses, jambes, cou) plus claires, comme sur une planche d'anatomie
+LONG = 'bic tri brr flex ext rf vl vm sart bf st sm gasM gasL sol tib edl fib scm grac add'.split()
+ten = np.zeros(n)
+for k, f in enumerate(fine[1:], 1):
+    if f[0][:-1] not in LONG: continue
+    m = lab == k
+    if m.sum() < 10: continue
+    pts = f[3]; ax = np.linalg.svd(pts - pts.mean(0), full_matrices=False)[2][0]
+    sv = M[m] @ ax; lo, hi = np.percentile(sv, 2), np.percentile(sv, 98); u = np.clip((sv - lo) / max(hi - lo, 1e-6), 0, 1)
+    e = np.minimum(u, 1 - u); ten[m] = np.clip(1 - e / 0.14, 0, 1) ** 1.5
+for _ in range(2): ten = Lm @ ten
+ten[lab == 0] = 0
+# couleur : groupe du muscle mélangé à la peau (gris clair) aux tendons, via le mélange déjà prévu dans l'appli (étiquette B = peau)
+# contours : près de la frontière, mélange avec le muscle voisin (50/50 sur la frontière) → bord régulier au lieu de dents de scie
+lab2 = order[:, 1]; lab2[skin] = 0
+wb = np.clip(margin / 1.0, 0, 1); wb = 0.5 + 0.5 * wb * wb * (3 - 2 * wb)
+wt = 1 - 0.85 * ten; useT = ten > 0.02
+L4 = np.stack([gi[lab], np.where(useT, 0, gi[lab2]), np.round(255 * np.where(useT, wt, wb)), shade], 1)
+L4[skin, 1] = L4[skin, 0]; L4[skin, 2] = 255
+L4 = L4.astype('u1')
+# stries des fibres : coordonnée φ (cm) qui croît perpendiculairement aux fibres, calculée muscle par muscle (moindres carrés sur les arêtes)
+from scipy.sparse.linalg import spsolve
+P0 = g['pos']; Gd = np.cross(fr, rn); Gd /= np.linalg.norm(Gd, axis=1, keepdims=True) + 1e-9
+E = np.unique(np.sort(np.concatenate([tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]]), 1), axis=0); i, j = E.T
+k_ = (lab[i] == lab[j]) & (lab[i] > 0); i, j = i[k_], j[k_]
+Gm = Gd[i] + Gd[j]; Gm /= np.linalg.norm(Gm, axis=1, keepdims=True) + 1e-9
+rhs = np.einsum('ij,ij->i', P0[j] - P0[i], Gm); r_ = np.arange(len(i))
+A = sp.csr_matrix((np.r_[-np.ones(len(i)), np.ones(len(i))], (np.r_[r_, r_], np.r_[i, j])), shape=(len(i), n))
+phi = spsolve((A.T @ A + sp.identity(n) * 1e-4).tocsc(), A.T @ rhs); phi[lab == 0] = 0
+print('stries : écart moyen', round(float(np.abs(A @ phi - rhs).mean()), 3), 'cm par arête')
 F4 = np.concatenate([np.round(fr * 127 + 128).clip(0, 255), (line * 255)[:, None]], 1).astype('u1')
-np.savez_compressed(__file__.replace('muscles.py', 'muscles.npz'), lab=L4, fib=F4, fine=lab.astype('u1'), names=np.array([f[0] for f in fine]))
+np.savez_compressed(__file__.replace('muscles.py', 'muscles.npz'), lab=L4, fib=F4, disp=disp.astype(np.float32), fine=lab.astype('u1'), ph=phi.astype(np.float32), names=np.array([f[0] for f in fine]))
 import collections
 print(n, 'sommets ;', (lab > 0).sum(), 'sur un muscle ;', int((line < .1).sum()), 'près d une séparation')

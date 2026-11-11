@@ -104,7 +104,7 @@ private class Mesh(data: FloatArray, idx: ShortArray) {
 fun noFib() {
     glDisableVertexAttribArray(3); glVertexAttrib3f(3, 0f, 0f, 0f)
     glDisableVertexAttribArray(4); glVertexAttrib3f(4, 0f, 0f, 0f)
-    glDisableVertexAttribArray(5); glVertexAttrib1f(5, 1f)
+    glDisableVertexAttribArray(5); glVertexAttrib2f(5, 1f, 0f)
 }
 
 class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
@@ -129,13 +129,13 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     // muscles anatomiques (atlas BodyParts3D) avec sillons entre muscles, relief bombé, fibres, reflet et lumière de contour.
     private val VS = """#version 300 es
         layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec3 aC;
-        layout(location=3) in vec3 aR; layout(location=4) in vec3 aF; layout(location=5) in float aL;
+        layout(location=3) in vec3 aR; layout(location=4) in vec3 aF; layout(location=5) in vec2 aL;
         uniform mat4 uMVP; uniform mat4 uM; uniform mat3 uN;
-        out vec3 vN; out vec3 vC; out vec3 vW; out vec3 vR; out vec3 vF; out float vL;
-        void main(){ vN = normalize(uN * aN); vC = aC; vW = (uM * vec4(aP,1.0)).xyz; vR = aR; vF = aF; vL = aL; gl_Position = uMVP * vec4(aP,1.0); }"""
+        out vec3 vN; out vec3 vC; out vec3 vW; out vec3 vR; out vec3 vF; out float vL; out float vU;
+        void main(){ vN = normalize(uN * aN); vC = aC; vW = (uM * vec4(aP,1.0)).xyz; vR = aR; vF = aF; vL = aL.x; vU = aL.y; gl_Position = uMVP * vec4(aP,1.0); }"""
     private val FS = """#version 300 es
         precision highp float;
-        in vec3 vN; in vec3 vC; in vec3 vW; in vec3 vR; in vec3 vF; in float vL;
+        in vec3 vN; in vec3 vC; in vec3 vW; in vec3 vR; in vec3 vF; in float vL; in float vU;
         uniform vec3 uCol; uniform float uUse; uniform float uAlpha; uniform float uFlat; uniform vec3 uEye;
         out vec4 o;
         float h(vec3 p){ p = fract(p*0.3183099+0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -147,8 +147,13 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
           vec3 n = normalize(vN); vec3 v = normalize(uEye - vW);
           vec3 c = mix(uCol, vC, uUse);
           float fl = length(vF); float fib = 1.0; float dl = vL * 3.0;
-          if (fl > 0.3) { vec3 F = vF / fl; float a = dot(vR, F); vec3 q = vR - F * a;
-            float s = vn(q*4.0 + F*a*0.10)*0.6 + vn(q*9.0 + F*a*0.2)*0.4; fib = mix(0.80, 1.07, s); }
+          // stries régulières le long des fibres : vU croît perpendiculairement aux fibres (calculé hors ligne, tools/corps/muscles.py)
+          if (fl > 0.3) { vec3 F = vF / fl; float a = dot(vR, F); float u = vU;
+            float w = u*2.4 + 0.45*vn(vec3(u*0.7, a*0.18, 0.0)) + 0.25*vn(vec3(u*2.0, a*0.6, 1.0));
+            float st = smoothstep(0.15, 1.0, 0.5 + 0.5*sin(w*6.2831));
+            float am = mix(0.35, 1.0, vn(vec3(u*0.9, a*0.2, 2.0)));
+            float br = vn(vec3(u*3.5, a*0.4, 0.0));
+            fib = mix(1.0 - 0.14*am, 1.03, 1.0 - st*0.85) * mix(0.93, 1.03, br); }
           float groove = 1.0 - smoothstep(0.0, 0.35, dl);
           float dome = fl > 0.3 ? smoothstep(0.1, 2.0, dl) : 1.0;
           c *= fib * (1.0 - 0.5*groove) * mix(0.80, 1.06, dome);
@@ -183,7 +188,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 glBindBuffer(GL_ARRAY_BUFFER, fx[0]); glBufferData(GL_ARRAY_BUFFER, G.rp.size * 4, fb(G.rp.size).put(G.rp).position(0), GL_STATIC_DRAW)
                 val dir = FloatArray(nv * 3) { i -> ((F[(i / 3) * 4 + i % 3].toInt() and 0xFF) - 128) / 127f }
                 glBindBuffer(GL_ARRAY_BUFFER, fx[1]); glBufferData(GL_ARRAY_BUFFER, dir.size * 4, fb(dir.size).put(dir).position(0), GL_STATIC_DRAW)
-                val ln = FloatArray(nv) { i -> (F[i * 4 + 3].toInt() and 0xFF) / 255f }
+                val ph = G.ph
+                val ln = FloatArray(nv * 2) { i -> if (i % 2 == 0) (F[(i / 2) * 4 + 3].toInt() and 0xFF) / 255f else ph?.get(i / 2) ?: 0f }
                 glBindBuffer(GL_ARRAY_BUFFER, fx[2]); glBufferData(GL_ARRAY_BUFFER, ln.size * 4, fb(ln.size).put(ln).position(0), GL_STATIC_DRAW)
                 fibBuf += fx
             }
@@ -209,7 +215,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             if (fx == null) noFib() else {
                 glBindBuffer(GL_ARRAY_BUFFER, fx[0]); glEnableVertexAttribArray(3); glVertexAttribPointer(3, 3, GL_FLOAT, false, 0, 0)
                 glBindBuffer(GL_ARRAY_BUFFER, fx[1]); glEnableVertexAttribArray(4); glVertexAttribPointer(4, 3, GL_FLOAT, false, 0, 0)
-                glBindBuffer(GL_ARRAY_BUFFER, fx[2]); glEnableVertexAttribArray(5); glVertexAttribPointer(5, 1, GL_FLOAT, false, 0, 0)
+                glBindBuffer(GL_ARRAY_BUFFER, fx[2]); glEnableVertexAttribArray(5); glVertexAttribPointer(5, 2, GL_FLOAT, false, 0, 0)
             }
             glBindBuffer(GL_ARRAY_BUFFER, ids[0]); glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0)
             glBindBuffer(GL_ARRAY_BUFFER, ids[1]); glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0)
