@@ -301,3 +301,24 @@ def bridge_align(P3):
                 kk['K2'] = K2.round(2).tolist(); kk['A2'] = A2.round(2).tolist(); kk['T2'] = (A2 + f * 14.5).round(2).tolist(); kk.pop('TT2', None)
         print(id, 'bassin : écart à la ligne épaules-genou', round(float(dev(P3[id]['k'][-1])), 1), 'cm')
     return P3
+
+def plant_feet(P3, only=None):
+    """Pieds posés au sol (Philippe, capture de la fente avant du 11 novembre : « Le pied qui avance est en l'air ») : quand les deux pieds
+    sont censés être au sol (chevilles visées à moins de 4,5 cm) mais que l'un flotte, on le descend et on remonte l'autre de moitié,
+    genoux recalculés, jusqu'à ce que les deux touchent."""
+    for id, p in P3.items():
+        if only and id not in only or p.get('free'): continue
+        for k in p['k']:
+            if not all(x in k for x in ('A1', 'A2', 'T1', 'T2')) or k['A1'][1] > 4.5 or k['A2'][1] > 4.5: continue
+            if 0 < k['t'] < 1 and 'lunge' in id: continue   # pas en cours : le pied qui se déplace est en l'air
+            d0 = None
+            for _ in range(8):
+                V, _, _ = skin(P3, id, k); lo = {s: lowest(V, ['foot' + sd, 'toes' + sd]) for s, sd in (('1', 'R'), ('2', 'L'))}
+                d = lo['1'] - lo['2']
+                if d0 is None: d0 = d
+                if abs(d) < .3: break
+                hi, low = ('1', '2') if d > 0 else ('2', '1')
+                shift(k, ['A' + hi, 'T' + hi], -abs(d) / 2); shift(k, ['A' + low, 'T' + low], abs(d) / 2)
+                knee(k, '1'); knee(k, '2')
+            if d0 is not None and abs(d0) >= 1.5: print(f'{id} t={k["t"]} : pied {"droit" if d0 > 0 else "gauche"} en l\'air de {abs(d0):.1f} cm → {abs(d):.1f} cm')
+    return P3
