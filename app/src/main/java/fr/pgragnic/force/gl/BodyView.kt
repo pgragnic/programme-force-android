@@ -128,6 +128,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private val t0 = System.currentTimeMillis()
     private var uMVP = 0; private var uM = 0; private var uN = 0; private var uCol = 0; private var uUse = 0; private var uAlpha = 0; private var uFlat = 0; private var uEye = 0
     private val fibBuf = ArrayList<IntArray?>() // vbo repos, fibres, marge
+    private var ropeK = 0f; private var ropeUp = true
 
     // Rendu « écorché » (Philippe : « Comment on pourrait faire pour avoir un bonhomme ressemblant à ça ? », « Voie 1 ») :
     // muscles anatomiques (atlas BodyParts3D) avec sillons entre muscles, relief bombé, fibres, reflet et lumière de contour.
@@ -371,6 +372,20 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             val gr = inHand("W1"); val gl = inHand("W2"); val c = gr.lerp(gl, .5f)
             if (tool == "medball") objs += Triple(ball, mat(c + V3(0f, 0f, 0f), 11f, 11f, 11f), rgb(0x8A5A3C))
             else { var ax = gr - gl; if (ax.len() < 2f) ax = V3(1f, 0f, 0f); ax.norm(); seg(c - ax * 75f, c + ax * 75f, 1.2f, rgb(0xC9B48A)) }
+        }
+        // corde à sauter (Philippe : « Pourquoi le personnage ne saute toujours pas à la corde à sauter ? ») : elle tourne autour du corps,
+        // au-dessus de la tête quand les pieds sont au sol, sous les pieds en haut du saut
+        if (!s.map && tool == "rope") {
+            val gr = inHand("W1"); val gl = inHand("W2"); val c = gr.lerp(gl, .5f); val k = s.k.toFloat()
+            if (k > ropeK + 1e-4f) ropeUp = true else if (k < ropeK - 1e-4f) ropeUp = false
+            ropeK = k
+            val ph = if (ropeUp) .5f * k else .5f + .5f * (1f - k)
+            val a = 2f * PI.toFloat() * ph; val dir = V3(0f, cos(a), sin(a)); val R = c.y - 1.5f; val col = rgb(0xE3A33E)
+            var prev = gr
+            for (i in 1..16) {
+                val u = i / 16f; val q = gr.lerp(gl, u) + dir * (R * sin(PI.toFloat() * u))
+                seg(prev, q, .6f, col); prev = q
+            }
         }
         // élastiques
         if (!s.map && exo != null && exo.band.isNotEmpty()) {

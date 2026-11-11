@@ -220,3 +220,18 @@ d['SIG']['SESS1']['F'] = {'pushup': ['benchpress', 'inclinepress'], 'pull': ['to
 d['SIG']['SESS2']['F'] = {'incline': ['inclinepress', 'benchpress'], 'row2': ['pullup', 'bbrow'], 'lateral': ['bandlat'], 'hammer': ['bbcurl'], 'ohtri': ['dips', 'chairdip'], 'crunch': ['abwheel', 'kneeraise', 'medcrunch']}
 d['V'] = 17
 json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
+
+
+# --- 11 novembre, 18 h 45 : corde à sauter (Philippe : « Pourquoi le personnage ne saute toujours pas à la corde à sauter ? ») : vrai saut
+# (9 cm, pointes tendues en l'air, genoux un peu fléchis à la réception), rythme rapide propre à l'exercice, corde dessinée par l'appli.
+d = json.load(open(p)); d['POSES3'] = json.load(open(_p3))
+r = d['POSES3']['rope']; r['tool'] = 'rope'; r['db'] = ['W1', 'W2']; k0, k1 = r['k'][0], r['k'][-1]
+for s, sx in (('1', 1), ('2', -1)):
+    k0['K' + s] = [9.08 * sx, 37.0, 4.5]; k0['P'] = [0.0, 74.5, 0.0]; k0['N'] = [0.0, 122.5, 0.5]
+    k1['A' + s] = [9.38 * sx, 11.0, 0.0]; k1['T' + s] = [9.38 * sx, 1.5, 10.5]; k1['K' + s] = [9.08 * sx, 48.0, 2.0]
+    for k in (k0, k1): k['c' + s] = 0.85
+k1['P'] = [0.0, 86.0, 0.0]; k1['N'] = [0.0, 134.0, 0.0]; k1['H'] = [0.0, k1['N'][1] + (k0['H'][1] - 124.0), k0['H'][2]] if 'H' in k0 else k1.get('H')
+for x in ('E1', 'E2', 'W1', 'W2'): k1[x] = [k0[x][0], k0[x][1] + 10.0, k0[x][2]]
+d['WTP']['rope'] = [0.24, 0.0, 0.26, 0.06]; d['V'] = 18
+json.dump(d['POSES3'], open(_p3, 'w'), ensure_ascii=False, separators=(',', ':'))
+json.dump(d, open(p, 'w'), ensure_ascii=False, separators=(',', ':'))
