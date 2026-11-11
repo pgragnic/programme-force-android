@@ -74,7 +74,9 @@ object Prog {
     fun nextSess(st: Settings, log: List<Entry>, days: List<DayRec>): String {
         val R = Recovery.muscles(log, days).R
         val last = sess(st.c).keys.associateWith { s -> log.filter { it.s == s }.maxOfOrNull { it.d } ?: 0L }
-        return sess(st.c).keys.minWith(compareBy<String>({ (tired(orderEx(st.c, it, st.w, st), R).first * 10).roundToInt() }, { last[it] })) 
+        // d'abord une séance pas encore faite cette semaine du programme (avec E et F, chacune a son tour), puis celle qui ménage le mieux les muscles
+        val doneW = log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet()
+        return sess(st.c).keys.minWith(compareBy<String>({ if (it in doneW) 1 else 0 }, { (tired(orderEx(st.c, it, st.w, st), R).first * 10).roundToInt() }, { last[it] }))
     }
 
     /** pose d'un exercice alterné ou d'un seul côté (bird dog, dead bug, fentes…) : à faire des deux côtés */
