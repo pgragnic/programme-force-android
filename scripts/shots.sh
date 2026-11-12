@@ -60,8 +60,8 @@ esac
 case " $POSES " in *" lest "*)
   shot lest-a --es lang fr --ez seed true --ei tab 2 --es sub 0
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
-  for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1; done
-  tapt "Marche lestée"; cap lest-b;;
+  adb shell input swipe $((W/2)) $((H*85/100)) $((W/2)) $((H*20/100)) 600; sleep 1; cap lest-s1
+  tapt "Marche lestée"; cap lest-b; adb shell input swipe $((W/2)) $((H*70/100)) $((W/2)) $((H*45/100)) 400; sleep 1; cap lest-c;;
 esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
 # 6 séances par semaine : séances E et F
