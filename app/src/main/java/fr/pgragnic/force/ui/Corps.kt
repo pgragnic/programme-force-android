@@ -47,8 +47,26 @@ fun CorpsScreen() {
         // un seul personnage, qu'on fait tourner au doigt ou avec Face / Dos (Philippe, capture du 11 novembre : « Un seul corps suffit
         // puisqu'on peut le tourner »)
         var back by remember { mutableStateOf(false) }
+        // muscle touché sur le personnage : bulle avec % et temps avant d'être prêt (Philippe, 12 novembre : « Est-ce qu'on pourrait avoir
+        // plus de détails que les 3 niveaux actuels des récupération ? », maquette A, « J'aime bien l'option A »)
+        var pick by remember { mutableStateOf<Triple<String, Float, Float>?>(null) }
+        LaunchedEffect(pick) { if (pick != null) { kotlinx.coroutines.delay(4000); pick = null } }
+        val onPick = remember { { n: String?, x: Float, y: Float -> pick = n?.let { Triple(it, x, y) } } }
+        val dens = androidx.compose.ui.platform.LocalDensity.current
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.stage), horizontalAlignment = Alignment.CenterHorizontally) {
-            Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true).th(), Modifier.fillMaxWidth().height(330.dp))
+            BoxWithConstraints(Modifier.fillMaxWidth().height(330.dp)) {
+                Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true, onPick = onPick).th(), Modifier.fillMaxSize())
+                pick?.let { (m, x, y) ->
+                    val r = MU.R[m] ?: 100; val h = MU.ready[m] ?: 0
+                    val wPx = with(dens) { 150.dp.toPx() }; val maxX = with(dens) { maxWidth.toPx() } - wPx
+                    val ox = (x + with(dens) { 14.dp.toPx() }).let { if (it > maxX) x - wPx - with(dens) { 14.dp.toPx() } else it }.coerceAtLeast(0f)
+                    val oy = (y - with(dens) { 24.dp.toPx() }).coerceAtLeast(0f)
+                    Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(ox.toInt(), oy.toInt()) }.width(150.dp).clip(RoundedCornerShape(10.dp)).background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        Text(fr.pgragnic.force.tr(m) + " · $r %", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(if (r >= 90) t("prêt à travailler", "ready to train") else t("prêt dans ~", "ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = Color(0xFF555555), fontSize = 12.sp)
+                    }
+                }
+            }
             Row(Modifier.padding(8.dp).clip(RoundedCornerShape(18.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 listOf(t("Face", "Front") to false, t("Dos", "Back") to true).forEach { (lab, v) ->
                     Text(lab, color = if (back == v) C.onColor else C.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
@@ -56,22 +74,31 @@ fun CorpsScreen() {
                 }
             }
         }
-        Text(t("Fais tourner le personnage avec le doigt.", "Rotate the character with your finger."), color = C.muted, fontSize = 12.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("Prêt" to C.effort, "En récupération" to C.warm, "Fatigué" to C.danger).forEach { (t, c) ->
-                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(10.dp).clip(CircleShape).background(c)); Text(" $t", color = C.muted, fontSize = 12.sp) }
+        Text(t("Fais tourner le personnage avec le doigt, touche un muscle pour voir sa récupération.", "Rotate the character with your finger, tap a muscle to see its recovery."), color = C.muted, fontSize = 12.sp)
+        // échelle continue (option A) : même dégradé que le personnage, de fatigué (0 %) à prêt (90 % et plus)
+        Column {
+            Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(
+                0f to C.danger, .6f to C.warm, .9f to C.effort, 1f to C.effort)))
+            Box(Modifier.fillMaxWidth().padding(top = 3.dp)) {
+                Text(t("0 % fatigué", "0% tired"), color = C.muted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterStart))
+                Text("60 %", color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.6f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
+                Text(t("prêt 90 %", "ready 90%"), color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.93f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
             }
         }
         // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,
         // puis les muscles prêts avec la même ligne détaillée ; toucher un muscle ouvre son détail
         val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
         @Composable fun row(m: String) {
-            val r = MU.R[m]!!; val c = if (r >= 90) C.effort else if (r >= 60) C.warm else C.danger; val h = MU.ready[m] ?: 0
+            val r = MU.R[m]!!; val c = Recovery.recCol(r, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort)).col(); val h = MU.ready[m] ?: 0
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 9.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(width = 6.dp, height = 32.dp).clip(RoundedCornerShape(3.dp)).background(c))
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(fr.pgragnic.force.tr(m), color = C.ink, fontWeight = FontWeight.Bold)
+                        // jauge du muscle, dans la couleur exacte de son niveau
+                        Box(Modifier.padding(vertical = 3.dp).fillMaxWidth(.8f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(C.bg)) {
+                            Box(Modifier.fillMaxWidth(r / 100f).fillMaxHeight().clip(RoundedCornerShape(3.dp)).background(c))
+                        }
                         Text(if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = C.muted, fontSize = 12.sp)
                     }
                     Text("$r %", color = c, fontWeight = FontWeight.Bold)

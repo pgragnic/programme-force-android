@@ -24,6 +24,8 @@ import kotlin.math.*
 data class BodyState(
     val pose: String? = null, val k: Double = 0.0, val mirror: Boolean = false, val ghost: Boolean = false, val nodb: Boolean = false,
     val hl: String? = null, val colors: Map<String, Int>? = null, val az: Float? = null, val map: Boolean = false,
+    /** écran Corps : muscle touché sur le personnage (nom, position du doigt en pixels), ou null si le doigt n'est sur aucun muscle */
+    val onPick: ((String?, Float, Float) -> Unit)? = null,
     val bg: Int = 0x0C0F12, val ground: Int = 0x181C21, val mat: Int = 0x21262C, val db: Int = 0x2EC089,
     val base: Int = 0xE8DAD5, val acc: Int = 0xE0453A,
     /** exercice affiché : donne l'outil (haltère, kettlebell, élastique) */
@@ -113,6 +115,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     @Volatile var state = BodyState()
     @Volatile var user = 0f; @Volatile var uel = 0f
     @Volatile var snap = true
+    /** toucher à analyser (x, y en pixels, rayon de recherche en pixels), traité au prochain dessin */
+    @Volatile var tapReq: FloatArray? = null
     private var body: Body? = null
     private var prog = 0
     private val gbuf = ArrayList<IntArray>() // vbo pos, nrm, col, ibo
@@ -311,6 +315,21 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
             Matrix.setIdentityM(m, 0); Matrix.translateM(m, 0, 0f, .6f, 10f); Matrix.scaleM(m, 0, 64f, 1.2f, 190f); setM(m, rgb(s.mat), 0f, 1f); box.draw()
         }
         val bodyM = FloatArray(16).also { Matrix.setIdentityM(it, 0); if (s.mirror) Matrix.scaleM(it, 0, -1f, 1f, 1f) }
+        // muscle touché (Philippe, « J'aime bien l'option A ») : sommet du personnage le plus proche de la caméra sous le doigt
+        tapReq?.let { tq -> tapReq = null; val cb = s.onPick; if (cb != null) {
+            val mvp = FloatArray(16); Matrix.multiplyMM(mvp, 0, vp, 0, bodyM, 0)
+            var best = Float.MAX_VALUE; var lab: String? = null; val v = FloatArray(4); val o = FloatArray(4)
+            for (G in b.groups) { val L = G.lab ?: continue; val P = G.pos; var i = 0; val n = P.size / 3
+                while (i < n) {
+                    v[0] = P[3 * i]; v[1] = P[3 * i + 1]; v[2] = P[3 * i + 2]; v[3] = 1f; Matrix.multiplyMV(o, 0, mvp, 0, v, 0)
+                    if (o[3] > 0f) { val x = (o[0] / o[3] + 1f) / 2f * W; val y = (1f - o[1] / o[3]) / 2f * H; val z = o[2] / o[3]
+                        val dx = x - tq[0]; val dy = y - tq[1]
+                        if (dx * dx + dy * dy < tq[2] * tq[2] && z < best) { best = z; val w = (L[4 * i + 2].toInt() and 0xFF) / 255f
+                            lab = b.labels.getOrNull(L[4 * i + (if (w >= .5f) 0 else 1)].toInt() and 0xFF) } }
+                    i += 2 } }
+            val name = lab?.takeIf { it in fr.pgragnic.force.Recovery.MUS }
+            android.os.Handler(android.os.Looper.getMainLooper()).post { cb(name, tq[0], tq[1]) }
+        } }
 
         // objets : haltères, kettlebell, élastiques, accessoires (maillage, matrice, couleur)
         val objs = ArrayList<Triple<Mesh, FloatArray, FloatArray>>()
@@ -508,7 +527,12 @@ class BodyGL(ctx: Context) : GLSurfaceView(ctx) {
                 val now = System.currentTimeMillis(); if (now - lastTap < 300) { r.user = 0f; r.uel = 0f }; lastTap = now
             }
             MotionEvent.ACTION_MOVE -> { r.user = u0 + (e.x - lx) / dp * .012f; r.uel = (v0 + (e.y - ly) / dp * .006f).coerceIn(-.25f, .6f) }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
+            MotionEvent.ACTION_UP -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                // toucher bref sans glisser : on cherche le muscle sous le doigt
+                if (abs(e.x - lx) < 8 * dp && abs(e.y - ly) < 8 * dp && e.eventTime - e.downTime < 350) r.tapReq = floatArrayOf(e.x, e.y, 22 * dp)
+            }
+            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
         return true
     }
