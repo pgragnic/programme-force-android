@@ -61,6 +61,8 @@ case " $POSES " in *" ruck "*)
   tapt "Démarrer"; sleep 4; cap ruck-b
   adb shell cmd statusbar expand-notifications; sleep 2; cap ruck-notif; adb shell cmd statusbar collapse; sleep 1
   sleep 60; tapt "Arrêter et enregistrer"; sleep 2; cap ruck-c
+  adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5
+  adb shell input text 25; sleep 1
   for i in 1 2 3; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5; cap ruck-d$i; done;;
 esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance

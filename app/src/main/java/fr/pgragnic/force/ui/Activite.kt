@@ -106,26 +106,6 @@ fun ActiviteScreen(inProgres: Boolean = false) {
             Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
-        // Health Connect
-        Panel {
-            Text("Pas automatiques", color = C.ink, fontWeight = FontWeight.Bold)
-            when {
-                !avail -> {
-                    Text("Installe ou mets à jour l'appli Health Connect pour importer tes pas (téléphone, montre, Google Fit, Samsung Santé…).", color = C.muted, fontSize = 13.sp)
-                    TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }) { Text("Ouvrir le Play Store") }
-                }
-                !granted -> {
-                    Text("Autorise la lecture de tes pas dans Health Connect : ils arriveront tout seuls ici chaque jour.", color = C.muted, fontSize = 13.sp)
-                    Button(onClick = { launcher.launch(Health.PERMS) }, modifier = Modifier.padding(top = 6.dp)) { Text("Autoriser l'accès aux pas") }
-                }
-                else -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(hcStatus.ifBlank { "Connecté à Health Connect" }, color = C.muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { scope.launch { Health.importSteps(ctx) } }) { Text("Actualiser") }
-                }
-            }
-            if (!granted && hcStatus.isNotBlank()) Text(hcStatus, color = C.warm, fontSize = 12.sp)
-        }
-
         // chrono « sac sur le dos » (Philippe : « 1,2 et 3 », point 2)
         Panel {
             Text(t("Sac sur le dos", "Pack on"), color = C.ink, fontWeight = FontWeight.Bold)
@@ -149,6 +129,26 @@ fun ActiviteScreen(inProgres: Boolean = false) {
                 TextButton(onClick = { if (!arm) arm = true else { Ruck.stop(ctx, save = false); arm = false } }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (arm) t("Confirmer : annuler sans enregistrer", "Confirm: cancel without saving") else t("Annuler", "Cancel"), color = C.danger) }
             }
+        }
+
+        // Health Connect
+        Panel {
+            Text("Pas automatiques", color = C.ink, fontWeight = FontWeight.Bold)
+            when {
+                !avail -> {
+                    Text("Installe ou mets à jour l'appli Health Connect pour importer tes pas (téléphone, montre, Google Fit, Samsung Santé…).", color = C.muted, fontSize = 13.sp)
+                    TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }) { Text("Ouvrir le Play Store") }
+                }
+                !granted -> {
+                    Text("Autorise la lecture de tes pas dans Health Connect : ils arriveront tout seuls ici chaque jour.", color = C.muted, fontSize = 13.sp)
+                    Button(onClick = { launcher.launch(Health.PERMS) }, modifier = Modifier.padding(top = 6.dp)) { Text("Autoriser l'accès aux pas") }
+                }
+                else -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(hcStatus.ifBlank { "Connecté à Health Connect" }, color = C.muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { scope.launch { Health.importSteps(ctx) } }) { Text("Actualiser") }
+                }
+            }
+            if (!granted && hcStatus.isNotBlank()) Text(hcStatus, color = C.warm, fontSize = 12.sp)
         }
 
         // 14 jours
