@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        L.load(this); Prog.load(this); GearStore.load(this); Store.init(this); Ruck.load(this)
+        L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
         C.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         Crash.sendPending(this)

@@ -60,7 +60,6 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Minuteur de séance de musculation guidée (voix, bips, boutons sur l'écran verrouillé)" />
         </service>
         <receiver android:name=".SessionAction" android:exported="false" />
-        <receiver android:name=".RuckReceiver" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

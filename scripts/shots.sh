@@ -56,15 +56,12 @@ case " $POSES " in *" reco "*)
   adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 2; cap reco-liste
   shot reco-en --es lang en --ez seed true --ez tired true --ei tab 1;;
 esac
-# chrono « sac sur le dos » et sorties de la journée (marche lestée intermittente)
-case " $POSES " in *" ruck "*)
-  shot ruck-a --es lang fr --ez seed true --ei tab 2 --es sub 0
+# marche lestée : pas faits avec le sac
+case " $POSES " in *" lest "*)
+  shot lest-a --es lang fr --ez seed true --ei tab 2 --es sub 0
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
-  tapt "Démarrer"; sleep 3; cap ruck-b
-  adb shell cmd statusbar expand-notifications; sleep 2; cap ruck-notif; adb shell cmd statusbar collapse; sleep 1
-  sleep 60; tapt "Arrêter et enregistrer"; cap ruck-c
-  adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5
-  for i in 1 2 3; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5; cap ruck-d$i; done;;
+  for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1; done
+  tapt "Marche lestée"; cap lest-b;;
 esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
 # 6 séances par semaine : séances E et F
@@ -93,7 +90,7 @@ case " $POSES " in *" warn "*)
 esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = ruck ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = lest ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3
