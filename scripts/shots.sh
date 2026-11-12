@@ -44,19 +44,19 @@ case " $POSES " in *" ergo "*)
   shot ergo-en-tab0 --es lang en --ez seed true --ei tab 0
   shot ergo-play5 --es lang fr --ez seed true --ei play 5; shot ergo-play7 --es lang fr --ez seed true --ei play 7;;
 esac
+cap() { adb exec-out screencap -p > shots/$1.png; }
 # écran Corps, échelle continue (option A) : muscles en récupération, toucher une cuisse puis une épaule sur le personnage
 case " $POSES " in *" reco "*)
   shot reco-a --es lang fr --ez seed true --ez tired true --ei tab 1
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
-  adb shell input tap $((W*46/100)) $((H*40/100)); sleep 1.2; cap reco-cuisse
-  adb shell input tap $((W*38/100)) $((H*22/100)); sleep 1.2; cap reco-epaule
+  adb shell input tap $((W*44/100)) $((H*48/100)); sleep 1.2; cap reco-cuisse
+  adb shell input tap $((W*36/100)) $((H*24/100)); sleep 1.2; cap reco-epaule
   adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 2; cap reco-liste
   shot reco-en --es lang en --ez seed true --ez tired true --ei tab 1;;
 esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
 tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
-cap() { adb exec-out screencap -p > shots/$1.png; }
 # 6 séances par semaine : séances E et F
 case " $POSES " in *" six "*)
   shot six-tab0 --es lang fr --ez seed true --ei tab 0 --ei perweek 6
