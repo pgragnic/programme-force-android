@@ -58,11 +58,10 @@ esac
 case " $POSES " in *" ruck "*)
   shot ruck-a --es lang fr --ez seed true --ei tab 2 --es sub 0
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
-  tapt "Démarrer"; sleep 4; cap ruck-b
+  adb shell input tap $((W/2)) $((H*67/100)); sleep 4; cap ruck-b; adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ruck-ui.xml >/dev/null
   adb shell cmd statusbar expand-notifications; sleep 2; cap ruck-notif; adb shell cmd statusbar collapse; sleep 1
-  sleep 60; tapt "Arrêter et enregistrer"; sleep 2; cap ruck-c
+  sleep 60; b=$(python3 -c "import re;x=open('shots/ruck-ui.xml',encoding='utf-8').read();m=re.search(r'text=\"Arrêter et enregistrer\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print($((W/2)),$((H*62/100)))"); adb shell input tap $b; sleep 2; cap ruck-c
   adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5
-  adb shell input text 25; sleep 1
   for i in 1 2 3; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5; cap ruck-d$i; done;;
 esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
