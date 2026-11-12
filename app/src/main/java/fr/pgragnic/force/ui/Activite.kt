@@ -158,11 +158,12 @@ fun ActiviteScreen(inProgres: Boolean = false) {
             Text("Activité", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { ACTS.forEach { a -> Box(Modifier.weight(1f)) { ActChip(a, act == a) { act = a } } } }
             if (act != "Aucune") {
+                // marche lestée : nombre de pas faits avec le sac dans la journée, à la place de la durée
+                if (act == "Marche lestée") OutlinedTextField(rsteps, { rsteps = it.filter { c -> c.isDigit() } }, label = { Text(t("Pas faits avec le sac", "Steps with the pack")) },
+                    placeholder = { Text(t("ex. 6000", "e.g. 6000")) }, singleLine = true, keyboardOptions = num, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
                     OutlinedTextField(pack, { pack = it }, label = { Text("Sac (kg)") }, singleLine = true, keyboardOptions = dec, modifier = Modifier.weight(1f))
-                    // marche lestée : nombre de pas faits avec le sac dans la journée, à la place de la durée
-                    if (act == "Marche lestée") OutlinedTextField(rsteps, { rsteps = it.filter { c -> c.isDigit() } }, label = { Text(t("Pas avec sac", "Steps with pack")) }, singleLine = true, keyboardOptions = num, modifier = Modifier.weight(1.3f))
-                    else OutlinedTextField(dur, { dur = it.filter { c -> c.isDigit() } }, label = { Text("Durée (min)") }, singleLine = true, keyboardOptions = num, modifier = Modifier.weight(1f))
+                    if (act != "Marche lestée") OutlinedTextField(dur, { dur = it.filter { c -> c.isDigit() } }, label = { Text("Durée (min)") }, singleLine = true, keyboardOptions = num, modifier = Modifier.weight(1f))
                     OutlinedTextField(dplus, { dplus = it.filter { c -> c.isDigit() } }, label = { Text("D+ (m)") }, singleLine = true, keyboardOptions = num, modifier = Modifier.weight(1f))
                 }
             }
