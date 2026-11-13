@@ -510,3 +510,29 @@ def row1_fix(P3):
             d = np.array([-.12, .18, -.98]); d /= np.linalg.norm(d); E = sh + d * L1   # coude vers le haut et vers la hanche
             k['E2'] = (E + [-5., 0., 0.]).round(2).tolist(); k['W2'] = (E + [-7., -L2 * .95, 2.]).round(2).tolist(); elbow(k, '2')   # avant-bras vertical, haltère à côté du corps
     return P3
+
+def lunge_rear(P3):
+    """Pied arrière des fentes (Philippe, capture de la pause de la fente avant, 13 novembre 16 h 41 : « La jambe droite est un peu
+    bizarre non ? ») : à la fente avant, le pied arrière décollait du sol à mi-mouvement (cheville à 17 cm), jambe repliée et pied
+    pointé vers l'arrière. Pied arrière posé sur l'avant-pied, talon levé, cheville à angle naturel (105° entre jambe et pied) ;
+    genou recalculé."""
+    def foot_dir(k):
+        A = np.array(k['A2'], float); K = np.array(k['K2'], float); u = K - A; u[0] = 0; u /= np.linalg.norm(u)
+        c, s_ = np.cos(np.radians(105)), np.sin(np.radians(105))
+        cands = [np.array([0., u[1] * c - u[2] * s_, u[1] * s_ + u[2] * c]), np.array([0., u[1] * c + u[2] * s_, -u[1] * s_ + u[2] * c])]
+        return min(cands, key=lambda v: v[1])   # le pied vers le sol
+    for id in ('lunge', 'kblunge', 'fwdlunge'):
+        for k in P3[id]['k']:
+            if 'TT2' not in k: continue
+            for _ in range(3):   # pied posé sur l'avant-pied : la boule du pied au niveau du sol
+                f = foot_dir(k); A = np.array(k['A2'], float); A[1] = -f[1] * 11.7 - .2
+                k['A2'] = A.round(2).tolist(); knee(k, '2')
+            T = A + f * 11.7; k['T2'] = T.round(2).tolist()
+            fw = np.array([0., 0., 1.]) if id == 'fwdlunge' else np.array([0., 0., 1.])
+            k['TT2'] = (T + fw * 4 + [0., .2, 0.]).round(2).tolist()
+            if k['t'] < 1: continue   # en cours de pas, l'autre pied peut être en l'air
+            for _ in range(6):
+                V, _, _ = skin(P3, id, k); d = lowest(V, ['footL', 'toesL']) - lowest(V, ['footR', 'toesR'])
+                if abs(d) < .3: break
+                shift(k, ['A2', 'T2', 'TT2'], -d); knee(k, '2')
+    return P3

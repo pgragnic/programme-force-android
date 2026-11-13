@@ -274,18 +274,7 @@
  },
  "floor": {},
  "kbrdl": {},
- "lunge": {
-  "cheville L trop tendue (°)": [
-   [
-    0.33,
-    61.8
-   ],
-   [
-    0.42,
-    60.3
-   ]
-  ]
- },
+ "lunge": {},
  "ohtri": {
   "haltère dans le corps (points)": [
    [
@@ -1313,18 +1302,7 @@
    ]
   ]
  },
- "kblunge": {
-  "cheville L trop tendue (°)": [
-   [
-    0.33,
-    61.8
-   ],
-   [
-    0.42,
-    60.3
-   ]
-  ]
- },
+ "kblunge": {},
  "kbpress": {},
  "lateral": {},
  "wallsit": {},
@@ -1414,12 +1392,6 @@
   ]
  },
  "fwdlunge": {
-  "cheville L trop tendue (°)": [
-   [
-    0.67,
-    68.9
-   ]
-  ],
   "pied R posé qui glisse (cm)": [
    [
     0,
