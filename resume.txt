@@ -1,0 +1,2 @@
+45 poses sans remarque sur 73 ; poses modifiées : row1
+Aucune régression.
