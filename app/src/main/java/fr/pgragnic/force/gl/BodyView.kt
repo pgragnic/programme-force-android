@@ -26,6 +26,8 @@ data class BodyState(
     val hl: String? = null, val colors: Map<String, Int>? = null, val az: Float? = null, val map: Boolean = false,
     /** écran Corps : muscle touché sur le personnage (nom, position du doigt en pixels), ou null si le doigt n'est sur aucun muscle */
     val onPick: ((String?, Float, Float) -> Unit)? = null,
+    /** écran Corps : vue de dos (true) ou de face, signalée quand elle change au doigt ; viewKey : un nouveau numéro remet la vue demandée */
+    val onView: ((Boolean) -> Unit)? = null, val viewKey: Int = 0,
     val bg: Int = 0x0C0F12, val ground: Int = 0x181C21, val mat: Int = 0x21262C, val db: Int = 0x2EC089,
     val base: Int = 0xE8DAD5, val acc: Int = 0xE0453A,
     /** exercice affiché : donne l'outil (haltère, kettlebell, élastique) */
@@ -127,6 +129,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
     private var lastKey = ""; private var lastId: String? = null
     private var az: Float? = null; private var ta = 1.05f; private var elx = 0f; private var dist = 360f
     /** caméra remise à zéro (vignettes : une image par exercice, sans transition) */
+    private var lastBack: Boolean? = null
     fun reset() { az = null; lastId = null; lastKey = ""; snap = true; user = 0f; uel = 0f }
     private val tgt = V3(0f, 80f, 0f)
     private val t0 = System.currentTimeMillis()
@@ -289,6 +292,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         val elT = if (s.thumb || s.map) null else b.camElOf(id)
         elx += ((elT?.let { it - .32f } ?: if (lying) .3f else 0f) - elx) * f
         val A = az!! + user + if (still) 0f else (sin((System.currentTimeMillis() - t0) / 9000.0) * .12).toFloat()
+        s.onView?.let { cb -> val bk = cos(A) < 0f; if (bk != lastBack) { lastBack = bk; android.os.Handler(android.os.Looper.getMainLooper()).post { cb(bk) } } }
         val E = min(1.35f, (if (s.map) .12f else .32f) + uel + elx + (if (s.thumb && lying) .12f else 0f))
         val asp = W.toFloat() / H
         val dd = if (s.map) { val span = maxOf(mx.y - mn.y, mx.z - mn.z, mx.x - mn.x, 120f); span * 1.55f + 22 } else {
@@ -541,6 +545,6 @@ class BodyGL(ctx: Context) : GLSurfaceView(ctx) {
 /** Personnage 3D dans Compose. */
 @Composable
 fun Body3D(state: BodyState, modifier: Modifier = Modifier) {
-    AndroidView(factory = { BodyGL(it) }, modifier = modifier, update = { v -> if (v.r.state.az != state.az) { v.r.user = 0f; v.r.uel = 0f }; v.r.state = state },   // Face / Dos : on repart de la vue demandée
+    AndroidView(factory = { BodyGL(it) }, modifier = modifier, update = { v -> if (v.r.state.az != state.az || v.r.state.viewKey != state.viewKey) { v.r.user = 0f; v.r.uel = 0f }; v.r.state = state },   // Face / Dos : on repart de la vue demandée
         onRelease = { it.onPause() })
 }

@@ -71,7 +71,8 @@ object Recovery {
         fun over(m: String) = (ex[m] ?: 0.0) >= .5
     }
     /** couleur d'un muscle surchargé : rouge foncé */
-    fun overCol(danger: Int): Int { val r = (danger shr 16 and 255) * 55 / 100; val g = (danger shr 8 and 255) * 55 / 100; val b = (danger and 255) * 55 / 100; return (r shl 16) or (g shl 8) or b }
+    /** rouge vif et saturé, distinct du rouge corail de « fatigué » (Philippe, 13 novembre 20 h 40 : « Rouge vif sans la pulsation ») */
+    fun overCol(@Suppress("UNUSED_PARAMETER") danger: Int = 0): Int = 0xE3141E
 
     fun muscles(log: List<Entry>, days: List<DayRec>): State {
         val now = System.currentTimeMillis(); val F = fatigueAt(now, log, days)

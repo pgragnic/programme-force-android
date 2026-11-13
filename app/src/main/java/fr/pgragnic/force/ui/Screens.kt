@@ -164,7 +164,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(t("${order.size} exercices · $nSets séries · ${W.r} reps", "${order.size} exercises · $nSets sets · ${W.r} reps"), color = C.muted, fontSize = 13.sp)
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
-            if (over.isNotEmpty()) Text("⛔ " + t("Surchargés : ", "Overloaded: ") + over.take(3).joinToString(", ") { tr(it) } + t(" · mieux vaut une autre séance", " · better pick another workout"), color = C.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            if (over.isNotEmpty()) Text("⛔ " + t("Surchargés : ", "Overloaded: ") + over.take(3).joinToString(", ") { tr(it) } + t(" · mieux vaut une autre séance", " · better pick another workout"), color = Color(0xFFE3141E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
             else if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
             Button(onClick = { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).tourTarget("start"), shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) {

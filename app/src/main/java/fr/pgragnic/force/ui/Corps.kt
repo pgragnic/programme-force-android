@@ -47,6 +47,9 @@ fun CorpsScreen() {
         // un seul personnage, qu'on fait tourner au doigt ou avec Face / Dos (Philippe, capture du 11 novembre : « Un seul corps suffit
         // puisqu'on peut le tourner »)
         var back by remember { mutableStateOf(false) }
+        // bouton allumé selon le côté réellement visible, y compris après une rotation au doigt (capture de Philippe, 13 novembre 20 h 37)
+        var shownBack by remember { mutableStateOf(false) }; var viewKey by remember { mutableIntStateOf(0) }
+        val onView = remember { { b: Boolean -> shownBack = b } }
         // muscle touché sur le personnage : bulle avec % et temps avant d'être prêt (Philippe, 12 novembre : « Est-ce qu'on pourrait avoir
         // plus de détails que les 3 niveaux actuels des récupération ? », maquette A, « J'aime bien l'option A »)
         var pick by remember { mutableStateOf<Triple<String, Float, Float>?>(null) }
@@ -55,7 +58,7 @@ fun CorpsScreen() {
         val dens = androidx.compose.ui.platform.LocalDensity.current
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.stage), horizontalAlignment = Alignment.CenterHorizontally) {
             BoxWithConstraints(Modifier.fillMaxWidth().height(330.dp)) {
-                Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true, onPick = onPick).th(), Modifier.fillMaxSize())
+                Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true, onPick = onPick, onView = onView, viewKey = viewKey).th(), Modifier.fillMaxSize())
                 pick?.let { (m, x, y) ->
                     val r = MU.R[m] ?: 100; val h = MU.ready[m] ?: 0
                     val wPx = with(dens) { 150.dp.toPx() }; val maxX = with(dens) { maxWidth.toPx() } - wPx
@@ -63,15 +66,15 @@ fun CorpsScreen() {
                     val oy = (y - with(dens) { 24.dp.toPx() }).coerceAtLeast(0f)
                     Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(ox.toInt(), oy.toInt()) }.width(150.dp).clip(RoundedCornerShape(10.dp)).background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp)) {
                         Text(fr.pgragnic.force.tr(m) + " · $r %", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        if (MU.over(m)) Text(t("surchargé, +${Prog.fk(Prog.r1(MU.ex[m]!!))} séries", "overloaded, +${Prog.fk(Prog.r1(MU.ex[m]!!))} sets"), color = Color(0xFF8E2A2A), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        if (MU.over(m)) Text(t("surchargé, +${Prog.fk(Prog.r1(MU.ex[m]!!))} séries", "overloaded, +${Prog.fk(Prog.r1(MU.ex[m]!!))} sets"), color = Color(0xFFE3141E), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(if (r >= 90) t("prêt à travailler", "ready to train") else t("prêt dans ~", "ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = Color(0xFF555555), fontSize = 12.sp)
                     }
                 }
             }
             Row(Modifier.padding(8.dp).clip(RoundedCornerShape(18.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 listOf(t("Face", "Front") to false, t("Dos", "Back") to true).forEach { (lab, v) ->
-                    Text(lab, color = if (back == v) C.onColor else C.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(if (back == v) C.effort else Color.Transparent).clickable { back = v }.padding(horizontal = 18.dp, vertical = 7.dp))
+                    Text(lab, color = if (shownBack == v) C.onColor else C.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(if (shownBack == v) C.effort else Color.Transparent).clickable { back = v; viewKey++ }.padding(horizontal = 18.dp, vertical = 7.dp))
                 }
             }
         }
@@ -107,7 +110,7 @@ fun CorpsScreen() {
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
                             (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
-                    Text("$r %", color = if (ov) C.danger else c, fontWeight = FontWeight.Bold)
+                    Text("$r %", color = c, fontWeight = FontWeight.Bold)
                     Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
                 }
                 if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
