@@ -507,6 +507,6 @@ def row1_fix(P3):
             R, T = B.solve(Q_(k)); sh = T[NM.index('uarmL')]
             ua, fa, hd = (B.B[NM.index(n + 'L')] for n in ('uarm', 'farm', 'hand'))
             L1 = np.linalg.norm(fa['a'] - ua['a']); L2 = np.linalg.norm(hd['a'] - fa['a'])
-            d = np.array([-.05, .45, -.89]); d /= np.linalg.norm(d); E = sh + d * L1   # coude vers le haut et vers la hanche
+            d = np.array([-.12, .18, -.98]); d /= np.linalg.norm(d); E = sh + d * L1   # coude vers le haut et vers la hanche
             k['E2'] = (E + [-5., 0., 0.]).round(2).tolist(); k['W2'] = (E + [-7., -L2 * .95, 2.]).round(2).tolist(); elbow(k, '2')   # avant-bras vertical, haltère à côté du corps
     return P3
