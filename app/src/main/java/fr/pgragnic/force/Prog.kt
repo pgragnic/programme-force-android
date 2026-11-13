@@ -528,9 +528,11 @@ object Prog {
     const val SWAP = 5.0
     /** Exercice unilatéral : côté (0 gauche, 1 droit), temps écoulé dans le côté, et vrai pendant la pause de changement de côté. */
     /** Exercices d'un seul côté dont la pose de base travaille le côté droit (le personnage a sa gauche en x+) : rowing un bras (bras qui
-     *  tire), montée sur banc (jambe qui monte), soulevé de terre sur une jambe (jambe d'appui). Les autres commencent par la gauche.
+     *  tire) et montée sur banc (jambe qui monte). Les autres commencent par la gauche ; le soulevé de terre sur une jambe annonce la
+     *  jambe levée, la gauche en pose de base (Philippe, 13 novembre 16 h 35 : « Pour soulevé de terre sur une jambe, la gauche et la
+     *  droite sont inversés »).
      *  (Philippe, capture du rowing unilatéral, 13 novembre : « C'est indiqué gauche pour le bras droit et vice versa ») */
-    private val FIRST_RIGHT = setOf("row1", "stepup", "sldl")
+    private val FIRST_RIGHT = setOf("row1", "stepup")
     /** côté travaillé : h = 0 première moitié de la série, 1 seconde moitié (en miroir) */
     fun uniRight(pose: String?, h: Int) = (pose in FIRST_RIGHT) == (h == 0)
     fun uniPos(q: Phase, pt: Double): Triple<Int, Double, Boolean> {
