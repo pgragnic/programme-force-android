@@ -536,3 +536,24 @@ def lunge_rear(P3):
                 if abs(d) < .3: break
                 shift(k, ['A2', 'T2', 'TT2'], -d); knee(k, '2')
     return P3
+
+def bridge_free_leg(P3, ang=10):
+    """Pont fessier unilatéral (Philippe, capture de la pause, 13 novembre 16 h 55 : « Que penses-tu de la position de la jambe ? »,
+    puis 17 h 20 : « Fais cette version ») : la jambe libre reste tendue dans le prolongement du buste pendant tout le mouvement ;
+    elle monte et descend avec le bassin au lieu de pointer vers le plafond en bas puis de redescendre. Un léger angle vers le haut
+    (10°) la garde au-dessus du sol en bas du mouvement."""
+    p = P3['bridge']; densify(p)
+    for k in p['k']:
+        R, T = B.solve(Q_(k)); hip = T[NM.index('thghL')]
+        th, sh, ft = (B.B[NM.index(n + 'L')] for n in ('thgh', 'shin', 'foot'))
+        L1 = np.linalg.norm(sh['a'] - th['a']); L2 = np.linalg.norm(ft['a'] - sh['a'])
+        sho = (T[NM.index('uarmR')] + T[NM.index('uarmL')]) / 2; hips = (T[NM.index('thghR')] + T[NM.index('thghL')]) / 2
+        d = hips - sho; d[0] = 0; d /= np.linalg.norm(d)   # ligne épaules → bassin, prolongée
+        a = np.radians(ang); h = np.array([0., d[1], d[2]]); n = np.array([0., -d[2], d[1]])   # n : perpendiculaire dans le plan sagittal
+        if n[1] < 0: n = -n
+        d = d * np.cos(a) + n * np.sin(a); d /= np.linalg.norm(d)
+        K = hip + d * L1; A = K + d * L2 * .995
+        k['K2'] = K.round(2).tolist(); k['A2'] = A.round(2).tolist()
+        fd = n * .8 + d * .6; fd /= np.linalg.norm(fd)   # pied détendu, orteils vers le haut et l'avant
+        k['T2'] = (A + fd * 11.7).round(2).tolist(); k.pop('TT2', None)
+    return P3

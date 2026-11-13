@@ -300,6 +300,12 @@
  "sttri": {},
  "bbcurl": {},
  "bridge": {
+  "pied L censé posé mais en l'air (cm)": [
+   [
+    0.0,
+    4.8
+   ]
+  ],
   "pied R censé posé mais en l'air (cm)": [
    [
     0.33,
@@ -312,10 +318,6 @@
    [
     0.5,
     2.3
-   ],
-   [
-    0.58,
-    2.2
    ]
   ]
  },
