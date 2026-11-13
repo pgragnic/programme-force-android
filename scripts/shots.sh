@@ -51,7 +51,9 @@ cap() { adb exec-out screencap -p > shots/$1.png; }
 case " $POSES " in *" reco "*)
   shot reco-a --es lang fr --ez seed true --ez tired true --ez over true --ei tab 1
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
-  adb shell input tap $((W*44/100)) $((H*48/100)); sleep 1.2; cap reco-cuisse
+  adb shell input swipe $((W*8/100)) $((H*35/100)) $((W*92/100)) $((H*35/100)) 600; sleep 1; adb shell input swipe $((W*8/100)) $((H*35/100)) $((W*92/100)) $((H*35/100)) 600; sleep 1.5; cap reco-tourne
+  adb shell input tap $((W*72/100)) $((H*40/100)); sleep 2
+    adb shell input tap $((W*44/100)) $((H*48/100)); sleep 1.2; cap reco-cuisse
   adb shell input tap $((W*36/100)) $((H*24/100)); sleep 1.2; cap reco-epaule
   adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 2; cap reco-liste
   shot reco-en --es lang en --ez seed true --ez tired true --ei tab 1
