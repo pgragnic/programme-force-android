@@ -65,7 +65,13 @@ object Recovery {
 
     fun recOf(F: Map<String, Double>, m: String) = max(0, (100 * (1 - F[m]!! / CAP)).roundToInt())
 
-    class State(val R: Map<String, Int>, val V: Map<String, Double>, val tot: Double, val ready: Map<String, Int>)
+    /** ex : fatigue au-delà de 0 %, en séries (Philippe, 13 novembre : « Est-ce qu'on pourrait descendre en dessous de zéro et est-ce que
+     *  ça aurait du sens ? », puis « Je veux cette version ») ; un muscle est « surchargé » à partir d'une demi-série au-delà. */
+    class State(val R: Map<String, Int>, val V: Map<String, Double>, val tot: Double, val ready: Map<String, Int>, val ex: Map<String, Double> = emptyMap()) {
+        fun over(m: String) = (ex[m] ?: 0.0) >= .5
+    }
+    /** couleur d'un muscle surchargé : rouge foncé */
+    fun overCol(danger: Int): Int { val r = (danger shr 16 and 255) * 55 / 100; val g = (danger shr 8 and 255) * 55 / 100; val b = (danger and 255) * 55 / 100; return (r shl 16) or (g shl 8) or b }
 
     fun muscles(log: List<Entry>, days: List<DayRec>): State {
         val now = System.currentTimeMillis(); val F = fatigueAt(now, log, days)
@@ -78,7 +84,7 @@ object Recovery {
             if (R[m]!! >= 90) { ready[m] = 0; return@forEach }
             for (h in 1..120) if (recOf(fatigueAt(now + h * 3_600_000L, log, days), m) >= 90) { ready[m] = h; break }
         }
-        return State(R, V, tot, ready)
+        return State(R, V, tot, ready, MUS.associateWith { max(0.0, F[it]!! - CAP) })
     }
 
     /** Séance la plus adaptée : celle dont les muscles principaux sont les plus reposés. */

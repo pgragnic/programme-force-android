@@ -92,11 +92,14 @@ fun SeanceScreen(onStart: () -> Unit) {
     val MU = remember(log, days) { Recovery.muscles(log, days) }
     fun tired(ids: List<String>) = Prog.tired(ids, MU.R)
     val (share, sore) = remember(order, MU) { tired(order) }
+    // muscles surchargés (au-delà de 0 %) travaillés en principal par cette séance : alerte franche
+    val over = remember(order, MU) { order.flatMap { id -> Prog.MAP[id]?.filter { it.value >= .7 }?.keys.orEmpty() }.distinct().filter { MU.over(it) } }
     val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Prog.orderEx(st.c, it, st.w, st)).first }.minByOrNull { it.second }?.takeIf { it.second < share - .2 }?.first }
     var warn by remember { mutableStateOf(false) }
     if (warn) AlertDialog(onDismissRequest = { warn = false }, containerColor = C.surface,
         title = { Text(t("Muscles pas encore récupérés", "Muscles not recovered yet"), color = C.ink, fontWeight = FontWeight.Bold) },
-        text = { Text(t("Cette séance sollicite surtout ", "This workout mostly works ") + sore.joinToString(", ") { "${tr(it)} (${MU.R[it]} %)" } + ". " +
+        text = { Text((if (over.isNotEmpty()) t("Surchargés : ", "Overloaded: ") + over.joinToString(", ") { tr(it) } + t(". Les retravailler maintenant freine leur récupération ; mieux vaut une autre séance ou du repos. ", ". Working them now slows their recovery; better pick another workout or rest. ") else "") +
+            (if (sore.isNotEmpty()) t("Cette séance sollicite surtout ", "This workout mostly works ") + sore.joinToString(", ") { "${tr(it)} (${MU.R[it]} %)" } + ". " else "") +
             (alt?.let { t("La séance $it (${tr(S[it]!!.t)}) les ménage davantage.", "Workout $it (${tr(S[it]!!.t)}) is easier on them.") } ?: t("Un jour de repos ou une activité douce leur ferait du bien.", "A rest day or light activity would help them.")),
             color = C.muted) },
         confirmButton = { Column(horizontalAlignment = Alignment.End) {
@@ -161,8 +164,9 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(t("${order.size} exercices · $nSets séries · ${W.r} reps", "${order.size} exercises · $nSets sets · ${W.r} reps"), color = C.muted, fontSize = 13.sp)
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
-            if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
-            Button(onClick = { if (share >= .4) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).tourTarget("start"), shape = RoundedCornerShape(16.dp),
+            if (over.isNotEmpty()) Text("⛔ " + t("Surchargés : ", "Overloaded: ") + over.take(3).joinToString(", ") { tr(it) } + t(" · mieux vaut une autre séance", " · better pick another workout"), color = C.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            else if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
+            Button(onClick = { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp).tourTarget("start"), shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
                 Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)
