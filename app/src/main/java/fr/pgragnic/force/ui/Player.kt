@@ -152,7 +152,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         val q = P[pi]; if (q.k != "work" || q.m == "time") return ""
         if (q.m == "alt") { val n = floor(pt / q.rt).toInt(); return t("Rép ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alterné", "Rep ${min(q.reps * 2, n + 1)}/${q.reps * 2} · alternating") }
         val (_, lt, gap) = if (q.m == "uni") Prog.uniPos(q, pt) else Triple(0, pt, false)
-        if (gap) return t("Côté droit dans ${kotlin.math.ceil((q.dur - Prog.SWAP) / 2 + Prog.SWAP - pt).toInt()} s", "Right side in ${kotlin.math.ceil((q.dur - Prog.SWAP) / 2 + Prog.SWAP - pt).toInt()} s")
+        if (gap) { val s = kotlin.math.ceil((q.dur - Prog.SWAP) / 2 + Prog.SWAP - pt).toInt()
+            return if (Prog.uniRight(q.pose, 1)) t("Côté droit dans $s s", "Right side in $s s") else t("Côté gauche dans $s s", "Left side in $s s") }
         return t("Rép ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}", "Rep ${min(q.reps, floor(lt / q.rt).toInt() + 1)}/${q.reps}")
     }
 }
@@ -170,9 +171,20 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose, modifier = Modifier.size(44.dp)) { Icon(Icons.Default.Close, fr.pgragnic.force.tr("Fermer"), tint = C.ink) }
             Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // exercice en cours rempli au fil des répétitions et des repos (Philippe, 13 novembre : « La barre de progression en haut
+                // n'avance au fur et à mesure des répétitions d'exercice »)
+                val frac = run {
+                    val ids = ses.P.indices.filter { ses.P[it].ei == ex && ses.P[it].k in setOf("work", "rest") }
+                    val tot = ids.sumOf { ses.P[it].dur }
+                    val done = ids.filter { it < ses.pi }.sumOf { ses.P[it].dur } + (if (ses.pi in ids) min(ses.pt, ses.P[ses.pi].dur) else 0.0)
+                    if (tot > 0) (done / tot).toFloat().coerceIn(0f, 1f) else 0f
+                }
                 repeat(ses.nex) { i ->
-                    val c = when { i < ex || (i == ex && p.k == "cool") -> C.effort; i == ex && p.k != "warm" -> C.effort.copy(alpha = .4f); else -> C.line }
-                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(c))
+                    val full = i < ex || (i == ex && p.k == "cool")
+                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(C.line)) {
+                        val f = if (full) 1f else if (i == ex && p.k != "warm") frac else 0f
+                        if (f > 0f) Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(C.effort))
+                    }
                 }
             }
             Text(if (p.k == "warm") t("Échauff.", "Warm-up") else if (p.k == "cool") t("Calme", "Cool") else "${ex + 1} / ${ses.nex}", color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
