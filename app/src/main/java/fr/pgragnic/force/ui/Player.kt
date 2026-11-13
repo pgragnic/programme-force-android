@@ -96,7 +96,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         if (p.k == "cool" && Prog.sides(p.pose) && prev < p.dur / 2 && pt >= p.dur / 2) { voice.beep(2); voice.buzz(350); voice.say(t("Change de côté", "Switch sides")) }
         if ((p.k == "rest" || p.k == "switch") && p.dur > 15 && prev < p.dur - 10 && pt >= p.dur - 10) voice.say("Dix secondes. Prépare-toi")
         P.getOrNull(pi + 1)?.let { nx -> if ((p.k == "rest" || p.k == "switch") && nx.k == "work" && p.dur > 8 && prev < p.dur - 6 && pt >= p.dur - 6)
-            voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") t(", côté gauche", ", left side") else "") }
+            voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") (if (Prog.uniRight(nx.pose, 0)) t(", côté droit", ", right side") else t(", côté gauche", ", left side")) else "") }
         if (p.k == "work" && pt < p.dur) { val c = Prog.cueAt(p, pt); if (c != null && c.first != lastCue) { lastCue = c.first; voice.say(c.second) } }
         if (pt >= p.dur) enter(pi + 1)
     }
@@ -119,7 +119,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
             // côté annoncé = celui de la jambe levée, la plus visible à l'écran (Philippe, captures du bird dog : « Gauche et droite sont inversés »)
             val mv = if (q.m == "alt") (if (floor(pt / q.rt).toInt() % 2 == 1) "GAUCHE" else "DROITE")
             else if (ph < tp[0]) (if (q.inv) "DESCENDS" else "MONTE") else if (ph < tp[0] + tp[1]) "TIENS" else if (ph < tp[0] + tp[1] + tp[2]) (if (q.inv) "MONTE" else "DESCENDS") else ""
-            val side = if (q.m == "uni") (if (h == 0) "GAUCHE · " else "DROIT · ") else ""
+            val side = if (q.m == "uni") (if (Prog.uniRight(q.pose, h)) "DROIT · " else "GAUCHE · ") else ""
             // alterné (bird dog, dead bug, halo) : une répétition sur deux en miroir, du côté annoncé (Philippe : captures du bird dog,
             // « GAUCHE » puis « DROITE » avec le même bras levé)
             val alt = q.m == "alt" && floor(pt / q.rt).toInt() % 2 == 1
