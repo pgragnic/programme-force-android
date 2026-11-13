@@ -63,6 +63,10 @@ case " $POSES " in *" lest "*)
   adb shell input swipe $((W/2)) $((H*85/100)) $((W/2)) $((H*20/100)) 600; sleep 1; cap lest-s1
   tapt "Marche lestée"; cap lest-b; adb shell input swipe $((W/2)) $((H*70/100)) $((W/2)) $((H*45/100)) 400; sleep 1; cap lest-c;;
 esac
+# lecteur : barre du haut qui avance pendant l'exercice
+case " $POSES " in *" barre "*)
+  shot barre-a --es lang fr --ez seed true --ei play 5; sleep 8; cap barre-b; sleep 8; cap barre-c;;
+esac
 # alerte « muscles pas encore récupérés » : touche le bouton Démarrer de l'écran Séance
 # 6 séances par semaine : séances E et F
 case " $POSES " in *" six "*)
@@ -90,7 +94,7 @@ case " $POSES " in *" warn "*)
 esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = lest ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = lest ] || [ "$p" = barre ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3
