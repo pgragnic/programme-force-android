@@ -24,12 +24,14 @@ object Demo {
 
     /** captures : une séance faite il y a peu, pour voir l'alerte de récupération */
     var tired = false
+    /** captures : deux séances A de suite, pour voir l'état « surchargé » */
+    var over = false
 
     fun seed() {
         if (!GearStore.g.value.done) GearStore.g.value = Gear(done = true)
         val now = System.currentTimeMillis(); val day = 86_400_000L
         val plan = listOf(20.0 to "A", 18.0 to "B", 16.0 to "C", 15.0 to "D", 13.0 to "A", 11.0 to "B", 9.0 to "C", 8.0 to "D", 6.0 to "A", 4.0 to "B", 2.0 to "C", 1.0 to "D") +
-            (if (tired) listOf(0.1 to "A") else emptyList())   // captures : séance A faite il y a 2 h 30 (alerte de récupération)
+            (if (tired) listOf(0.1 to "A") else emptyList()) + (if (over) listOf(0.3 to "A", 0.2 to "A") else emptyList())   // captures : séance A faite il y a 2 h 30 (alerte de récupération)
         val log = plan.mapIndexed { i, (ago, s) ->
             val w = i / 4; val ids = Prog.sess(1)[s]!!.ex
             Entry(d = now - (ago * day).toLong(), c = 1, w = w, s = s, f = "Juste bien", rest = 30, bw = 79.5 - i * 0.3,

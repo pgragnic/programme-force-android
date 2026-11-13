@@ -49,13 +49,13 @@ tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/
 cap() { adb exec-out screencap -p > shots/$1.png; }
 # écran Corps, échelle continue (option A) : muscles en récupération, toucher une cuisse puis une épaule sur le personnage
 case " $POSES " in *" reco "*)
-  shot reco-a --es lang fr --ez seed true --ez tired true --ei tab 1
+  shot reco-a --es lang fr --ez seed true --ez tired true --ez over true --ei tab 1
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
   adb shell input tap $((W*44/100)) $((H*48/100)); sleep 1.2; cap reco-cuisse
   adb shell input tap $((W*36/100)) $((H*24/100)); sleep 1.2; cap reco-epaule
   adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 2; cap reco-liste
   shot reco-en --es lang en --ez seed true --ez tired true --ei tab 1
-  shot reco-seance --es lang fr --ez seed true --ez tired true --ei tab 0;;
+  shot reco-seance --es lang fr --ez seed true --ez tired true --ez over true --ei tab 0;;
 esac
 # marche lestée : pas faits avec le sac
 case " $POSES " in *" lest "*)

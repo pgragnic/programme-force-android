@@ -87,7 +87,7 @@ fun CorpsScreen() {
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                 Box(Modifier.size(10.dp).clip(CircleShape).background(Recovery.overCol(C.rgb(C.danger)).col()))
-                Text(t(" Surchargé : au-delà de 0 %, encore des séries de fatigue à éliminer", " Overloaded: beyond 0%, extra sets of fatigue to clear"), color = C.muted, fontSize = 11.sp)
+                Text(t(" Surchargé : fatigue au-delà de 0 %", " Overloaded: fatigue beyond 0%"), color = C.muted, fontSize = 11.sp)
             }
         }
         // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,

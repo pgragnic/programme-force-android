@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
-        Demo.tired = intent.getBooleanExtra("tired", false)
+        Demo.tired = intent.getBooleanExtra("tired", false); Demo.over = intent.getBooleanExtra("over", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         intent.getIntExtra("perweek", 0).takeIf { it in 3..6 }?.let { GearStore.save(this, GearStore.g.value.copy(perWeek = it)) }
