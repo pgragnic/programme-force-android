@@ -492,3 +492,21 @@ def hips_reach(P3, ids, bend=1.0):
             feet_lock(P3, [])   # rien : le genou est recalculé ci-dessous
         feet_lock(P3, [id])
     return P3
+
+def row1_fix(P3):
+    """Rowing unilatéral penché (Philippe, captures du lecteur, 13 novembre : « Que penses-tu du bras gauche ? ») : la main libre pendait
+    devant le genou, doigts crochus, au lieu d'être posée sur le genou comme le dit la consigne (« main libre sur le genou ») ; en haut du
+    mouvement, l'haltère montait vers l'épaule au lieu d'aller vers la hanche (« Tire vers la hanche »).
+    Main libre posée à plat sur le genou avant, bras presque tendu ; haltère tiré le long du corps vers la hanche."""
+    for k in P3['row1']['k']:
+        R, T = B.solve(Q_(k)); kn = T[NM.index('shinR')]
+        W = kn + np.array([0., 8., 5.]); k['W1'] = W.round(2).tolist()   # sur le dessus du genou, hors de la cuisse
+        k['F1'] = (W + [0., -9., 2.]).round(2).tolist(); k['U1'] = [0., -.45, -.9]; k['c1'] = .2   # doigts sur la rotule, paume contre le genou
+        k['E1'] = (np.array(k['E1'], float) + [6., 0., 0.]).round(2).tolist(); elbow(k, '1')
+        if k['t'] > .5:   # haut du mouvement : coude derrière le dos, main près de la hanche
+            R, T = B.solve(Q_(k)); sh = T[NM.index('uarmL')]
+            ua, fa, hd = (B.B[NM.index(n + 'L')] for n in ('uarm', 'farm', 'hand'))
+            L1 = np.linalg.norm(fa['a'] - ua['a']); L2 = np.linalg.norm(hd['a'] - fa['a'])
+            d = np.array([-.05, .45, -.89]); d /= np.linalg.norm(d); E = sh + d * L1   # coude vers le haut et vers la hanche
+            k['E2'] = (E + [-5., 0., 0.]).round(2).tolist(); k['W2'] = (E + [-7., -L2 * .95, 2.]).round(2).tolist(); elbow(k, '2')   # avant-bras vertical, haltère à côté du corps
+    return P3
