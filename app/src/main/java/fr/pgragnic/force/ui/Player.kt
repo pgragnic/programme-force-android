@@ -173,11 +173,13 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
             Row(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 // exercice en cours rempli au fil des répétitions et des repos (Philippe, 13 novembre : « La barre de progression en haut
                 // n'avance au fur et à mesure des répétitions d'exercice »)
+                // une part par série : la série en cours se remplit pendant l'effort, la pause garde les séries faites (« Série 2/3 terminée » = 2/3)
                 val frac = run {
-                    val ids = ses.P.indices.filter { ses.P[it].ei == ex && ses.P[it].k in setOf("work", "rest") }
-                    val tot = ids.sumOf { ses.P[it].dur }
-                    val done = ids.filter { it < ses.pi }.sumOf { ses.P[it].dur } + (if (ses.pi in ids) min(ses.pt, ses.P[ses.pi].dur) else 0.0)
-                    if (tot > 0) (done / tot).toFloat().coerceIn(0f, 1f) else 0f
+                    val ids = ses.P.indices.filter { ses.P[it].ei == ex && ses.P[it].k == "work" }
+                    if (ids.isEmpty()) 0f else {
+                        val done = ids.count { it < ses.pi } + (if (ses.pi in ids && ses.P[ses.pi].dur > 0) min(1.0, ses.pt / ses.P[ses.pi].dur) else 0.0)
+                        (done / ids.size).toFloat().coerceIn(0f, 1f)
+                    }
                 }
                 repeat(ses.nex) { i ->
                     val full = i < ex || (i == ex && p.k == "cool")
