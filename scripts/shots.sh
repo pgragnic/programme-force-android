@@ -47,6 +47,17 @@ esac
 tapt() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml',encoding='utf-8').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
 cap() { adb exec-out screencap -p > shots/$1.png; }
+# touche un élément par sa description (icônes sans texte, ex. « Aide »)
+tapd() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
+  b=$(python3 -c "import re,sys;x=open('shots/ui.xml',encoding='utf-8').read();m=re.search(r'content-desc=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
+# fiche Play Store : écrans en clair, français et anglais (à lancer avec un émulateur haute définition, profil pixel_6)
+case " $POSES " in *" store "*)
+  for L in fr en; do b="--es lang $L --es theme light --ez seed true --ez tired true"
+    shot store-$L-play $b --ei play 5; sleep 6; cap store-$L-play-b
+    shot store-$L-seance $b --ei tab 0; shot store-$L-corps $b --ei tab 1; shot store-$L-progres $b --ei tab 2
+    for st in 0 1 2 3 4; do shot store-$L-setup$st --es lang $L --es theme light --es gear kb --ei setupstep $st --ez opensetup true; done
+  done;;
+esac
 # écran Corps, échelle continue (option A) : muscles en récupération, toucher une cuisse puis une épaule sur le personnage
 case " $POSES " in *" reco "*)
   shot reco-a --es lang fr --ez seed true --ez tired true --ez over true --ei tab 1
@@ -70,7 +81,10 @@ case " $POSES " in *" m3 "*)
   shot m3-progres $b --ei tab 2; shot m3-reglages $b --ei tab 3; shot m3-reglages-clair $b --es theme light --ei tab 3
   shot m3-affichage $b --ei tab 3 --es sub affichage
   shot m3-dyn $b --ez dyn true --ei tab 0; shot m3-dyn-clair $b --ez dyn true --es theme light --ei tab 0
-  shot m3-lecteur --es demo squat --ef k 0.5;;
+  shot m3-lecteur --es demo squat --ef k 0.5
+  shot m3-play $b --ei play 5; sleep 6; cap m3-play-b
+  shot m3-play-clair $b --es theme light --ei play 5; sleep 6; cap m3-play-clair-b
+  shot m3-corps-aide $b --ei tab 1; tapd "Aide"; cap m3-corps-aide; adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 2; cap m3-corps-aide-b;;
 esac
 case " $POSES " in *" lest "*)
   shot lest-a --es lang fr --ez seed true --ei tab 2 --es sub 0

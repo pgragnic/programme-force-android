@@ -182,7 +182,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             Row(Modifier.padding(top = 16.dp).fillMaxWidth().heightIn(min = 52.dp).tourTarget("start").clip(RoundedCornerShape(26.dp)).background(C.brand)
                 .clickable { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.PlayArrow, null, tint = C.onBrand); Spacer(Modifier.width(6.dp))
-                Text(t("Démarrer", "Start"), color = C.onBrand, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text(t("C'est parti", "Let's go"), color = C.onBrand, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
         }
         // « Changer » : semaine, cycle et séance A à F, repliés par défaut

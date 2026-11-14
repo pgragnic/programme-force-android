@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -158,7 +159,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     }
 }
 
-// lecteur épuré (maquette « ③ Lecteur épuré » validée par Philippe : « Ok pour ces écrans ! ») : progression de la séance en haut,
+// lecteur épuré (maquette « ③ Lecteur épuré » validée par Philippe : « Ok pour ces écrans ! » ; style épuré bleu vif du 14 novembre :
+// « mettre le lecteur de séance au style épuré ») : progression de la séance en haut,
 // personnage en grand, un seul gros compteur, trois boutons
 @Composable
 fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
@@ -183,9 +185,9 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
                 }
                 repeat(ses.nex) { i ->
                     val full = i < ex || (i == ex && p.k == "cool")
-                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(C.line)) {
+                    Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(C.chip)) {
                         val f = if (full) 1f else if (i == ex && p.k != "warm") frac else 0f
-                        if (f > 0f) Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(C.effort))
+                        if (f > 0f) Box(Modifier.fillMaxWidth(f).fillMaxHeight().background(C.brand))
                     }
                 }
             }
@@ -199,8 +201,8 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
             }
         }
         Text((if (p.k == "switch") (if (p.ei == 0) "PREMIER EXERCICE" else "NOUVEL EXERCICE") else PLAB[p.k] ?: "").let { fr.pgragnic.force.tr(it) },
-            color = col, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
-        Text(p.n, color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, modifier = Modifier.padding(horizontal = 8.dp))
+            color = col, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp, top = 6.dp))
+        Text(p.n, color = C.ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp, letterSpacing = (-0.4).sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         Text(p.det.ifBlank { p.blk }, color = C.muted, fontSize = 14.sp, maxLines = 2, modifier = Modifier.padding(horizontal = 8.dp))
         Box(Modifier.fillMaxWidth().weight(1f).padding(vertical = 10.dp).clip(RoundedCornerShape(22.dp))) {
             val ghost = p.k in listOf("prep", "rest", "switch")
@@ -210,17 +212,17 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         val left = ceil(max(0.0, p.dur - ses.pt)).toInt()
         if (prevW?.k == "work" && p.k in listOf("rest", "switch", "cool") && prevW.ex != null) {
             SetPanel(ses, prevW)
-            Text(t("Reprise dans $left s", "Back in $left s"), color = col, fontSize = 22.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            Text(t("Reprise dans $left s", "Back in $left s"), color = col, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
         } else {
             val rn = ses.repNum()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
                 if (rn != null) {
-                    Text("${rn.first}", color = C.ink, fontSize = 64.sp, fontWeight = FontWeight.Black, lineHeight = 66.sp)
-                    Text(" / ${rn.second}", color = C.muted, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
-                } else Text("$left", color = col, fontSize = 64.sp, fontWeight = FontWeight.Black, lineHeight = 66.sp)
+                    Text("${rn.first}", color = C.ink, fontSize = 64.sp, fontWeight = FontWeight.Bold, lineHeight = 66.sp, letterSpacing = (-2).sp)
+                    Text(" / ${rn.second}", color = C.muted, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
+                } else Text("$left", color = col, fontSize = 64.sp, fontWeight = FontWeight.Bold, lineHeight = 66.sp, letterSpacing = (-2).sp)
             }
             val sub = if (mv.isNotBlank()) mv else if (rn == null && ses.repTxt().isNotBlank()) ses.repTxt() else ""
-            if (sub.isNotBlank()) Text(sub, color = col, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            if (sub.isNotBlank()) Text(sub, color = col, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             val tip = if (p.k == "rest") (p.chg ?: "") else p.tip
             if (tip.isNotBlank()) Text(tip, color = if (p.chg != null && p.k != "work") C.warm else C.muted, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
         }
@@ -228,8 +230,8 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
         Text(t("Fin dans ${Prog.fmt(ses.totalDur - ses.elapsed)}", "Ends in ${Prog.fmt(ses.totalDur - ses.elapsed)}"), color = C.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             RoundBtn(Icons.Default.SkipPrevious, "Précédent") { ses.prev() }
-            FilledIconButton(onClick = { ses.toggle() }, modifier = Modifier.size(76.dp), shape = CircleShape, colors = IconButtonDefaults.filledIconButtonColors(containerColor = C.effort)) {
-                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, fr.pgragnic.force.tr(if (ses.run) "Pause" else "Reprendre"), tint = C.onColor, modifier = Modifier.size(34.dp))
+            FilledIconButton(onClick = { ses.toggle() }, modifier = Modifier.size(76.dp), shape = CircleShape, colors = IconButtonDefaults.filledIconButtonColors(containerColor = C.brand)) {
+                Icon(if (ses.run) Icons.Default.Pause else Icons.Default.PlayArrow, fr.pgragnic.force.tr(if (ses.run) "Pause" else "Reprendre"), tint = C.onBrand, modifier = Modifier.size(34.dp))
             }
             RoundBtn(Icons.Default.SkipNext, "Suivant") { ses.next() }
         }
@@ -238,7 +240,7 @@ fun PlayerScreen(ses: Session, onClose: () -> Unit, onEnd: () -> Unit) {
 
 @Composable
 private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(54.dp).border(1.dp, C.line, CircleShape)) { Icon(icon, label, tint = C.ink) }
+    IconButton(onClick = onClick, modifier = Modifier.size(54.dp).clip(CircleShape).background(C.chip)) { Icon(icon, label, tint = C.ink) }
 }
 
 /** Panneau « série par série » affiché pendant la pause qui suit une série. */
@@ -247,22 +249,22 @@ private fun SetPanel(ses: Session, pw: Phase) {
     val id = pw.ex!!; val tgt = ses.tgtOf(pw); val time = pw.m == "time"
     var cur by remember(id, pw.set) { mutableStateOf(ses.slot(id, pw.set, tgt)) }
     fun upd(v: SetRec) { cur = v; ses.setSlot(id, pw.set, v) }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).border(1.dp, C.line, RoundedCornerShape(14.dp)).padding(12.dp)) {
+    Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
         Text(t("${Prog.EX[id]?.n} · série ${pw.set}/${ses.nsetsOf(id)}  ·  objectif $tgt", "${tr(Prog.EX[id]?.n ?: "")} · set ${pw.set}/${ses.nsetsOf(id)}  ·  goal $tgt") + if (time) " s" else " reps", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Text(if (time) "Secondes tenues" else if (Prog.EX[id]?.m == "uni") "Répétitions par côté" else "Répétitions faites", color = C.muted, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { upd(cur.copy(r = max(0, cur.r - if (time) 5 else 1))) }) { Text("−", fontSize = 20.sp) }
+            Box(Modifier.size(44.dp).clip(CircleShape).background(C.chip).clickable { upd(cur.copy(r = max(0, cur.r - if (time) 5 else 1))) }, contentAlignment = Alignment.Center) { Text("−", color = C.ink, fontSize = 20.sp) }
             Text("${cur.r}", color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(52.dp), textAlign = TextAlign.Center)
-            OutlinedButton(onClick = { upd(cur.copy(r = min(300, cur.r + if (time) 5 else 1))) }) { Text("+", fontSize = 20.sp) }
+            Box(Modifier.size(44.dp).clip(CircleShape).background(C.chip).clickable { upd(cur.copy(r = min(300, cur.r + if (time) 5 else 1))) }, contentAlignment = Alignment.Center) { Text("+", color = C.ink, fontSize = 20.sp) }
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
             Column(Modifier.weight(1f)) { Text("Encore possibles", color = C.muted); Text("répétitions en réserve", color = C.muted, fontSize = 11.sp) }
             listOf(0, 1, 2, 3).forEach { v ->
                 val on = cur.res != null && min(3, cur.res!!) == v
-                Box(Modifier.padding(2.dp).size(44.dp).clip(RoundedCornerShape(8.dp)).background(if (on) C.ink else C.bg).border(1.dp, C.line, RoundedCornerShape(8.dp)),
+                Box(Modifier.padding(2.dp).size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (on) C.brand else C.chip),
                     contentAlignment = Alignment.Center) {
                     TextButton(onClick = { upd(cur.copy(res = if (on) null else v)) }, contentPadding = PaddingValues(0.dp)) {
-                        Text(if (v == 3) "3+" else "$v", color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold)
+                        Text(if (v == 3) "3+" else "$v", color = if (on) C.onBrand else C.ink, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

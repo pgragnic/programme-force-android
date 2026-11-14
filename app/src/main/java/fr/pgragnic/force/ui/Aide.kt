@@ -49,18 +49,21 @@ import kotlin.math.roundToInt
 // ⑥ fiche de l'exercice (« i »), ⑦ explication de chaque écran (« ? »), ⑧ bulles au premier lancement.
 
 // ---------------- ⑦ explication de l'écran ----------------
-private class HelpItem(val h: String, val t: String)
+private class HelpItem(val h: String, val t: String, val legend: Boolean = false)
 
 private fun helpOf(screen: String): Pair<String, List<HelpItem>> = when (screen) {
     "seance" -> t("Comment lire cet écran", "How to read this screen") to listOf(
-        HelpItem(t("La prochaine séance", "Your next workout"), t("L'appli propose la séance qui ménage le mieux tes muscles encore fatigués. Tu peux en choisir une autre avec A, B, C, D.", "The app suggests the workout that best spares your muscles that are still tired. You can pick another one with A, B, C, D.")),
+        HelpItem(t("La prochaine séance", "Your next workout"), t("L'appli propose la séance qui ménage le mieux tes muscles encore fatigués. Touche « Changer » pour en choisir une autre.", "The app suggests the workout that best spares your muscles that are still tired. You can pick another one with A, B, C, D.")),
         HelpItem(t("La semaine", "The week"), t("Le programme dure 8 semaines. La semaine avance chaque lundi si tu as fait au moins une séance.", "The program lasts 8 weeks. The week moves on every Monday if you did at least one workout.")),
         HelpItem(t("Les exercices", "The exercises"), t("Touche un exercice pour voir le mouvement en 3D, les consignes, et le remplacer s'il ne te convient pas.", "Tap an exercise to see the move in 3D, the cues, and to replace it if it doesn't suit you.")),
         HelpItem(t("Les charges", "The loads"), t("Elles s'ajustent toutes seules : elles montent quand la série est réussie plusieurs fois, et baissent après deux échecs.", "They adjust on their own: they go up when the set is completed several times, and down after two misses.")),
         HelpItem(t("L'alerte de récupération", "The recovery warning"), t("Si la séance sollicite surtout des muscles pas encore récupérés, l'appli te prévient avant de démarrer et propose une autre séance.", "If the workout mostly uses muscles that haven't recovered yet, the app warns you before starting and suggests another workout.")))
     "corps" -> t("Comment lire cet écran", "How to read this screen") to listOf(
-        HelpItem(t("Le personnage", "The character"), t("Fais-le tourner avec le doigt, ou touche Face ou Dos.", "Rotate it with your finger, or tap Front or Back.")),
-        HelpItem(t("Les couleurs", "The colors"), t("Vert : prêt. Orange : en récupération. Rouge : fatigué.", "Green: ready. Orange: recovering. Red: tired.")),
+        // explication et légende retirées de l'écran Corps au passage au style épuré, reprises ici (Philippe, 14 novembre :
+        // « remettre l'explication et la légende de l'écran Corps dans le « ? » »)
+        HelpItem(t("Le personnage", "The character"), t("Fais tourner le personnage avec le doigt, ou touche Face ou Dos. Touche un muscle pour voir sa récupération.", "Rotate the character with your finger, or tap Front or Back. Tap a muscle to see its recovery.")),
+        HelpItem(t("Les couleurs", "The colors"), t("De rouge (0 %, fatigué) à vert (prêt dès 90 %), en passant par l'orange. Rouge vif : surchargé, la fatigue dépasse 0 %.", "From red (0%, tired) to green (ready from 90%), through orange. Bright red: overloaded, fatigue beyond 0%."), legend = true),
+        HelpItem(t("À ménager", "Go easy on"), t("Les trois muscles les moins récupérés. « Voir les 11 » ouvre la liste complète.", "The three least recovered muscles. \"See all 11\" opens the full list.")),
         HelpItem(t("Le pourcentage", "The percentage"), t("C'est la récupération du muscle depuis tes dernières séances. À 100 %, il est prêt à retravailler.", "It is the muscle's recovery since your last workouts. At 100%, it is ready to work again.")),
         HelpItem(t("« Prêt dans ~1 j 6 h »", "\"Ready in ~1 d 6 h\""), t("Le temps estimé avant que le muscle soit de nouveau prêt.", "The estimated time before the muscle is ready again.")),
         HelpItem(t("Toucher un muscle", "Tapping a muscle"), t("Ouvre son détail : les exercices qui le font travailler et ton volume de la semaine.", "Opens its detail: the exercises that work it and your volume for the week.")),
@@ -93,10 +96,23 @@ fun HelpButton(screen: String, modifier: Modifier = Modifier) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(it.h, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(it.t, color = C.muted, fontSize = 13.sp, lineHeight = 19.sp)
+                        if (it.legend) Column(Modifier.padding(top = 6.dp)) {
+                            Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                0f to C.danger, .6f to C.warm, .9f to C.effort, 1f to C.effort)))
+                            Box(Modifier.fillMaxWidth().padding(top = 3.dp)) {
+                                Text(t("0 % fatigué", "0% tired"), color = C.muted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterStart))
+                                Text("60 %", color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.6f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
+                                Text(t("prêt 90 %", "ready 90%"), color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.93f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                                Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFE3141E)))
+                                Text(t(" Surchargé : fatigue au-delà de 0 %", " Overloaded: fatigue beyond 0%"), color = C.muted, fontSize = 11.sp)
+                            }
+                        }
                     }
                 }
                 Button(onClick = { open = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = C.brand, contentColor = C.onBrand)) { Text(t("Compris", "Got it"), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
+                    colors = ButtonDefaults.buttonColors(containerColor = C.brand, contentColor = C.onBrand)) { Text(t("Compris", "Got it"), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
             }
         }
     }
