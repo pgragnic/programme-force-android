@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.unit.sp
 import fr.pgragnic.force.ui.*
 import fr.pgragnic.force.ui.Text
@@ -109,13 +110,13 @@ class MainActivity : ComponentActivity() {
                     PlayerScreen(cur, onClose = { Live.end(this@MainActivity) }, onEnd = { ending = true })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
-                    NavigationBar(containerColor = C.s.surfaceContainer) {
+                    NavigationBar(containerColor = C.s.surfaceContainer, modifier = Modifier.drawBehind { drawLine(C.line, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1f) }) {
                         // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
                         val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.PlayCircleOutline, t("Corps", "Body") to Icons.Default.Accessibility,
                             t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
                         items.forEachIndexed { i, (t, ic) ->
                             NavigationBarItem(selected = tab == i, onClick = { tab = i }, modifier = Modifier.tourTarget(if (i == 1) "corps" else null), icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = C.onSel, selectedTextColor = C.ink, indicatorColor = C.sel, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
+                                colors = NavigationBarItemDefaults.colors(selectedIconColor = C.ink, selectedTextColor = C.ink, indicatorColor = androidx.compose.ui.graphics.Color.Transparent, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
                         }
                     }
                 }) { pad ->

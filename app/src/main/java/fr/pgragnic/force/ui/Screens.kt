@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
@@ -43,25 +44,31 @@ fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> 
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.surface).padding(16.dp), content = content)
 }
 
-/** Boutons segmentés Material 3 : contour, segment choisi teinté (avec une coche si check). */
+/** Sélecteur segmenté façon Apple Fitness : piste pleine, segment choisi en pastille plus claire (check gardé pour compatibilité, sans effet). */
 @Composable
-fun Seg(items: List<Pair<String, Boolean>>, modifier: Modifier = Modifier, check: Boolean = true, small: Boolean = false, onClick: (Int) -> Unit) {
-    Row(modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, C.s.outline, RoundedCornerShape(20.dp))) {
+fun Seg(items: List<Pair<String, Boolean>>, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") check: Boolean = true, small: Boolean = false, onClick: (Int) -> Unit) {
+    Row(modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEachIndexed { i, (lab, on) ->
-            if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(C.s.outline))
             // largeur selon la longueur du libellé (« Comme le téléphone » plus large que « Clair »)
-            Row(Modifier.weight(maxOf(1f, lab.length / 9f)).fillMaxHeight().background(if (on) C.sel else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                if (on && check) Icon(Icons.Default.Check, null, tint = C.onSel, modifier = Modifier.padding(end = 4.dp).size(16.dp))
-                Text(lab, color = if (on) C.onSel else C.ink, fontWeight = FontWeight.Medium, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
+            Box(Modifier.weight(maxOf(1f, lab.length / 9f)).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (on) C.segOn else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Text(lab, color = if (on) C.ink else C.muted, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-/** Titre d'écran (Material 3, headlineMedium). */
+/** Titre d'écran : grand, très gras, arrondi (style Apple Fitness). */
 @Composable
-fun H1(text: String, modifier: Modifier = Modifier) = Text(text, color = C.ink, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.Normal, modifier = modifier)
+fun H1(text: String, modifier: Modifier = Modifier, size: Int = 34) = Text(text, color = C.ink, fontSize = size.sp, lineHeight = (size + 4).sp, fontWeight = FontWeight.Black, modifier = modifier)
+
+/** Anneau de progression façon Apple Fitness (piste à 25 %, arc arrondi). */
+@Composable
+fun Ring(frac: Float, color: Color, size: androidx.compose.ui.unit.Dp, width: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) = Canvas(modifier.size(size)) {
+    val w = width.toPx(); val tl = androidx.compose.ui.geometry.Offset(w / 2, w / 2); val sz = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w)
+    drawArc(color.copy(alpha = .25f), 0f, 360f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(w))
+    if (frac > 0f) drawArc(color, -90f, 360f * frac.coerceIn(0f, 1f), false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+}
 
 @Composable
 fun Eyebrow(t: String) = Text(fr.pgragnic.force.tr(t).uppercase(), color = C.muted, fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
@@ -131,16 +138,34 @@ fun SeanceScreen(onStart: () -> Unit) {
     // muscles les plus sollicités par la séance
     val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        val nWk = remember(log) { val m = Prog.mondayOf(System.currentTimeMillis()); log.count { it.d >= m } }
         Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) {
-            val nWk = remember(log) { val m = Prog.mondayOf(System.currentTimeMillis()); log.count { it.d >= m } }
-            Text(t("Cycle ${st.c} · semaine ${st.w + 1} sur 8 · $nWk/${gear.perWeek} cette semaine", "Cycle ${st.c} · week ${st.w + 1} of 8 · $nWk/${gear.perWeek} this week"), color = C.muted, fontSize = 12.sp, fontWeight = FontWeight.Medium, letterSpacing = .5.sp)
-            H1(t("Ta prochaine séance", "Your next workout"))
+            val today = remember(fr.pgragnic.force.L.en) { java.text.SimpleDateFormat("EEEE d MMMM", fr.pgragnic.force.L.loc).format(java.util.Date()).uppercase(fr.pgragnic.force.L.loc) }
+            Text(today, color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            H1(t("Ta prochaine séance", "Your next workout"), size = 30)
         }; HelpButton("seance") }
+        // anneaux de la semaine façon Apple Fitness : séances faites cette semaine (indigo), avancée dans le cycle (vert)
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.surface).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(contentAlignment = Alignment.Center) {
+                Ring(nWk / gear.perWeek.toFloat(), C.brand, 86.dp, 12.dp)
+                Ring((st.w + 1) / 8f, C.effort, 60.dp, 11.dp)
+            }
+            Column(Modifier.padding(start = 16.dp)) {
+                Text(t("Séances", "Workouts"), color = C.brand, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("$nWk", color = C.ink, fontWeight = FontWeight.Black, fontSize = 30.sp, lineHeight = 32.sp)
+                    Text("/${gear.perWeek}", color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(t(" cette semaine", " this week"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(bottom = 5.dp))
+                }
+                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.effort, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.padding(top = 2.dp))
+                Text(t("Cycle ${st.c} · sur 8 semaines", "Cycle ${st.c} · of 8 weeks"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
         // sélecteur compact : semaine (déplie cycles et semaines) et séance
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.height(40.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, C.s.outline, RoundedCornerShape(8.dp)).clickable { weeks = !weeks }.padding(horizontal = 12.dp),
+            Row(Modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.surface).clickable { weeks = !weeks }.padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                 Icon(if (weeks) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
             }
             // boutons segmentés Material 3 ; le ✓ marque une séance déjà faite cette semaine
@@ -168,20 +193,28 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(W.note, color = C.muted, fontSize = 12.sp)
         }
         // carte de la séance
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.surface).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.surface).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(t("SÉANCE ${st.s}", "WORKOUT ${st.s}"), color = C.brand, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
-                Text("≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", color = C.muted, fontSize = 13.sp)
+                Text(t("Séance ${st.s}", "Workout ${st.s}"), color = C.brand, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Text("≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
             }
-            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.Normal, lineHeight = 28.sp)
+            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 28.sp)
             if (mus.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                mus.forEach { Text(tr(it), color = C.muted, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, C.line, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 6.dp)) }
+                // puces façon Fitness ; un muscle surchargé ressort en rouge
+                mus.forEach { m -> val o = m in over
+                    Text(tr(m), color = if (o) Color(0xFFFF6961) else C.ink, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(if (o) Color(0xFFE3141E).copy(alpha = .22f) else C.s.surfaceContainerHighest).padding(horizontal = 11.dp, vertical = 5.dp)) }
             }
-            Text(t("${order.size} exercices · $nSets séries · ${W.r} reps", "${order.size} exercises · $nSets sets · ${W.r} reps"), color = C.muted, fontSize = 13.sp)
+            // gros chiffres façon Fitness
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                listOf(Triple("${order.size}", t("exercices", "exercises"), C.ink), Triple("$nSets", t("séries", "sets"), C.ink), Triple("${W.r}", t("reps", "reps"), C.ink)).forEach { (v, l, c) ->
+                    Column { Text(v, color = c, fontWeight = FontWeight.Black, fontSize = 24.sp, lineHeight = 26.sp); Text(l, color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
+                }
+            }
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
             // alerte en bandeau rouge doux avec icône (maquette Material 3 du 14 novembre)
-            if (over.isNotEmpty()) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE3141E).copy(alpha = .14f).compositeOver(C.surface)).padding(horizontal = 12.dp, vertical = 10.dp)) {
+            if (over.isNotEmpty()) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE3141E).copy(alpha = .16f).compositeOver(C.surface)).padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Icon(Icons.Default.Block, null, tint = Color(0xFFE3141E), modifier = Modifier.padding(end = 10.dp, top = 1.dp).size(20.dp))
                 Column {
                     Text(t("Surchargés : ", "Overloaded: ") + over.take(3).joinToString(", ") { tr(it) }, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -189,10 +222,10 @@ fun SeanceScreen(onStart: () -> Unit) {
                 }
             }
             else if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
-            Button(onClick = { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).tourTarget("start"), shape = RoundedCornerShape(26.dp),
+            Button(onClick = { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).tourTarget("start"), shape = RoundedCornerShape(27.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = C.brand, contentColor = C.onBrand)) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
-                Text(t("Démarrer", "Start"), fontWeight = FontWeight.Medium, fontSize = 16.sp)
+                Text(t("Démarrer", "Start"), fontWeight = FontWeight.Black, fontSize = 18.sp)
             }
         }
         // tous les exercices, chacun avec sa vignette du personnage (muscles travaillés en couleur) — inspiré de la capture de Philippe :
@@ -446,18 +479,16 @@ fun ReglagesScreen() {
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Réglages", "Settings"), Modifier.weight(1f)); HelpButton("reglages") }
-        // liste Material 3 sans cadre, deux groupes séparés par un trait (maquette du 14 novembre)
-        listOf(REG.take(3), REG.drop(3)).forEachIndexed { gi, grp ->
-            if (gi > 0) HorizontalDivider(color = C.line)
-            Column(Modifier.fillMaxWidth()) {
+        // encarts groupés façon Apple Fitness, icônes de couleur (choix de Philippe du 14 novembre, 11 h 15)
+        listOf(REG.take(3), REG.drop(3)).forEach { grp ->
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.surface)) {
                 grp.forEachIndexed { i, r ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { sub = r.k }.padding(horizontal = 4.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(40.dp).clip(CircleShape).background(if (r.k == "prog") C.brandC else C.s.surfaceContainerHighest), contentAlignment = Alignment.Center) {
-                            Icon(r.ic, null, tint = if (r.k == "prog") C.onBrandC else C.muted, modifier = Modifier.size(20.dp))
-                        }
-                        Column(Modifier.weight(1f).padding(start = 16.dp)) {
-                            Text(r.t(), color = C.ink, fontSize = 16.sp)
-                            Text(subOf(r.k), color = C.muted, fontSize = 14.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (i > 0) HorizontalDivider(color = C.line, thickness = .5.dp, modifier = Modifier.padding(start = 54.dp))
+                    Row(Modifier.fillMaxWidth().clickable { sub = r.k }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(r.ic, null, tint = r.col, modifier = Modifier.size(24.dp))
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text(r.t(), color = C.ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(subOf(r.k), color = C.muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
                         Icon(Icons.Default.ChevronRight, null, tint = C.muted)
                     }
@@ -469,14 +500,14 @@ fun ReglagesScreen() {
     }
 }
 
-class RegItem(val k: String, val fr: String, val en: String, val ic: androidx.compose.ui.graphics.vector.ImageVector) { fun t() = t(fr, en) }
+class RegItem(val k: String, val fr: String, val en: String, val ic: androidx.compose.ui.graphics.vector.ImageVector, val c: Long = 0) { fun t() = t(fr, en); val col get() = if (c == 0L) C.brand else Color(c) }
 val REG = listOf(
     RegItem("prog", "Mon programme", "My program", Icons.Default.FitnessCenter),
-    RegItem("rappels", "Rappels", "Reminders", Icons.Default.NotificationsNone),
-    RegItem("compte", "Compte et sauvegarde", "Account and backup", Icons.Default.CloudDone),
-    RegItem("affichage", "Affichage", "Display", Icons.Default.DarkMode),
-    RegItem("avis", "Donner mon avis", "Send feedback", Icons.Default.ChatBubbleOutline),
-    RegItem("apropos", "À propos et confidentialité", "About and privacy", Icons.Default.Info))
+    RegItem("rappels", "Rappels", "Reminders", Icons.Default.NotificationsNone, 0xFFFF453A),
+    RegItem("compte", "Compte et sauvegarde", "Account and backup", Icons.Default.CloudDone, 0xFF0A84FF),
+    RegItem("affichage", "Affichage", "Display", Icons.Default.DarkMode, 0xFF8E8E93),
+    RegItem("avis", "Donner mon avis", "Send feedback", Icons.Default.ChatBubbleOutline, 0xFF30D158),
+    RegItem("apropos", "À propos et confidentialité", "About and privacy", Icons.Default.Info, 0xFF8E8E93))
 
 /** Sous-page « Mon programme » : tout ce qui change les séances. */
 @Composable

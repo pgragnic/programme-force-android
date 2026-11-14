@@ -2,6 +2,10 @@ package fr.pgragnic.force.ui
 
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -34,7 +38,14 @@ object C {
     val s: ColorScheme get() {
         val d = dark; val y = dyn && dynOk && app != null
         cache?.let { if (it.first == d && it.second == y) return it.third }
-        val cs = if (y) (if (d) dynamicDarkColorScheme(app!!) else dynamicLightColorScheme(app!!)) else if (d) DARK else LIGHT
+        // style « Fitness » (Philippe, 14 novembre 11 h 15 : « Ok » à la voie mélangée inspirée d'Apple Fitness) :
+        // fond noir et cartes gris très foncé en sombre ; fond gris clair et cartes blanches en clair
+        val cs = (if (y) (if (d) dynamicDarkColorScheme(app!!) else dynamicLightColorScheme(app!!)) else if (d) DARK else LIGHT).let {
+            if (d) it.copy(background = Color.Black, surface = Color.Black, surfaceContainerLowest = Color.Black, surfaceContainerLow = Color(0xFF0E0E10),
+                surfaceContainer = Color.Black, surfaceContainerHigh = Color(0xFF1C1C1E), surfaceContainerHighest = Color(0xFF2C2C2E), outlineVariant = Color(0xFF38383A))
+            else it.copy(background = Color(0xFFF2F2F7), surface = Color(0xFFF2F2F7), surfaceContainer = Color(0xFFF9F9FB), surfaceContainerHigh = Color.White,
+                surfaceContainerHighest = Color(0xFFE5E5EA), outlineVariant = Color(0xFFD1D1D6))
+        }
         cache = Triple(d, y, cs); return cs
     }
     private fun p(d: Long, l: Long) = Color(if (dark) d else l)
@@ -44,6 +55,8 @@ object C {
     val brand get() = s.primary; val onBrand get() = s.onPrimary
     val brandC get() = s.primaryContainer; val onBrandC get() = s.onPrimaryContainer
     val sel get() = s.secondaryContainer; val onSel get() = s.onSecondaryContainer
+    /** segment choisi d'un sélecteur (gris clair sur piste foncée, blanc sur piste claire) */
+    val segOn get() = if (dark) Color(0xFF3A3A3C) else Color.White
     // scène du personnage 3D
     val stage get() = p(0xFF0C0F12, 0xFF15181C); val stage2 get() = p(0xFF181C21, 0xFF20252B); val stage3 get() = p(0xFF21262C, 0xFF2A3037)
     // couleurs porteuses d'information : inchangées
@@ -68,7 +81,22 @@ object C {
 
 val PLAB = mapOf("prep" to "PRÊT ?", "warm" to "ÉCHAUFFEMENT", "work" to "EFFORT", "rest" to "PAUSE", "cool" to "RETOUR AU CALME", "switch" to "CHANGEMENT")
 
+/** Police arrondie Nunito, un cran plus grasse que demandé pour l'allure « Fitness » (400 → 600, 500/600 → 700, 700 → 800, 800/900 → 900). */
+val Rounded = FontFamily(
+    Font(fr.pgragnic.force.R.font.nunito_600, FontWeight.Normal), Font(fr.pgragnic.force.R.font.nunito_600, FontWeight.Light),
+    Font(fr.pgragnic.force.R.font.nunito_700, FontWeight.Medium), Font(fr.pgragnic.force.R.font.nunito_700, FontWeight.SemiBold),
+    Font(fr.pgragnic.force.R.font.nunito_800, FontWeight.Bold), Font(fr.pgragnic.force.R.font.nunito_900, FontWeight.ExtraBold),
+    Font(fr.pgragnic.force.R.font.nunito_900, FontWeight.Black))
+
+private val Typo = Typography().let { t ->
+    Typography(t.displayLarge.copy(fontFamily = Rounded), t.displayMedium.copy(fontFamily = Rounded), t.displaySmall.copy(fontFamily = Rounded),
+        t.headlineLarge.copy(fontFamily = Rounded), t.headlineMedium.copy(fontFamily = Rounded), t.headlineSmall.copy(fontFamily = Rounded),
+        t.titleLarge.copy(fontFamily = Rounded), t.titleMedium.copy(fontFamily = Rounded), t.titleSmall.copy(fontFamily = Rounded),
+        t.bodyLarge.copy(fontFamily = Rounded), t.bodyMedium.copy(fontFamily = Rounded), t.bodySmall.copy(fontFamily = Rounded),
+        t.labelLarge.copy(fontFamily = Rounded), t.labelMedium.copy(fontFamily = Rounded), t.labelSmall.copy(fontFamily = Rounded))
+}
+
 @Composable
 fun ForceTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = C.s, content = content)
+    MaterialTheme(colorScheme = C.s, typography = Typo, content = content)
 }
