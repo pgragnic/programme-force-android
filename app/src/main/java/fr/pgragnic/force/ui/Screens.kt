@@ -47,23 +47,38 @@ fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> 
 /** Sélecteur segmenté façon Apple Fitness : piste pleine, segment choisi en pastille plus claire (check gardé pour compatibilité, sans effet). */
 @Composable
 fun Seg(items: List<Pair<String, Boolean>>, modifier: Modifier = Modifier, @Suppress("UNUSED_PARAMETER") check: Boolean = true, small: Boolean = false, onClick: (Int) -> Unit) {
-    Row(modifier.height(42.dp).clip(RoundedCornerShape(21.dp)).background(C.s.surfaceContainerLow).border(1.dp, C.rim, RoundedCornerShape(21.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.chip).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEachIndexed { i, (lab, on) ->
             // largeur selon la longueur du libellé (« Comme le téléphone » plus large que « Clair »)
-            Box(Modifier.weight(maxOf(1f, lab.length / 7f)).fillMaxHeight().clip(RoundedCornerShape(17.dp)).then(if (on) Modifier.background(goldBrush) else Modifier).clickable { onClick(i) }.padding(horizontal = 4.dp),
+            Box(Modifier.weight(maxOf(1f, lab.length / 7f)).fillMaxHeight().clip(RoundedCornerShape(16.dp)).then(if (on) Modifier.background(C.segOn) else Modifier).clickable { onClick(i) }.padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center) {
-                Text(lab, color = if (on) C.onGold else C.muted, fontWeight = FontWeight.Bold, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
+                Text(lab, color = if (on) C.ink else C.muted, fontWeight = FontWeight.SemiBold, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-/** Titre d'écran « Glamour » : Playfair italique, dégradé or rose (sombre) ou cuivre (clair). */
+/** Titre d'écran épuré : Inter très gras, serré, noir (style épuré du 14 novembre). */
 @Composable
-fun H1(text: String, modifier: Modifier = Modifier, size: Int = 36) = Text(text, fontSize = size.sp, lineHeight = (size + 6).sp, fontWeight = FontWeight.SemiBold,
-    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontFamily = Serif, modifier = modifier,
-    style = androidx.compose.ui.text.TextStyle(brush = androidx.compose.ui.graphics.Brush.linearGradient(
-        if (C.dark) listOf(Color(0xFFF7D6C8), Color(0xFFD9A28F), Color(0xFFF3C9B6)) else listOf(Color(0xFF8E4F3A), Color(0xFFC98B76), Color(0xFF9A5A44)))))
+fun H1(text: String, modifier: Modifier = Modifier, size: Int = 28) = Text(text, color = C.ink, fontSize = size.sp, lineHeight = (size + 6).sp, fontWeight = FontWeight.ExtraBold,
+    letterSpacing = (-0.6).sp, modifier = modifier)
+
+/** Petite étiquette en majuscules au-dessus d'un chiffre (style épuré). */
+@Composable
+fun Cap(text: String, modifier: Modifier = Modifier) = Text(text.uppercase(fr.pgragnic.force.L.loc), color = C.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = modifier)
+
+/** Tuile à un seul chiffre : étiquette, grand chiffre (avec un complément gris), petite ligne dessous. */
+@Composable
+fun Stat(cap: String, big: String, modifier: Modifier = Modifier, unit: String = "", sub: String? = null, color: Color = C.ink, lead: (@Composable () -> Unit)? = null) =
+    Column(modifier.glam().padding(16.dp)) {
+        Cap(cap)
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            lead?.let { it(); Spacer(Modifier.width(10.dp)) }
+            Text(big, color = color, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
+            if (unit.isNotEmpty()) Text(unit, color = C.muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+        }
+        sub?.let { Text(it, color = C.muted, fontSize = 12.sp) }
+    }
 
 /** Anneau de progression façon Apple Fitness (piste à 25 %, arc arrondi). */
 @Composable
@@ -142,95 +157,76 @@ fun SeanceScreen(onStart: () -> Unit) {
     val mus = remember(order) { val m = HashMap<String, Double>(); order.forEach { id -> Prog.MAP[id]?.forEach { (k, v) -> m[k] = (m[k] ?: 0.0) + v } }; m.entries.sortedByDescending { it.value }.take(4).map { it.key } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         val nWk = remember(log) { val m = Prog.mondayOf(System.currentTimeMillis()); log.count { it.d >= m } }
-        Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) {
-            val today = remember(fr.pgragnic.force.L.en) { java.text.SimpleDateFormat("EEEE d MMMM", fr.pgragnic.force.L.loc).format(java.util.Date()).uppercase(fr.pgragnic.force.L.loc) }
-            Text(today, color = C.muted, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-            H1(t("Ta prochaine séance", "Your next workout"), size = 30)
-        }; HelpButton("seance") }
-        // anneaux de la semaine façon Apple Fitness : séances faites cette semaine (indigo), avancée dans le cycle (vert)
-        Row(Modifier.fillMaxWidth().glam().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(contentAlignment = Alignment.Center) {
-                Ring(nWk / gear.perWeek.toFloat(), C.brand, 86.dp, 12.dp)
-                Ring((st.w + 1) / 8f, C.gold2, 60.dp, 11.dp)
+        var pick by remember { mutableStateOf(false) }
+        // style épuré (Philippe, 14 novembre : « Mon sentiment cest que l'application est trop chargée », « Partons sur le bleu vif ») :
+        // titre, une carte « Prochaine séance » avec un seul bouton, puis des tuiles à un seul chiffre
+        Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Séance", "Workout"), Modifier.weight(1f)); HelpButton("seance") }
+        Column(Modifier.fillMaxWidth().glam().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Cap(t("Prochaine séance", "Next workout"), Modifier.weight(1f))
+                Text(if (pick) t("Fermer", "Close") else t("Changer", "Change"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { pick = !pick }.padding(4.dp))
             }
-            Column(Modifier.padding(start = 16.dp)) {
-                Text(t("Séances", "Workouts"), color = C.brand, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$nWk", color = C.ink, fontWeight = FontWeight.Black, fontSize = 30.sp, lineHeight = 32.sp)
-                    Text("/${gear.perWeek}", color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
-                    Text(t(" cette semaine", " this week"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(bottom = 5.dp))
-                }
-                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.gold2, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 2.dp))
-                Text(t("Cycle ${st.c} · sur 8", "Cycle ${st.c} · of 8"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-        }
-        // sélecteur compact : semaine (déplie cycles et semaines) et séance
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.height(42.dp).glam(21).clickable { weeks = !weeks }.padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                Icon(if (weeks) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
-            }
-            // boutons segmentés Material 3 ; le ✓ marque une séance déjà faite cette semaine
-            val keys = S.keys.toList()
-            Seg(keys.map { s -> (s + if ("${st.c}-${st.w}-$s" in done) (if (S.size > 4) "✓" else " ✓") else "") to (st.s == s) }, Modifier.weight(1f), check = false, small = S.size > 4) { i -> Store.setSettings { it.s = keys[i] } }
-        }
-        // plus (ou moins) de séances par semaine que les 4 séances A à D : on dit comment l'appli s'y prend
-        if (gear.perWeek != S.size) Text(if (gear.perWeek > S.size)
-            t("${gear.perWeek} séances par semaine : après A, B, C et D, l'appli te repropose la séance qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: after A, B, C and D, the app suggests again the workout that best spares your muscles.")
-            else t("${gear.perWeek} séances par semaine : l'appli propose à chaque fois celle qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: each time, the app suggests the one that best spares your muscles."),
-            color = C.muted, fontSize = 12.sp, lineHeight = 16.sp)
-        if (weeks) Panel {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
-                Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                (0 until 8).forEach { w ->
-                    val n = log.count { it.c == st.c && it.w == w }.coerceAtMost(gear.perWeek)
-                    WeekChip(w, n, st.w == w, Modifier.weight(1f), gear.perWeek) { Store.setSettings { it.w = w } }
-                }
-            }
-            Text(tr(W.t) + " · " + t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"),
-                color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
-            Text(W.note, color = C.muted, fontSize = 12.sp)
-        }
-        // carte de la séance
-        Column(Modifier.fillMaxWidth().glam().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(t("Séance ${st.s}", "Workout ${st.s}"), color = C.brand, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                Text("≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-            }
-            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = Serif, lineHeight = 29.sp)
-            if (mus.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // puces façon Fitness ; un muscle surchargé ressort en rouge
-                mus.forEach { m -> val o = m in over
-                    Text(tr(m), color = if (o) Color(0xFFFF6961) else C.brand, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).then(if (o) Modifier.background(Color(0xFFE3141E).copy(alpha = .22f)) else Modifier.border(1.dp, C.brand.copy(alpha = .4f), RoundedCornerShape(16.dp))).padding(horizontal = 13.dp, vertical = 6.dp)) }
-            }
-            // gros chiffres façon Fitness
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                listOf(Triple("${order.size}", t("exercices", "exercises"), C.ink), Triple("$nSets", t("séries", "sets"), C.ink), Triple("${W.r}", t("reps", "reps"), C.ink)).forEach { (v, l, c) ->
-                    Column { Text(v, color = c, fontWeight = FontWeight.Black, fontSize = 24.sp, lineHeight = 26.sp); Text(l, color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
-                }
-            }
+            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 6.dp))
+            Text(t("Séance ${st.s} · ${order.size} exercices · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", "Workout ${st.s} · ${order.size} exercises · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min"),
+                color = C.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
-            // alerte en bandeau rouge doux avec icône (maquette Material 3 du 14 novembre)
-            if (over.isNotEmpty()) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE3141E).copy(alpha = .16f).compositeOver(C.surface)).padding(horizontal = 12.dp, vertical = 10.dp)) {
-                Icon(Icons.Default.Block, null, tint = Color(0xFFE3141E), modifier = Modifier.padding(end = 10.dp, top = 1.dp).size(20.dp))
-                Column {
-                    Text(t("Surchargés : ", "Overloaded: ") + over.take(3).joinToString(", ") { tr(it) }, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Text(t("Mieux vaut une autre séance", "Better pick another workout"), color = C.muted, fontSize = 14.sp)
-                }
+            // une seule ligne d'alerte, rouge pour les muscles surchargés ; le détail s'ouvre en la touchant
+            if (over.isNotEmpty() || share >= .4) Row(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(8.dp)).clickable { warn = true }, verticalAlignment = Alignment.CenterVertically) {
+                val c = if (over.isNotEmpty()) Color(0xFFD92D20) else C.warm
+                Icon(Icons.Default.ErrorOutline, null, tint = c, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                Text(if (over.isNotEmpty()) t("${over.size} muscle${if (over.size > 1) "s" else ""} encore surchargé${if (over.size > 1) "s" else ""}", "${over.size} muscle${if (over.size > 1) "s" else ""} still overloaded")
+                    else t("Encore en récupération : ", "Still recovering: ") + sore.take(2).joinToString(", ") { tr(it) }, color = c, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                Icon(Icons.Default.ChevronRight, null, tint = C.muted, modifier = Modifier.size(18.dp))
             }
-            else if (share >= .4) Text("⚠ " + t("Encore en récupération : ", "Still recovering: ") + sore.take(3).joinToString(", ") { tr(it) }, color = C.warm, fontSize = 13.sp)
-            // pilule en dégradé or rose (maquette Glamour)
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).tourTarget("start").clip(RoundedCornerShape(28.dp)).background(goldBrush)
+            Row(Modifier.padding(top = 16.dp).fillMaxWidth().heightIn(min = 52.dp).tourTarget("start").clip(RoundedCornerShape(26.dp)).background(C.brand)
                 .clickable { if (share >= .4 || over.isNotEmpty()) warn = true else onStart() }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.PlayArrow, null, tint = C.onGold); Spacer(Modifier.width(8.dp))
-                Text(t("Démarrer", "Start"), color = C.onGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Icon(Icons.Default.PlayArrow, null, tint = C.onBrand); Spacer(Modifier.width(6.dp))
+                Text(t("Démarrer", "Start"), color = C.onBrand, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
+        }
+        // « Changer » : semaine, cycle et séance A à F, repliés par défaut
+        if (pick) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.chip).clickable { weeks = !weeks }.padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Icon(if (weeks) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
+                }
+                // le ✓ marque une séance déjà faite cette semaine
+                val keys = S.keys.toList()
+                Seg(keys.map { s -> (s + if ("${st.c}-${st.w}-$s" in done) (if (S.size > 4) "✓" else " ✓") else "") to (st.s == s) }, Modifier.weight(1f), check = false, small = S.size > 4) { i -> Store.setSettings { it.s = keys[i] } }
+            }
+            if (gear.perWeek != S.size) Text(if (gear.perWeek > S.size)
+                t("${gear.perWeek} séances par semaine : après A, B, C et D, l'appli te repropose la séance qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: after A, B, C and D, the app suggests again the workout that best spares your muscles.")
+                else t("${gear.perWeek} séances par semaine : l'appli propose à chaque fois celle qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: each time, the app suggests the one that best spares your muscles."),
+                color = C.muted, fontSize = 12.sp, lineHeight = 16.sp)
+            if (weeks) Panel {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    (1..2).forEach { c -> PChip("Cycle $c", st.c == c) { Store.setSettings { it.c = c } } }
+                    Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    (0 until 8).forEach { w ->
+                        val n = log.count { it.c == st.c && it.w == w }.coerceAtMost(gear.perWeek)
+                        WeekChip(w, n, st.w == w, Modifier.weight(1f), gear.perWeek) { Store.setSettings { it.w = w } }
+                    }
+                }
+                Text(tr(W.t) + " · " + t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"),
+                    color = C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+                Text(W.note, color = C.muted, fontSize = 12.sp)
+            }
+        }
+        // tuiles à un seul chiffre
+        val steps = remember(days) { val d = java.time.LocalDate.now().toString(); days.firstOrNull { it.date == d }?.steps }
+        val ready = remember(MU) { Recovery.MUS.count { (MU.R[it] ?: 100) >= 90 } }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Stat(t("Cette semaine", "This week"), "$nWk", Modifier.weight(1f), unit = "/${gear.perWeek}", lead = { Ring(nWk / gear.perWeek.toFloat(), C.brand, 40.dp, 6.dp) })
+            Stat(t("Pas", "Steps"), steps?.let { "%,d".format(fr.pgragnic.force.L.loc, it).replace('\u202F', ' ').replace(',', ' ') } ?: "—", Modifier.weight(1f), sub = t("aujourd'hui", "today"))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Stat(t("Muscles prêts", "Muscles ready"), "$ready", Modifier.weight(1f), unit = "/${Recovery.MUS.size}")
+            Stat(t("Programme", "Program"), "S${st.w + 1}", Modifier.weight(1f), unit = "/8", sub = t("cycle ${st.c}", "cycle ${st.c}"))
         }
         // tous les exercices, chacun avec sa vignette du personnage (muscles travaillés en couleur) — inspiré de la capture de Philippe :
         // « Peux-tu t'inspirer de la première image pour la présentation des séances et on montre tous les exercices ? »
@@ -489,9 +485,9 @@ fun ReglagesScreen() {
                 grp.forEachIndexed { i, r ->
                     if (i > 0) HorizontalDivider(color = C.line, thickness = .5.dp, modifier = Modifier.padding(start = 54.dp))
                     Row(Modifier.fillMaxWidth().clickable { sub = r.k }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(36.dp).clip(CircleShape).background(C.brand.copy(alpha = .14f)), contentAlignment = Alignment.Center) { Icon(r.ic, null, tint = C.brand, modifier = Modifier.size(20.dp)) }
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(C.s.surfaceContainerLow), contentAlignment = Alignment.Center) { Icon(r.ic, null, tint = C.ink, modifier = Modifier.size(20.dp)) }
                         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                            Text(r.t(), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(r.t(), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                             Text(subOf(r.k), color = C.muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         }
                         Icon(Icons.Default.ChevronRight, null, tint = C.muted)

@@ -41,7 +41,7 @@ fun CorpsScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             H1(t("Corps", "Body"))
-            Spacer(Modifier.weight(1f)); Text(t("Récupération", "Recovery"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(end = 10.dp))
+            Spacer(Modifier.weight(1f))
             HelpButton("corps")
         }
         // un seul personnage, qu'on fait tourner au doigt ou avec Face / Dos (Philippe, capture du 11 novembre : « Un seul corps suffit
@@ -56,7 +56,8 @@ fun CorpsScreen() {
         LaunchedEffect(pick) { if (pick != null) { kotlinx.coroutines.delay(4000); pick = null } }
         val onPick = remember { { n: String?, x: Float, y: Float -> pick = n?.let { Triple(it, x, y) } } }
         val dens = androidx.compose.ui.platform.LocalDensity.current
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.stage), horizontalAlignment = Alignment.CenterHorizontally) {
+        // style épuré : le personnage dans une tuile, Face / Dos dessous, explications et légende dans l'aide « ? »
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.stage).padding(bottom = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             BoxWithConstraints(Modifier.fillMaxWidth().height(330.dp)) {
                 Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true, onPick = onPick, onView = onView, viewKey = viewKey).th(), Modifier.fillMaxSize())
                 pick?.let { (m, x, y) ->
@@ -71,35 +72,19 @@ fun CorpsScreen() {
                     }
                 }
             }
-        }
-        // boutons segmentés Material 3 sous la scène (maquette du 14 novembre)
-        Seg(listOf(t("Face", "Front") to !shownBack, t("Dos", "Back") to shownBack), Modifier.align(Alignment.CenterHorizontally).width(200.dp)) { i -> back = i == 1; viewKey++ }
-        Text(t("Fais tourner le personnage avec le doigt, touche un muscle pour voir sa récupération.", "Rotate the character with your finger, tap a muscle to see its recovery."), color = C.muted, fontSize = 12.sp)
-        // échelle continue (option A) : même dégradé que le personnage, de fatigué (0 %) à prêt (90 % et plus)
-        Column {
-            Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(
-                0f to C.danger, .6f to C.warm, .9f to C.effort, 1f to C.effort)))
-            Box(Modifier.fillMaxWidth().padding(top = 3.dp)) {
-                Text(t("0 % fatigué", "0% tired"), color = C.muted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterStart))
-                Text("60 %", color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.6f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
-                Text(t("prêt 90 %", "ready 90%"), color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.93f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(Recovery.overCol(C.rgb(C.danger)).col()))
-                Text(t(" Surchargé : fatigue au-delà de 0 %", " Overloaded: fatigue beyond 0%"), color = C.muted, fontSize = 11.sp)
-            }
+            Seg(listOf(t("Face", "Front") to !shownBack, t("Dos", "Back") to shownBack), Modifier.width(180.dp)) { i -> back = i == 1; viewKey++ }
         }
         // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,
         // puis les muscles prêts avec la même ligne détaillée ; toucher un muscle ouvre son détail
         val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
         @Composable fun row(m: String) {
             val r = MU.R[m]!!; val ov = MU.over(m); val c = (if (ov) Recovery.overCol(C.rgb(C.danger)) else Recovery.recCol(r, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort))).col(); val h = MU.ready[m] ?: 0
-            Column(Modifier.fillMaxWidth().glam(26).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(Modifier.fillMaxWidth().glam().clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // anneau de récupération façon Apple Fitness, dans la couleur exacte du niveau (plein et rouge vif si surchargé)
-                    Box(contentAlignment = Alignment.Center) { Ring(if (ov) 1f else r / 100f, c, 46.dp, 6.dp); Text("$r", color = c, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+                    Box(contentAlignment = Alignment.Center) { Ring(if (ov) 1f else r / 100f, c, 40.dp, 5.dp); Text("$r", color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
                             (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
@@ -108,14 +93,27 @@ fun CorpsScreen() {
                 if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
             }
         }
-        if (tired.isNotEmpty()) {
-            Text(t("À laisser reposer", "Let these recover"), color = C.brand, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontFamily = Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 6.dp))
-            tired.forEach { row(it) }
-        } else Text(t("Tous tes muscles sont prêts.", "All your muscles are ready."), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        if (ready.isNotEmpty()) {
-            Text(t("Prêts", "Ready"), color = C.brand, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontFamily = Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 6.dp))
-            ready.forEach { row(it) }
+        // à ménager : les 3 muscles les moins récupérés en tuiles ; la liste complète derrière « Voir les … »
+        var all by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Cap(if (tired.isNotEmpty()) t("À ménager", "Go easy on") else t("Tous tes muscles sont prêts", "All your muscles are ready"), Modifier.weight(1f))
+            Text(if (all) t("Réduire", "Show less") else t("Voir les ${Recovery.MUS.size}", "See all ${Recovery.MUS.size}"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { all = !all }.padding(4.dp))
         }
+        if (!all && tired.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            tired.take(3).forEach { m ->
+                val r = MU.R[m]!!; val ov = MU.over(m); val h = MU.ready[m] ?: 0
+                Column(Modifier.weight(1f).glam().clickable { all = true; sel = m }.padding(12.dp)) {
+                    Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
+                        Text("$r", color = if (ov) Color(0xFFD92D20) else C.ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+                        Text(" %", color = if (ov) Color(0xFFD92D20) else C.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 3.dp))
+                    }
+                    Text(t("prêt ~", "ready ~") + if (h >= 24) t("${h / 24} j", "${h / 24} d") else "$h h", color = C.muted, fontSize = 11.sp, maxLines = 1)
+                }
+            }
+        }
+        if (all) { tired.forEach { row(it) }; ready.forEach { row(it) } }
     }
 }
 
