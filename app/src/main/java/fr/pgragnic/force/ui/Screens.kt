@@ -76,7 +76,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val st by Store.st.collectAsState(); val log by Store.log.collectAsState()
     Store.ver.collectAsState().value
     val gear by GearStore.g.collectAsState()
-    remember(log, gear) { Prog.computeLoads(log, st); 0 }
+    remember(log, gear, st) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
     // séance E ou F sélectionnée puis moins de séances par semaine : on revient à une séance existante
@@ -501,6 +501,32 @@ fun ProgrammePage() {
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (on) C.ink else C.bg).clickable { Store.setSettings { it.rest = r } }.padding(vertical = 10.dp)) }
         }
     }
+    ProgressionPanel(st)
+}
+
+/** Séances réussies avant une hausse de charge, par groupe (Philippe, 14 novembre 2026 : « Est-ce qu'on peut prévoir que ce soit paramétrable ? »). */
+@Composable
+fun ProgressionPanel(st: Settings) {
+    Panel {
+        Text(t("Montée des charges", "Load increases"), color = C.ink, fontWeight = FontWeight.Bold)
+        Text(t("Nombre de séances réussies avant d'ajouter du poids. Plus le chiffre est grand, plus la progression est prudente.",
+            "Successful sessions before adding weight. The higher the number, the more cautious the progression."), color = C.muted, fontSize = 12.sp)
+        listOf(Triple(t("Jambes", "Legs"), t("squats, fentes, mollets, et le rowing un bras appuyé", "squats, lunges, calves, plus the supported one-arm row"), "leg"),
+            Triple(t("Bas du dos", "Lower back"), t("soulevés de terre, rowings penchés, développé debout, swing", "deadlifts, bent-over rows, standing press, swing"), "back"),
+            Triple(t("Haut du corps et le reste", "Upper body and the rest"), t("pompes et développés couchés, épaules, bras, gainage", "push-ups and floor presses, shoulders, arms, core"), "top")).forEach { (n, ex, k) ->
+            val cur = when (k) { "leg" -> st.upLeg; "back" -> st.upBack; else -> st.upTop }
+            Text(n, color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(ex, color = C.muted, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                (1..5).forEach { v -> val on = cur == v
+                    Text("$v", color = if (on) C.bg else C.ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (on) C.ink else C.bg)
+                            .clickable { Store.setSettings { when (k) { "leg" -> it.upLeg = v; "back" -> it.upBack = v; else -> it.upTop = v } } }.padding(vertical = 10.dp)) }
+            }
+        }
+        Text(t("Une séance « Facile » avec l'objectif atteint compte double. Le plafond de hausse par semaine s'applique toujours.",
+            "An \"Easy\" session with the target reached counts double. The weekly increase cap still applies."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+    }
 }
 
 /** Compte et sauvegarde en ligne. */
@@ -648,7 +674,7 @@ fun ThemePanel() {
 /** Nouveautés de l'appli, la plus récente en premier. */
 val NEWS = listOf(
     "14 novembre 2026" to listOf(
-        "Bas du dos ménagé : soulevés de terre, rowing penché deux bras et swing montent après 3 séances réussies au lieu de 2."),
+        "Montée des charges réglable par groupe (jambes, bas du dos, haut du corps) dans Réglages → Mon programme ; le bas du dos passe à 3 séances réussies avant une hausse."),
     "8 novembre 2026" to listOf(
         "L'appli parle anglais : elle suit la langue du téléphone, ou ton choix dans Infos → Langue.",
         "Voix de séance, notification et rappel en anglais quand l'appli est en anglais."),

@@ -31,7 +31,9 @@ data class Phase(
 )
 
 class Settings(var c: Int = 1, var w: Int = 0, var s: String = "A", var rest: Int = 30,
-               var bar: Double = 1.8, var n2: Int = 2, var n05: Int = 6)
+               var bar: Double = 1.8, var n2: Int = 2, var n05: Int = 6,
+               /** séances réussies avant une hausse de charge, par groupe (Philippe, 14 novembre 2026 : réglable par groupe) */
+               var upLeg: Int = 2, var upBack: Int = 3, var upTop: Int = 3)
 
 /** Un exercice enregistré dans une séance. */
 @kotlinx.serialization.Serializable
@@ -267,10 +269,12 @@ object Prog {
     fun r1(x: Double) = (x * 10).roundToInt() / 10.0
     fun fk(x: Double): String { val v = r1(x); return (if (v == floor(v)) v.toLong().toString() else v.toString()).let { if (L.en) it else it.replace('.', ',') } }
     fun maxKg(st: Settings) = gear.dbWeights().lastOrNull() ?: st.bar
-    /** Séances réussies avant une hausse : 2 pour les gros exercices de jambes, 3 pour le reste.
-     *  Les exercices qui chargent le bas du dos (soulevés de terre, rowing penché deux bras, swing) restent à 3
-     *  (Philippe, 14 novembre 2026, douleur au bas du dos après la hausse des charges : « Ok » pour 3 séances au lieu de 2). */
-    private fun need(id: String) = if (id in HEAVY && "dos" !in (EX[id]?.stress ?: emptyList())) 2 else 3
+    /** Groupe de progression : "back" si l'exercice charge le bas du dos (soulevés de terre, rowings penchés, swing, développé debout…),
+     *  "leg" pour les gros exercices de jambes, "top" pour le reste (haut du corps, mollets légers, gainage). */
+    fun upGroup(id: String) = if ("dos" in (EX[id]?.stress ?: emptyList())) "back" else if (id in HEAVY) "leg" else "top"
+    /** Séances réussies avant une hausse, réglables par groupe dans Réglages → Mon programme (par défaut 2 jambes, 3 dos, 3 haut du corps).
+     *  Philippe, 14 novembre 2026, douleur au bas du dos après la hausse des charges : dos à 3 séances, puis « paramétrable » par groupe. */
+    private fun need(id: String, st: Settings) = when (upGroup(id)) { "back" -> st.upBack; "leg" -> st.upLeg; else -> st.upTop }.coerceIn(1, 5)
     /** L'exercice a une charge réglable (haltère, kettlebell ou élastique). */
     fun hasDb(id: String) = EX[id]?.lt.let { it == "kg" || it == "band" }
     fun toolOf(id: String) = EX[id]?.tool ?: ""
@@ -334,9 +338,9 @@ object Prog {
                 if (x.done >= x.target && fe == "Difficile") q[2] = 0.0
                 else if (x.done >= x.target) {
                     q[2] = 0.0; q[1] += if (fe == "Facile") 2.0 else 1.0
-                    if (q[1] >= need(x.id)) {
+                    if (q[1] >= need(x.id, st)) {
                         val nk = nextStep(x.id, q[0], 1)
-                        if (nk > q[0] && !capOk(x.id, nk, e.d, h, last[x.id]!!)) { q[1] = need(x.id).toDouble(); return@forEach } // plafond atteint : la hausse attend
+                        if (nk > q[0] && !capOk(x.id, nk, e.d, h, last[x.id]!!)) { q[1] = need(x.id, st).toDouble(); return@forEach } // plafond atteint : la hausse attend
                         if (nk > q[0]) { q[0] = nk; h += e.d to nk; last[x.id] = e.d; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${loadTxt(x.id, nk)}") }
                         q[1] = 0.0
                     }

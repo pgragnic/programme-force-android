@@ -102,6 +102,18 @@ class LogiqueTest {
         assertTrue("${Prog.kgOf(id, 1, st)} <= $k0", Prog.kgOf(id, 1, st) > k0)
     }
 
+    @Test fun monteeReglableParGroupe() {
+        // bas du dos réglé à 1 : une seule séance réussie suffit ; jambes réglées à 4 : 3 ne suffisent pas
+        GearStore.g.value = base.copy(dbMode = "fixed", fixed = listOf(10.0, 10.5, 11.0, 11.5, 12.0))
+        val r = Settings(upBack = 1, upLeg = 4)
+        Prog.computeLoads(emptyList(), r); val k0 = Prog.kgOf("rdl", 1, r)
+        Prog.computeLoads(listOf(seance(0, "rdl", k0, 10, 10), seance(7 * Prog.DAY, "rdl", k0, 10, 10)), r)
+        assertTrue(Prog.kgOf("rdl", 1, r) > k0)
+        val s0 = Prog.kgOf("squat", 1, r)
+        Prog.computeLoads(listOf(0, 7, 15).map { seance(it * Prog.DAY, "squat", s0, 10, 10) }, r)
+        assertEquals(s0, Prog.kgOf("squat", 1, r), 1e-6)
+    }
+
     @Test fun basDuDosTroisSeancesAvantHausse() {
         // soulevé de terre jambes tendues : 2 séances réussies ne suffisent plus, il en faut 3 ; le goblet squat reste à 2
         GearStore.g.value = base.copy(dbMode = "fixed", fixed = listOf(10.0, 10.5, 11.0, 11.5, 12.0))

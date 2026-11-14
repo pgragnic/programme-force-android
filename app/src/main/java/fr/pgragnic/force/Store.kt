@@ -90,6 +90,7 @@ object Store {
 
     private fun stTo(s: Settings) = buildJsonObject {
         put("c", s.c); put("w", s.w); put("s", s.s); put("rest", s.rest); put("bar", s.bar); put("n2", s.n2); put("n05", s.n05)
+        put("upLeg", s.upLeg); put("upBack", s.upBack); put("upTop", s.upTop)
         put("gear", GearStore.online(GearStore.g.value))
         devId()?.let { id -> put("dev", JsonObject(devAll + (id to devLocal()))) }
     }
@@ -149,7 +150,8 @@ object Store {
     private fun stFrom(o: JsonObject) = Settings(
         o["c"]?.jsonPrimitive?.intOrNull ?: 1, o["w"]?.jsonPrimitive?.intOrNull ?: 0, o["s"]?.jsonPrimitive?.contentOrNull ?: "A",
         o["rest"]?.jsonPrimitive?.intOrNull ?: 30, o["bar"]?.jsonPrimitive?.doubleOrNull ?: 1.8,
-        o["n2"]?.jsonPrimitive?.intOrNull ?: 2, o["n05"]?.jsonPrimitive?.intOrNull ?: 6)
+        o["n2"]?.jsonPrimitive?.intOrNull ?: 2, o["n05"]?.jsonPrimitive?.intOrNull ?: 6,
+        o["upLeg"]?.jsonPrimitive?.intOrNull ?: 2, o["upBack"]?.jsonPrimitive?.intOrNull ?: 3, o["upTop"]?.jsonPrimitive?.intOrNull ?: 3)
 
     private fun saveLocal() {
         prefs.edit().putString("log", json.encodeToString(log.value)).putString("st", stTo(st.value).toString())
@@ -159,7 +161,7 @@ object Store {
     }
 
     fun setSettings(f: (Settings) -> Unit) {
-        val s = st.value; f(s); st.value = Settings(s.c, s.w, s.s, s.rest, s.bar, s.n2, s.n05); saveLocal()
+        val s = st.value; f(s); st.value = Settings(s.c, s.w, s.s, s.rest, s.bar, s.n2, s.n05, s.upLeg, s.upBack, s.upTop); saveLocal()
         val c = sb ?: return
         if (user.value == null) return
         scope.launch { runCatching { c.from("state").upsert(StateRow(stTo(st.value))) } }
