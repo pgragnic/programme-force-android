@@ -742,6 +742,7 @@ fun ThemePanel() {
         Text("Apparence", color = C.ink, fontWeight = FontWeight.Bold)
         val modes = listOf("auto" to "Comme le téléphone", "light" to "Clair", "dark" to "Sombre")
         Seg(modes.map { (m, tx) -> tr(tx) to (C.mode == m) }, Modifier.fillMaxWidth().padding(top = 8.dp), check = false, small = true) { i -> C.save(ctx, modes[i].first); Store.devChanged() }
+        HealthToggle(Modifier.padding(top = 14.dp))
         // Material You (Philippe, 14 novembre : indigo par défaut + option « Couleurs du fond d'écran »)
         Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

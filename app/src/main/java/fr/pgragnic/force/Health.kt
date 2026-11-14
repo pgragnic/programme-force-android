@@ -16,13 +16,22 @@ object Health {
     val status = MutableStateFlow("")
     val granted = MutableStateFlow(false)
 
+    /** Health Connect optionnel (Philippe, 14 novembre 21 h 44 : « Il faudrait aussi mettre health connect en optionnel dans les paramètres et en choix optionnel au démarrage de l'application »).
+     *  Désactivé par défaut ; reste actif pour qui avait déjà donné l'accès. Les pas déjà importés sont gardés quand on le coupe. */
+    val on = MutableStateFlow(false)
+    fun load(ctx: Context) { val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE); on.value = p.getBoolean("hc_on", p.getBoolean("hc_was", false)) }
+    fun setOn(ctx: Context, v: Boolean) { on.value = v; ctx.getSharedPreferences("force", Context.MODE_PRIVATE).edit().putBoolean("hc_on", v).apply() }
     fun available(ctx: Context) = HealthConnectClient.getSdkStatus(ctx) == HealthConnectClient.SDK_AVAILABLE
     fun needsUpdate(ctx: Context) = HealthConnectClient.getSdkStatus(ctx) == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
 
     suspend fun check(ctx: Context): Boolean {
         if (!available(ctx)) { granted.value = false; return false }
         val ok = runCatching { HealthConnectClient.getOrCreate(ctx).permissionController.getGrantedPermissions().containsAll(PERMS) }.getOrDefault(false)
-        granted.value = ok; return ok
+        granted.value = ok
+        // anciens utilisateurs qui avaient déjà autorisé l'accès : l'option reste allumée
+        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        if (ok && !p.contains("hc_on") && !p.getBoolean("hc_was", false)) { p.edit().putBoolean("hc_was", true).apply(); if (!p.contains("hc_on")) on.value = true }
+        return ok && on.value
     }
 
     /** Importe les pas des 14 derniers jours dans les journées (garde l'activité saisie à la main). */

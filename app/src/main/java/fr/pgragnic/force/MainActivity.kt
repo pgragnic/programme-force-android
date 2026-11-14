@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
-        C.load(this); Adapt.load(this); CoachState.load(this); SessionService.channels(this); Reminder.schedule(this)
+        C.load(this); Adapt.load(this); CoachState.load(this); Health.load(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         Crash.sendPending(this)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)

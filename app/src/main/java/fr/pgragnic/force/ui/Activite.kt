@@ -75,7 +75,8 @@ fun ActiviteScreen(inProgres: Boolean = false) {
     val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { g ->
         if (g.containsAll(Health.PERMS)) scope.launch { Health.importSteps(ctx) } else Health.status.value = "Accès aux pas refusé : tu peux saisir tes pas à la main."
     }
-    LaunchedEffect(Unit) { if (avail) Health.importSteps(ctx) }
+    val hcOn by Health.on.collectAsState()
+    LaunchedEffect(hcOn) { if (avail && hcOn) Health.importSteps(ctx) }
 
     val today = LocalDate.now()
     var sel by remember { mutableStateOf(today) }
@@ -102,6 +103,10 @@ fun ActiviteScreen(inProgres: Boolean = false) {
         Panel {
             Text("Pas automatiques", color = C.ink, fontWeight = FontWeight.Bold)
             when {
+                !hcOn -> {
+                    Text(t("Désactivé : tu saisis tes pas à la main. Tu peux l'activer ici ou dans Réglages.", "Off: you enter your steps by hand. You can turn it on here or in Settings."), color = C.muted, fontSize = 13.sp)
+                    TextButton(onClick = { Health.setOn(ctx, true); if (avail) launcher.launch(Health.PERMS) }) { Text(t("Activer Health Connect", "Turn on Health Connect")) }
+                }
                 !avail -> {
                     Text("Installe ou mets à jour l'appli Health Connect pour importer tes pas (téléphone, montre, Google Fit, Samsung Santé…).", color = C.muted, fontSize = 13.sp)
                     TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }) { Text("Ouvrir le Play Store") }
@@ -230,5 +235,33 @@ fun ActiviteScreen(inProgres: Boolean = false) {
 private fun ActChip(t: String, on: Boolean, onClick: () -> Unit) {
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (on) C.ink else C.bg).clickable(onClick = onClick).padding(vertical = 9.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
         Text(t, color = if (on) C.bg else C.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2)
+    }
+}
+
+
+/** Interrupteur Health Connect (Réglages et premier lancement). */
+@Composable
+fun HealthToggle(modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current; val scope = rememberCoroutineScope()
+    val on by Health.on.collectAsState(); val granted by Health.granted.collectAsState()
+    val avail = remember { Health.available(ctx) }
+    val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { g ->
+        if (g.containsAll(Health.PERMS)) scope.launch { Health.importSteps(ctx) } else Health.setOn(ctx, false)
+    }
+    LaunchedEffect(Unit) { Health.check(ctx) }
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(t("Pas depuis Health Connect", "Steps from Health Connect"), color = C.ink, fontWeight = FontWeight.Bold)
+            Text(when {
+                !avail -> t("Facultatif. Demande l'appli Health Connect (Play Store).", "Optional. Requires the Health Connect app (Play Store).")
+                on && granted -> t("Tes pas (téléphone, montre…) arrivent tout seuls chaque jour.", "Your steps (phone, watch…) arrive on their own every day.")
+                else -> t("Facultatif. Sinon, tu saisis tes pas à la main dans Activité.", "Optional. Otherwise, enter your steps by hand in Activity.")
+            }, color = C.muted, fontSize = 12.sp)
+        }
+        Switch(checked = on && (granted || !avail), onCheckedChange = { v ->
+            Health.setOn(ctx, v)
+            if (v) { if (avail) { if (!granted) launcher.launch(Health.PERMS) else scope.launch { Health.importSteps(ctx) } }
+                     else runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }
+        })
     }
 }

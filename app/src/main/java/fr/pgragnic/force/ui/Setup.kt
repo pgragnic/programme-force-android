@@ -247,6 +247,7 @@ fun SetupScreen(onDone: () -> Unit) {
                         }
                         Text(t("Sexe", "Sex"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
                         Seg(listOf(t("Homme", "Male"), t("Femme", "Female"), t("Non précisé", "Not specified")), when (g.sex) { "m" -> 0; "f" -> 1; else -> 2 }) { g = g.copy(sex = when (it) { 0 -> "m"; 1 -> "f"; else -> null }) }
+                        if (!cur.done) Box(Modifier.padding(top = 10.dp)) { HealthToggle() }
                         Text(t("Ta taille règle la longueur de tes pas pour la dépense de l'onglet Activité. Avec ton âge et ton sexe, l'appli estime aussi ta dépense au repos et ajuste tes charges de départ.",
                             "Your height sets your stride length for the burn in the Activity tab. With your age and sex, the app also estimates your resting burn and adjusts your starting loads."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     }
