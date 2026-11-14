@@ -13,6 +13,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 
 /**
@@ -30,8 +34,8 @@ object C {
     val dynOk get() = android.os.Build.VERSION.SDK_INT >= 31
     private var app: Context? = null
     val dark get() = when (mode) { "dark" -> true; "light" -> false; else -> sysDark }
-    val DARK = darkColorScheme(primary = Color(0xFFBCC2FF), onPrimary = Color(0xFF00169C), primaryContainer = Color(0xFF4C5BD4), onPrimaryContainer = Color(0xFFE6E6FF), inversePrimary = Color(0xFF4251CA), secondary = Color(0xFFBEC3F8), onSecondary = Color(0xFF272D58), secondaryContainer = Color(0xFF404673), onSecondaryContainer = Color(0xFFB0B5E9), tertiary = Color(0xFFFFB688), onTertiary = Color(0xFF512400), tertiaryContainer = Color(0xFFA55000), onTertiaryContainer = Color(0xFFFFE2D2), background = Color(0xFF12131A), onBackground = Color(0xFFE3E1EC), surface = Color(0xFF12131A), onSurface = Color(0xFFE3E1EC), surfaceVariant = Color(0xFF454654), onSurfaceVariant = Color(0xFFC6C5D6), surfaceTint = Color(0xFFBCC2FF), inverseSurface = Color(0xFFE3E1EC), inverseOnSurface = Color(0xFF2F3038), error = Color(0xFFFFB4AB), onError = Color(0xFF690005), errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6), outline = Color(0xFF8F8F9F), outlineVariant = Color(0xFF454654), scrim = Color(0xFF000000), surfaceBright = Color(0xFF383841), surfaceContainer = Color(0xFF1F1F27), surfaceContainerHigh = Color(0xFF292931), surfaceContainerHighest = Color(0xFF34343C), surfaceContainerLow = Color(0xFF1A1B22), surfaceContainerLowest = Color(0xFF0D0E15), surfaceDim = Color(0xFF12131A))
-    val LIGHT = lightColorScheme(primary = Color(0xFF3141BA), onPrimary = Color(0xFFFFFFFF), primaryContainer = Color(0xFF4C5BD4), onPrimaryContainer = Color(0xFFE6E6FF), inversePrimary = Color(0xFFBCC2FF), secondary = Color(0xFF565B8A), onSecondary = Color(0xFFFFFFFF), secondaryContainer = Color(0xFFC4C8FE), onSecondaryContainer = Color(0xFF4D5381), tertiary = Color(0xFF803D00), onTertiary = Color(0xFFFFFFFF), tertiaryContainer = Color(0xFFA55000), onTertiaryContainer = Color(0xFFFFE2D2), background = Color(0xFFFBF8FF), onBackground = Color(0xFF1A1B22), surface = Color(0xFFFBF8FF), onSurface = Color(0xFF1A1B22), surfaceVariant = Color(0xFFE2E1F2), onSurfaceVariant = Color(0xFF454654), surfaceTint = Color(0xFF4251CA), inverseSurface = Color(0xFF2F3038), inverseOnSurface = Color(0xFFF2EFFA), error = Color(0xFFBA1A1A), onError = Color(0xFFFFFFFF), errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF93000A), outline = Color(0xFF767685), outlineVariant = Color(0xFFC6C5D6), scrim = Color(0xFF000000), surfaceBright = Color(0xFFFBF8FF), surfaceContainer = Color(0xFFEFECF7), surfaceContainerHigh = Color(0xFFE9E7F2), surfaceContainerHighest = Color(0xFFE3E1EC), surfaceContainerLow = Color(0xFFF5F2FD), surfaceContainerLowest = Color(0xFFFFFFFF), surfaceDim = Color(0xFFDBD9E3))
+    val DARK = darkColorScheme(primary = Color(0xFFFBB7A0), onPrimary = Color(0xFF4E2515), primaryContainer = Color(0xFFC98B76), onPrimaryContainer = Color(0xFF502617), inversePrimary = Color(0xFF85513F), secondary = Color(0xFFE2BFB3), onSecondary = Color(0xFF412B23), secondaryContainer = Color(0xFF5D433B), onSecondaryContainer = Color(0xFFD4B1A6), tertiary = Color(0xFF98D1CC), onTertiary = Color(0xFF003734), tertiaryContainer = Color(0xFF6CA49F), onTertiaryContainer = Color(0xFF003936), background = Color(0xFF171211), onBackground = Color(0xFFECE0DD), surface = Color(0xFF171211), onSurface = Color(0xFFECE0DD), surfaceVariant = Color(0xFF52443F), onSurfaceVariant = Color(0xFFD7C2BC), surfaceTint = Color(0xFFFBB7A0), inverseSurface = Color(0xFFECE0DD), inverseOnSurface = Color(0xFF352F2D), error = Color(0xFFFFB4AB), onError = Color(0xFF690005), errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6), outline = Color(0xFF9F8D87), outlineVariant = Color(0xFF52443F), scrim = Color(0xFF000000), surfaceBright = Color(0xFF3E3836), surfaceContainer = Color(0xFF241E1D), surfaceContainerHigh = Color(0xFF2F2927), surfaceContainerHighest = Color(0xFF3A3331), surfaceContainerLow = Color(0xFF201A19), surfaceContainerLowest = Color(0xFF120D0C), surfaceDim = Color(0xFF171211))
+    val LIGHT = lightColorScheme(primary = Color(0xFF85513F), onPrimary = Color(0xFFFFFFFF), primaryContainer = Color(0xFFC98B76), onPrimaryContainer = Color(0xFF502617), inversePrimary = Color(0xFFFBB7A0), secondary = Color(0xFF74584F), onSecondary = Color(0xFFFFFFFF), secondaryContainer = Color(0xFFFDD8CC), onSecondaryContainer = Color(0xFF785C53), tertiary = Color(0xFF2E6763), onTertiary = Color(0xFFFFFFFF), tertiaryContainer = Color(0xFF6CA49F), onTertiaryContainer = Color(0xFF003936), background = Color(0xFFFFF8F6), onBackground = Color(0xFF201A19), surface = Color(0xFFFFF8F6), onSurface = Color(0xFF201A19), surfaceVariant = Color(0xFFF4DED7), onSurfaceVariant = Color(0xFF52443F), surfaceTint = Color(0xFF85513F), inverseSurface = Color(0xFF352F2D), inverseOnSurface = Color(0xFFFAEEEB), error = Color(0xFFBA1A1A), onError = Color(0xFFFFFFFF), errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF93000A), outline = Color(0xFF84736E), outlineVariant = Color(0xFFD7C2BC), scrim = Color(0xFF000000), surfaceBright = Color(0xFFFFF8F6), surfaceContainer = Color(0xFFF7EBE8), surfaceContainerHigh = Color(0xFFF1E6E2), surfaceContainerHighest = Color(0xFFECE0DD), surfaceContainerLow = Color(0xFFFDF1EE), surfaceContainerLowest = Color(0xFFFFFFFF), surfaceDim = Color(0xFFE3D8D4))
 
     private var cache: Triple<Boolean, Boolean, ColorScheme>? = null
     /** Schéma Material courant (marque ou fond d'écran). */
@@ -40,11 +44,13 @@ object C {
         cache?.let { if (it.first == d && it.second == y) return it.third }
         // style « Fitness » (Philippe, 14 novembre 11 h 15 : « Ok » à la voie mélangée inspirée d'Apple Fitness) :
         // fond noir et cartes gris très foncé en sombre ; fond gris clair et cartes blanches en clair
+        // ambiance « Glamour » (Philippe, 14 novembre 12 h 06 : « J'aime bien l'option C ») : noir et or rose en sombre, crème et cuivre en clair
         val cs = (if (y) (if (d) dynamicDarkColorScheme(app!!) else dynamicLightColorScheme(app!!)) else if (d) DARK else LIGHT).let {
-            if (d) it.copy(background = Color.Black, surface = Color.Black, surfaceContainerLowest = Color.Black, surfaceContainerLow = Color(0xFF0E0E10),
-                surfaceContainer = Color.Black, surfaceContainerHigh = Color(0xFF1C1C1E), surfaceContainerHighest = Color(0xFF2C2C2E), outlineVariant = Color(0xFF38383A))
-            else it.copy(background = Color(0xFFF2F2F7), surface = Color(0xFFF2F2F7), surfaceContainer = Color(0xFFF9F9FB), surfaceContainerHigh = Color.White,
-                surfaceContainerHighest = Color(0xFFE5E5EA), outlineVariant = Color(0xFFD1D1D6))
+            if (d) it.copy(background = Color(0xFF0E0B0C), surface = Color(0xFF0E0B0C), surfaceContainerLowest = Color(0xFF0A0809), surfaceContainerLow = Color(0xFF141012),
+                surfaceContainer = Color(0xFF181314), surfaceContainerHigh = Color(0xFF1E1719), surfaceContainerHighest = Color(0xFF2A2124), outlineVariant = Color(0x2EE8B4A0),
+                onSurface = Color(0xFFF6ECE8), onSurfaceVariant = Color(0xFF9C908C))
+            else it.copy(background = Color(0xFFF8F1EE), surface = Color(0xFFF8F1EE), surfaceContainer = Color(0xFFFFFFFF), surfaceContainerHigh = Color.White,
+                surfaceContainerHighest = Color(0xFFF1E4DF), outlineVariant = Color(0x40B9775F), onSurface = Color(0xFF2A1812), onSurfaceVariant = Color(0xFF8A716A))
         }
         cache = Triple(d, y, cs); return cs
     }
@@ -52,11 +58,16 @@ object C {
     // neutres et marque : tirés du schéma Material
     val bg get() = s.surface; val surface get() = s.surfaceContainerHigh; val ink get() = s.onSurface
     val muted get() = s.onSurfaceVariant; val line get() = s.outlineVariant
-    val brand get() = s.primary; val onBrand get() = s.onPrimary
+    /** or rose (sombre) / cuivre (clair) ; avec Material You, la couleur du fond d'écran */
+    val brand get() = if (dyn && dynOk) s.primary else p(0xFFE7B3A0, 0xFFA9654E); val onBrand get() = if (dyn && dynOk) s.onPrimary else p(0xFF2A1812, 0xFFFFFFFF)
+    /** dégradé or rose des boutons principaux et du segment choisi, texte foncé dessus */
+    val gold1 get() = Color(0xFFF5D2C2); val gold2 get() = Color(0xFFC98B76); val onGold get() = Color(0xFF2A1812)
+    /** cartes : léger dégradé et filet cuivré */
+    val card1 get() = p(0xFF1E1719, 0xFFFFFFFF); val card2 get() = p(0xFF151112, 0xFFFCF6F3); val rim get() = Color(if (dark) 0x2EE8B4A0 else 0x40B9775F)
     val brandC get() = s.primaryContainer; val onBrandC get() = s.onPrimaryContainer
     val sel get() = s.secondaryContainer; val onSel get() = s.onSecondaryContainer
     /** segment choisi d'un sélecteur (gris clair sur piste foncée, blanc sur piste claire) */
-    val segOn get() = if (dark) Color(0xFF3A3A3C) else Color.White
+    val segOn get() = gold2
     // scène du personnage 3D
     val stage get() = p(0xFF0C0F12, 0xFF15181C); val stage2 get() = p(0xFF181C21, 0xFF20252B); val stage3 get() = p(0xFF21262C, 0xFF2A3037)
     // couleurs porteuses d'information : inchangées
@@ -81,12 +92,24 @@ object C {
 
 val PLAB = mapOf("prep" to "PRÊT ?", "warm" to "ÉCHAUFFEMENT", "work" to "EFFORT", "rest" to "PAUSE", "cool" to "RETOUR AU CALME", "switch" to "CHANGEMENT")
 
-/** Police arrondie Nunito, un cran plus grasse que demandé pour l'allure « Fitness » (400 → 600, 500/600 → 700, 700 → 800, 800/900 → 900). */
+/** Corps de texte Quicksand (arrondie, douce) ; chiffres et très gras en Nunito Black (ambiance Glamour, 14 novembre). */
 val Rounded = FontFamily(
-    Font(fr.pgragnic.force.R.font.nunito_600, FontWeight.Normal), Font(fr.pgragnic.force.R.font.nunito_600, FontWeight.Light),
-    Font(fr.pgragnic.force.R.font.nunito_700, FontWeight.Medium), Font(fr.pgragnic.force.R.font.nunito_700, FontWeight.SemiBold),
-    Font(fr.pgragnic.force.R.font.nunito_800, FontWeight.Bold), Font(fr.pgragnic.force.R.font.nunito_900, FontWeight.ExtraBold),
+    Font(fr.pgragnic.force.R.font.quicksand_600, FontWeight.Normal), Font(fr.pgragnic.force.R.font.quicksand_500, FontWeight.Light),
+    Font(fr.pgragnic.force.R.font.quicksand_700, FontWeight.Medium), Font(fr.pgragnic.force.R.font.quicksand_700, FontWeight.SemiBold),
+    Font(fr.pgragnic.force.R.font.quicksand_700, FontWeight.Bold), Font(fr.pgragnic.force.R.font.quicksand_700, FontWeight.ExtraBold),
     Font(fr.pgragnic.force.R.font.nunito_900, FontWeight.Black))
+
+/** Titres : Playfair Display, italique pour les grands titres, droit pour les titres de carte. */
+val Serif = FontFamily(Font(fr.pgragnic.force.R.font.playfair_600_italic, FontWeight.SemiBold, androidx.compose.ui.text.font.FontStyle.Italic),
+    Font(fr.pgragnic.force.R.font.playfair_700, FontWeight.Bold))
+
+/** Carte « Glamour » : très arrondie, léger dégradé, filet cuivré. */
+fun androidx.compose.ui.Modifier.glam(r: Int = 30) = this.clip(androidx.compose.foundation.shape.RoundedCornerShape(r.dp))
+    .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(C.card1, C.card2)))
+    .border(1.dp, C.rim, androidx.compose.foundation.shape.RoundedCornerShape(r.dp))
+
+/** Dégradé or rose (boutons principaux, segment choisi). */
+val goldBrush get() = androidx.compose.ui.graphics.Brush.linearGradient(listOf(C.gold1, C.gold2))
 
 private val Typo = Typography().let { t ->
     Typography(t.displayLarge.copy(fontFamily = Rounded), t.displayMedium.copy(fontFamily = Rounded), t.displaySmall.copy(fontFamily = Rounded),

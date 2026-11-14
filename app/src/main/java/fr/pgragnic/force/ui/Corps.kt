@@ -94,12 +94,12 @@ fun CorpsScreen() {
         val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
         @Composable fun row(m: String) {
             val r = MU.R[m]!!; val ov = MU.over(m); val c = (if (ov) Recovery.overCol(C.rgb(C.danger)) else Recovery.recCol(r, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort))).col(); val h = MU.ready[m] ?: 0
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(Modifier.fillMaxWidth().glam(26).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // anneau de récupération façon Apple Fitness, dans la couleur exacte du niveau (plein et rouge vif si surchargé)
                     Box(contentAlignment = Alignment.Center) { Ring(if (ov) 1f else r / 100f, c, 46.dp, 6.dp); Text("$r", color = c, fontWeight = FontWeight.Black, fontSize = 14.sp) }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
                             (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
@@ -109,11 +109,11 @@ fun CorpsScreen() {
             }
         }
         if (tired.isNotEmpty()) {
-            Text(t("À laisser reposer", "Let these recover"), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(t("À laisser reposer", "Let these recover"), color = C.brand, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontFamily = Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 6.dp))
             tired.forEach { row(it) }
         } else Text(t("Tous tes muscles sont prêts.", "All your muscles are ready."), color = C.ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         if (ready.isNotEmpty()) {
-            Text(t("Prêts", "Ready"), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(t("Prêts", "Ready"), color = C.brand, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontFamily = Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 6.dp))
             ready.forEach { row(it) }
         }
     }

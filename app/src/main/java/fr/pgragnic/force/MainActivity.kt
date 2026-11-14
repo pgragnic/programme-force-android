@@ -10,6 +10,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -110,13 +115,22 @@ class MainActivity : ComponentActivity() {
                     PlayerScreen(cur, onClose = { Live.end(this@MainActivity) }, onEnd = { ending = true })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
-                    NavigationBar(containerColor = C.s.surfaceContainer, modifier = Modifier.drawBehind { drawLine(C.line, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1f) }) {
-                        // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
-                        val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.PlayCircleOutline, t("Corps", "Body") to Icons.Default.Accessibility,
-                            t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
-                        items.forEachIndexed { i, (t, ic) ->
-                            NavigationBarItem(selected = tab == i, onClick = { tab = i }, modifier = Modifier.tourTarget(if (i == 1) "corps" else null), icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = C.ink, selectedTextColor = C.ink, indicatorColor = androidx.compose.ui.graphics.Color.Transparent, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
+                    // barre d'onglets flottante en capsule (ambiance Glamour, Philippe 14 novembre : « J'aime bien l'option C »)
+                    // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
+                    val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.FavoriteBorder, t("Corps", "Body") to Icons.Default.Accessibility,
+                        t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
+                    val cap = androidx.compose.foundation.shape.RoundedCornerShape(32.dp)
+                    Box(Modifier.fillMaxWidth().background(C.bg).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)) {
+                        Row(Modifier.fillMaxWidth().height(64.dp).clip(cap).background(C.s.surfaceContainer).border(1.dp, C.rim, cap).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            items.forEachIndexed { i, (lab, ic) ->
+                                val on = tab == i
+                                Column(Modifier.weight(1f).fillMaxHeight().tourTarget(if (i == 1) "corps" else null).clip(androidx.compose.foundation.shape.RoundedCornerShape(26.dp))
+                                    .background(if (on) C.brand.copy(alpha = .14f) else androidx.compose.ui.graphics.Color.Transparent).clickable { tab = i },
+                                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                    Icon(ic, lab, tint = if (on) C.brand else C.muted, modifier = Modifier.size(22.dp))
+                                    Text(lab, color = if (on) C.brand else C.muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                }
+                            }
                         }
                     }
                 }) { pad ->
