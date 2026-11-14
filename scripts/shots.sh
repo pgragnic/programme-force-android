@@ -54,7 +54,11 @@ tapd() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/
 case " $POSES " in *" coach "*)
   shot coach-0 --es lang fr --es theme light --ez seed true --ez tired true --ei tab 0
   tapt "Faire le point avec le coach"; cap coach-1; tapt "J'accepte"; cap coach-2
-  tapt "Un peu fatigué"; tapt "30 min"; cap coach-3; tapt "Genou"; sleep 4; cap coach-4;;
+  tapt "Un peu fatigué"; tapt "30 min"; cap coach-3; tapt "Genou"; sleep 4; cap coach-4
+  shot coach-libre --es lang fr --es theme light --ez seed true --ei tab 0; tapd "Parler au coach"; cap coach-libre
+  sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
+  shot coach-semaine --es lang fr --es theme light --ez seed true --ei tab 2 --es sub 2
+  for i in 1 2 3 4; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap coach-semaine-$i; done;;
 esac
 # fiche Play Store : écrans en clair, français et anglais (à lancer avec un émulateur haute définition, profil pixel_6)
 case " $POSES " in *" store "*)
