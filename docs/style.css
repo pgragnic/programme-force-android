@@ -1,6 +1,12 @@
-:root{--bg:#EEF2F1;--ink:#15202A;--muted:#5A6772;--acc:#0E8A5E;--card:#fff;--line:#D5DDDB}
-@media (prefers-color-scheme:dark){:root{--bg:#0E1317;--ink:#E7EDEF;--muted:#94A1AB;--acc:#2EC089;--card:#172027;--line:#26323B}}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px 16px 48px}
-main{max-width:720px;margin:0 auto}h1{font-size:28px;line-height:1.2}h2{font-size:20px;margin-top:28px}
-a{color:var(--acc)}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:16px 0}
-small,.muted{color:var(--muted)}nav a{margin-right:14px}
+/* style épuré bleu vif (Philippe, 14 novembre : « Partons sur le bleu vif », puis « adapter la fiche Play Store, les pages web et la plaquette ») */
+:root{--bg:#F7F6F2;--ink:#111111;--muted:#6E6E6A;--acc:#1E88FF;--card:#FFFFFF;--line:#EDECE7}
+@media (prefers-color-scheme:dark){:root{--bg:#0E0E0F;--ink:#F2F2F0;--muted:#9A9A96;--acc:#4DA3FF;--card:#1A1A1C;--line:#2A2A2C}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:28px 16px 56px}
+main{max-width:720px;margin:0 auto}
+h1{font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-.6px;margin:8px 0 12px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.3px;margin-top:30px}
+a{color:var(--acc);text-decoration:none;font-weight:600}a:hover{text-decoration:underline}
+.card{background:var(--card);border-radius:22px;padding:18px 20px;margin:16px 0;box-shadow:0 1px 3px #0000000a}
+small,.muted{color:var(--muted)}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+nav a{background:var(--bg);border-radius:18px;padding:6px 14px;font-size:14px}
