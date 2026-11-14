@@ -57,7 +57,7 @@ fun CorpsScreen() {
         val onPick = remember { { n: String?, x: Float, y: Float -> pick = n?.let { Triple(it, x, y) } } }
         val dens = androidx.compose.ui.platform.LocalDensity.current
         // style épuré : le personnage dans une tuile, Face / Dos dessous, explications et légende dans l'aide « ? »
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.stage).padding(bottom = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(C.stage), horizontalAlignment = Alignment.CenterHorizontally) {
             BoxWithConstraints(Modifier.fillMaxWidth().height(330.dp)) {
                 Body3D(BodyState(pose = "calf", k = 0.0, nodb = true, colors = colors, az = if (back) PI.toFloat() else 0f, map = true, onPick = onPick, onView = onView, viewKey = viewKey).th(), Modifier.fillMaxSize())
                 pick?.let { (m, x, y) ->
@@ -72,8 +72,9 @@ fun CorpsScreen() {
                     }
                 }
             }
-            Seg(listOf(t("Face", "Front") to !shownBack, t("Dos", "Back") to shownBack), Modifier.width(180.dp)) { i -> back = i == 1; viewKey++ }
         }
+        // Face / Dos sous la tuile (dans la tuile, la zone sous la vue 3D sortait noire sur téléphone virtuel)
+        Seg(listOf(t("Face", "Front") to !shownBack, t("Dos", "Back") to shownBack), Modifier.align(Alignment.CenterHorizontally).width(180.dp)) { i -> back = i == 1; viewKey++ }
         // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,
         // puis les muscles prêts avec la même ligne détaillée ; toucher un muscle ouvre son détail
         val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
