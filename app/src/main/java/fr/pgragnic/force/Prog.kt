@@ -342,12 +342,12 @@ object Prog {
                     if (q[1] >= need(x.id, st)) {
                         val nk = nextStep(x.id, q[0], 1)
                         if (nk > q[0] && !capOk(x.id, nk, e.d, h, last[x.id]!!)) { q[1] = need(x.id, st).toDouble(); return@forEach } // plafond atteint : la hausse attend
-                        if (nk > q[0]) { q[0] = nk; h += e.d to nk; last[x.id] = e.d; ups.getOrPut(e.d) { mutableListOf() }.add("↑ ${x.n} ${loadTxt(x.id, nk)}") }
+                        if (nk > q[0]) { ups.getOrPut(e.d) { mutableListOf() }.add("↑" + t("${x.n} ${loadTxt(x.id, q[0])} → ${loadTxt(x.id, nk)}", "${tr(x.n)} ${loadTxt(x.id, q[0])} → ${loadTxt(x.id, nk)}")); q[0] = nk; h += e.d to nk; last[x.id] = e.d }
                         q[1] = 0.0
                     }
                 } else if (x.done < x.target - 1) {
                     q[1] = 0.0; q[2]++
-                    if (q[2] >= 2) { val nk = nextStep(x.id, q[0], -1); if (nk < q[0]) { q[0] = nk; ups.getOrPut(e.d) { mutableListOf() }.add("↓ ${x.n} ${loadTxt(x.id, nk)}") }; q[2] = 0.0 }
+                    if (q[2] >= 2) { val nk = nextStep(x.id, q[0], -1); if (nk < q[0]) { ups.getOrPut(e.d) { mutableListOf() }.add("↓" + t("${x.n} ${loadTxt(x.id, q[0])} → ${loadTxt(x.id, nk)} (répétitions manquées 2 fois)", "${tr(x.n)} ${loadTxt(x.id, q[0])} → ${loadTxt(x.id, nk)} (reps missed twice)")); q[0] = nk }; q[2] = 0.0 }
                 } else { q[1] = 0.0; q[2] = 0.0 }
             }
         }

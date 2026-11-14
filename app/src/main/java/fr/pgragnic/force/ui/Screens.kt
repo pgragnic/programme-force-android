@@ -390,7 +390,8 @@ fun SuiviScreen(inProgres: Boolean = false) {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(t("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", "C${e.c} · W${e.w + 1} · Workout ${e.s} · ${tr(e.f ?: "")}"), color = C.ink, fontWeight = FontWeight.Bold)
-                        val ups = Prog.ups[e.d]; if (!ups.isNullOrEmpty()) Text(ups.joinToString(" · "), color = C.effort, fontSize = 12.sp)
+                        // changement de charge décidé après cette séance (Philippe, 14 novembre 22 h 31 : « Pour C1 S2 séance 2 on voit indiqué Développé militaire debout » → « Oui » à « Prochaine fois : … »)
+                        Prog.ups[e.d]?.forEach { u -> Text(t("Prochaine fois : ", "Next time: ") + u.drop(1), color = if (u.startsWith("↓")) C.warm else C.effort, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
                     }
                     Text(df.format(Date(e.d)), color = C.muted, fontSize = 13.sp)
                 }
