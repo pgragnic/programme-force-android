@@ -68,9 +68,10 @@ object Bilan {
 fun BilanPanel() {
     val log by Store.log.collectAsState(); val days by Store.days.collectAsState(); val st by Store.st.collectAsState(); val remote by Store.bilan.collectAsState()
     val auto = remember(log, days, st) { Bilan.auto(log, days, st) }
+    val fold = rememberFold("bilan")
     Panel {
-        Text("Bilan de la semaine", color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-        Text(t("Semaine du ", "Week of ") + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), color = C.muted, fontSize = 12.sp)
+        FoldHead(t("Bilan de la semaine", "Week summary"), t("Semaine du ", "Week of ") + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), fold)
+        if (!fold.value) return@Panel
         val r = remote
         val rDate = r?.get("date")?.jsonPrimitive?.contentOrNull
         val fresh = rDate != null && runCatching { LocalDate.parse(rDate) >= LocalDate.now().minusDays(8) }.getOrDefault(false)

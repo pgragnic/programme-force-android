@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,9 +25,11 @@ fun BalancePanel() {
     val R = remember(log) { Balance.compute(log) }
     val W = remember(log) { Balance.weekRes() }
     val lagPairs = W.pairs.filter { it.state != 0 }
+    val fold = rememberFold("equilibre")
     Panel {
-        Text(t("Équilibre des muscles", "Muscle balance"), color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-        Text(t("Séries des 4 dernières semaines, par paires opposées", "Sets over the last 4 weeks, by opposing pairs"), color = C.muted, fontSize = 12.sp)
+        FoldHead(t("Équilibre des muscles", "Muscle balance"), if (fold.value) t("Séries des 4 dernières semaines, par paires opposées", "Sets over the last 4 weeks, by opposing pairs")
+            else if (R.ok) t("Équilibré", "Balanced") else t("À surveiller", "Worth a look"), fold)
+        if (!fold.value) return@Panel
         if (R.sets.values.sum() < 2) { Text(t("Fais quelques séances pour voir l'équilibre.", "Do a few workouts to see the balance."), color = C.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)); return@Panel }
         R.pairs.forEach { p ->
             val col = if (p.state == 0) C.brand else C.warm
@@ -57,11 +61,10 @@ fun CoachWeekPanel() {
     val key = remember { java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).toString() }
     var txt by remember { mutableStateOf<String?>(null) }; var busy by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { txt = CoachApi.bilan(ctx, key, false) }
+    val fold = rememberFold("coach")
     Panel {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CoachAvatar(30); Spacer(Modifier.width(10.dp))
-            Text(t("Le mot du coach", "Coach's word"), color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.weight(1f))
-        }
+        FoldHead(t("Le mot du coach", "Coach's word"), null, fold) { CoachAvatar(30) }
+        if (!fold.value) return@Panel
         txt?.let { Text(it, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 10.dp)) }
         if (busy) Text(t("Le coach regarde ta semaine…", "The coach is looking at your week…"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
         else Box(Modifier.padding(top = 12.dp).clip(RoundedCornerShape(20.dp)).background(if (txt == null) C.brand else C.chip).clickable {
@@ -70,5 +73,27 @@ fun CoachWeekPanel() {
         }.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(if (txt == null) t("Demander au coach", "Ask the coach") else t("Actualiser", "Refresh"), color = if (txt == null) C.onBrand else C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
+    }
+}
+
+/** Section repliable (Philippe, 14 novembre 19 h 10 : « Dans l'onglet semaine peux-tu faire des sections qui se replient ? »). État gardé sur le téléphone. */
+@Composable
+fun rememberFold(id: String): MutableState<Boolean> {
+    val p = LocalContext.current.getSharedPreferences("force", android.content.Context.MODE_PRIVATE)
+    val s = remember(id) { mutableStateOf(p.getBoolean("fold_$id", true)) }
+    LaunchedEffect(s.value) { p.edit().putBoolean("fold_$id", s.value).apply() }
+    return s
+}
+@Composable
+fun FoldHead(title: String, sub: String?, open: MutableState<Boolean>, lead: (@Composable () -> Unit)? = null) {
+    val rot by androidx.compose.animation.core.animateFloatAsState(if (open.value) 180f else 0f, label = "fold")
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { open.value = !open.value }, verticalAlignment = Alignment.CenterVertically) {
+        lead?.let { it(); Spacer(Modifier.width(10.dp)) }
+        Column(Modifier.weight(1f)) {
+            Text(title, color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            sub?.let { Text(it, color = C.muted, fontSize = 12.sp) }
+        }
+        Icon(androidx.compose.material.icons.Icons.Default.ExpandMore, if (open.value) t("Replier", "Collapse") else t("Déplier", "Expand"), tint = C.muted,
+            modifier = Modifier.size(24.dp).graphicsLayer { rotationZ = rot })
     }
 }

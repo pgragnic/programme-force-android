@@ -372,6 +372,7 @@ fun SuiviScreen(inProgres: Boolean = false) {
     var open by remember { mutableStateOf<Long?>(null) }
     var edit by remember { mutableStateOf<Long?>(null) }
     var arm by remember { mutableStateOf<Long?>(null) }
+    val histOpen = rememberFold("historique")
     val df = remember { SimpleDateFormat("EEE d MMM", fr.pgragnic.force.L.loc) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -383,8 +384,8 @@ fun SuiviScreen(inProgres: Boolean = false) {
         item { CoachWeekPanel() }
         item { BalancePanel() }
         if (!inProgres) item { ProgressPanel() }
-        item { Box(Modifier.padding(top = 8.dp)) { Eyebrow("Historique") } }
-        items(log.sortedByDescending { it.d }, key = { it.d }) { e ->
+        item { Box(Modifier.padding(top = 8.dp)) { Panel { FoldHead(t("Historique", "History"), t("${log.size} séances", "${log.size} workouts"), histOpen) } } }
+        if (histOpen.value) items(log.sortedByDescending { it.d }, key = { it.d }) { e ->
             Panel {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {

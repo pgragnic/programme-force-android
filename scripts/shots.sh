@@ -58,7 +58,8 @@ case " $POSES " in *" coach "*)
   shot coach-libre --es lang fr --es theme light --ez seed true --ei tab 0; tapd "Parler au coach"; cap coach-libre
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
   shot coach-semaine --es lang fr --es theme light --ez seed true --ei tab 2 --es sub 2
-  for i in 1 2 3 4; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap coach-semaine-$i; done;;
+  for i in 1 2 3 4; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap coach-semaine-$i; done
+  shot coach-plie --es lang fr --es theme light --ez seed true --ei tab 2 --es sub 2; tapt "Bilan de la semaine"; sleep 1; tapt "Le mot du coach"; sleep 1; cap coach-plie;;
 esac
 # fiche Play Store : écrans en clair, français et anglais (à lancer avec un émulateur haute définition, profil pixel_6)
 case " $POSES " in *" store "*)
