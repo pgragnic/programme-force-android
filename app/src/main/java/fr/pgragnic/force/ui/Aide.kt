@@ -1,5 +1,6 @@
 package fr.pgragnic.force.ui
 
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
