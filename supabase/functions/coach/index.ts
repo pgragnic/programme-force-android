@@ -27,6 +27,11 @@ const TOOL = {
           series_moins: { type: "integer", minimum: 0, maximum: 2, description: "Séries retirées à chaque exercice (jamais sous 1 série)." },
           remplacements: { type: "array", items: { type: "object", properties: { de: { type: "string" }, vers: { type: "string" } }, required: ["de", "vers"] },
             description: "Uniquement parmi contexte.exercices[].alternatives (identifiants)." },
+          charges: { type: "array", items: { type: "object", properties: { id: { type: "string" }, sens: { type: "integer", enum: [-1, 1] } }, required: ["id", "sens"] },
+            description: "Après une séance : un cran de charge en plus (1) ou en moins (-1) pour la prochaine fois, par identifiant d'exercice de dernieres_seances[0]." },
+          gene: { type: "object", properties: { zone: { type: "string", enum: ["genou", "cheville", "hanche", "epaule", "coude", "dos"] }, jours: { type: "integer", minimum: 1, maximum: 14 } },
+            required: ["zone", "jours"], description: "Gêne qui dure : l'appli ménage cette zone pendant ce nombre de jours (exercices remplacés automatiquement)." },
+          sans_materiel_jours: { type: "integer", minimum: 1, maximum: 21, description: "Vacances ou déplacement : séances au poids du corps pendant ce nombre de jours." },
           explications: { type: "array", items: { type: "string" }, description: "Une phrase courte par changement, dans l'ordre." },
         },
         required: ["explications"],
@@ -36,7 +41,15 @@ const TOOL = {
   },
 };
 
-const SYSTEM = (ctx: unknown, lang: string) => `Tu es le coach de l'appli UpRep (remise en forme à la maison).
+const MODES: Record<string, string> = {
+  avant: "Moment : l'utilisateur fait le point avant sa séance. Propose un plan adapté à ses réponses.",
+  apres: "Moment : la séance vient de se terminer (dernieres_seances[0]). Félicite brièvement, tiens compte du ressenti et de la réserve ; propose si utile plan.charges pour la prochaine fois (exercices trop faciles : +1, trop durs ou en échec : -1). N'utilise pas les autres champs du plan.",
+  libre: "Moment : conversation libre. Réponds à la question ; propose un plan seulement si l'utilisateur demande un changement.",
+  suggestion: "Moment : suggestion du jour affichée en haut de l'écran Séance. Une seule phrase de 20 mots maximum, utile pour aujourd'hui (récupération, pas, activité, régularité), ou un texte vide s'il n'y a rien de pertinent. Pas de plan, pas de choix.",
+  bilan: "Moment : bilan de la semaine. Trois phrases maximum : ce qui va bien, l'équilibre des muscles (equilibre_4_semaines, en disant ce que le programme rattrape déjà cette semaine), un ou deux conseils concrets pour la semaine suivante. Pas de plan, pas de choix.",
+};
+
+const SYSTEM = (ctx: unknown, lang: string, mode: string) => `Tu es le coach de l'appli UpRep (remise en forme à la maison).
 Langue : ${lang === "en" ? "anglais" : "français, tutoiement"}.
 Tu discutes avec l'utilisateur pour adapter SA séance du jour et lui donner des conseils simples. Tu t'appuies uniquement sur le contexte ci-dessous.
 Règles :
@@ -47,7 +60,10 @@ Règles :
 - Fatigue, mauvaise nuit : moins de séries ou une séance qui ménage les muscles peu récupérés (contexte.recuperation, en %). Muscles « surcharges » : évite les séances qui les travaillent.
 - Peu de temps : duree_max.
 - Quand tu proposes un plan, l'appli l'affiche avec tes explications et l'utilisateur l'accepte ou non : ne dis pas que c'est déjà fait.
+- Gêne qui dure plusieurs jours : plan.gene. Vacances ou déplacement sans matériel : plan.sans_materiel_jours (les séances sont recomposées au poids du corps). Séance express : duree_max.
+- Les changements de charge (plan.charges) se font seulement après une séance, d'un cran, en t'appuyant sur le ressenti et la réserve (répétitions encore possibles).
 - Réponds toujours avec l'outil « repondre ».
+${MODES[mode] ?? ""}
 Contexte (JSON) : ${JSON.stringify(ctx)}`;
 
 Deno.serve(async (req) => {
@@ -62,7 +78,7 @@ Deno.serve(async (req) => {
   if (error) return out({ erreur: "quota_indispo" }, 500);
   if ((n as number) > PER_DAY) return out({ erreur: "quota" }, 429);
 
-  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string };
+  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string; mode?: string };
   try { body = await req.json(); } catch { return out({ erreur: "requete" }, 400); }
   const messages = (body.messages ?? []).slice(-20).filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length <= 2000);
   if (!messages.length || messages[0].role !== "user") return out({ erreur: "requete" }, 400);
@@ -70,7 +86,7 @@ Deno.serve(async (req) => {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 900, system: SYSTEM(body.context ?? {}, body.lang ?? "fr"), tools: [TOOL],
+    body: JSON.stringify({ model: MODEL, max_tokens: 900, system: SYSTEM(body.context ?? {}, body.lang ?? "fr", body.mode ?? "avant"), tools: [TOOL],
       tool_choice: { type: "tool", name: "repondre" }, messages }),
   });
   if (!r.ok) return out({ erreur: "api", statut: r.status }, 502);

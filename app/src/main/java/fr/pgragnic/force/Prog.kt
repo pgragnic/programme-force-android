@@ -190,7 +190,8 @@ object Prog {
         return if (own.isEmpty()) id else own[((s.firstOrNull() ?: 'A') - 'A').coerceAtLeast(0) % own.size].first
     }
     val ALT = HashMap<String, List<String>>()
-    private val gear get() = GearStore.g.value
+    // matériel et restrictions du profil, plus ce que le coach a décidé pour quelques jours (zone ménagée, vacances sans matériel)
+    private val gear get() = CoachState.eff(GearStore.g.value)
 
     /** L'exercice est-il faisable avec le matériel et compatible avec les restrictions de santé ? */
     fun ok(id: String, g: Gear = gear): Boolean {
@@ -350,6 +351,14 @@ object Prog {
                 } else { q[1] = 0.0; q[2] = 0.0 }
             }
         }
+        // cran décidé avec le coach après une séance : appliqué tant que l'exercice n'a pas été refait depuis
+        CoachState.bias.forEach { (id, b) ->
+            val q = L[id] ?: return@forEach
+            if (log.any { e -> e.d > b.t && e.ex.any { it.id == id } }) return@forEach
+            val nk = nextStep(id, q[0], b.dir)
+            if (b.dir > 0 && !capOk(id, nk, System.currentTimeMillis(), hist[id] ?: emptyList(), last[id] ?: 0L)) return@forEach
+            q[0] = nk
+        }
         loads = L
     }
 
@@ -496,7 +505,7 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            val ns = nsOver[id] ?: adaptSets(W.s + if (gear.focus(id)) 1 else 0)
+            val ns = nsOver[id] ?: adaptSets(W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0)
             for (i in 1..ns) {
                 P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
                     det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",

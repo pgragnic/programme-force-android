@@ -13,6 +13,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -163,15 +165,29 @@ fun SeanceScreen(onStart: () -> Unit) {
         // titre, une carte « Prochaine séance » avec un seul bouton, puis des tuiles à un seul chiffre
         Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Séance", "Workout"), Modifier.weight(1f)); HelpButton("seance") }
         // coach (Claude) : faire le point avant la séance (maquette du parcours, « Ok pour maquette du parcours »)
-        var coach by remember { mutableStateOf(false) }
-        if (coach) CoachScreen(onClose = { coach = false }, onStart = onStart)
-        Row(Modifier.fillMaxWidth().glam().clickable { coach = true }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        var coach by remember { mutableStateOf<String?>(null) }
+        val cctx = LocalContext.current
+        coach?.let { md -> CoachScreen(md, onClose = { coach = null }, onStart = onStart) }
+        // après une séance du jour pas encore débriefée : le coach propose le debrief
+        val lastE = log.maxByOrNull { it.d }
+        val cs = CoachState.v
+        val debrief = lastE != null && java.time.Instant.ofEpochMilli(lastE.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now() &&
+            cctx.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).getLong("coachdebrief", 0L) != lastE.d && coach == null
+        var sug by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) { sug = CoachApi.suggestion(cctx) }
+        val running = remember(cs) { CoachState.genes.map { (z, d) -> t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "$z protected until ${CoachState.fmt(d)}") } +
+            listOfNotNull(CoachState.noGear?.let { t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
+        Row(Modifier.fillMaxWidth().glam().clickable { coach = if (debrief) "apres" else "avant" }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             CoachAvatar(36); Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(if (Adapt.on) t("Séance adaptée avec le coach", "Workout adapted with the coach") else t("Faire le point avec le coach", "Check in with the coach"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (Adapt.on) Adapt.notes.firstOrNull() ?: t("Touche pour en parler", "Tap to talk about it") else t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout"), color = C.muted, fontSize = 13.sp, maxLines = 2)
+                Text(when { debrief -> t("Comment s'est passée ta séance ?", "How did your workout go?"); Adapt.on -> t("Séance adaptée avec le coach", "Workout adapted with the coach"); else -> t("Faire le point avec le coach", "Check in with the coach") },
+                    color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(when { debrief -> t("Dis-le au coach, il ajuste tes prochaines charges", "Tell the coach, it adjusts your next loads"); Adapt.on -> Adapt.notes.firstOrNull() ?: t("Touche pour en parler", "Tap to talk about it")
+                    sug != null -> sug!!; else -> t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout") }, color = C.muted, fontSize = 13.sp, maxLines = 3)
+                running.forEach { Text("• $it", color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp)) }
             }
-            Icon(Icons.Default.ChevronRight, null, tint = C.muted)
+            Box(Modifier.size(36.dp).clip(CircleShape).background(C.chip).clickable { coach = "libre" }, contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Filled.Chat, t("Parler au coach", "Talk to the coach"), tint = C.ink, modifier = Modifier.size(18.dp)) }
         }
         Column(Modifier.fillMaxWidth().glam().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,7 +197,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 6.dp))
             Text(t("Séance ${st.s} · ${order.size} exercices · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", "Workout ${st.s} · ${order.size} exercises · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min"),
                 color = C.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-            gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id)) 1 else 0 })
+            gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
             // une seule ligne d'alerte, rouge pour les muscles surchargés ; le détail s'ouvre en la touchant
             if (over.isNotEmpty() || share >= .4) Row(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(8.dp)).clickable { warn = true }, verticalAlignment = Alignment.CenterVertically) {
@@ -364,6 +380,8 @@ fun SuiviScreen(inProgres: Boolean = false) {
             Text(t("${log.size} séances au total · $wk ces 7 derniers jours", "${log.size} sessions in total · $wk in the last 7 days"), color = C.muted, modifier = Modifier.padding(bottom = 6.dp))
         }
         item { BilanPanel() }
+        item { CoachWeekPanel() }
+        item { BalancePanel() }
         if (!inProgres) item { ProgressPanel() }
         item { Box(Modifier.padding(top = 8.dp)) { Eyebrow("Historique") } }
         items(log.sortedByDescending { it.d }, key = { it.d }) { e ->

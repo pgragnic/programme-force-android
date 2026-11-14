@@ -19,8 +19,56 @@ import kotlin.math.max
 // L'appli parle à la fonction Supabase « coach » (supabase/functions/coach), qui garde la clé de l'API Claude.
 
 @Serializable data class CoachRep(val de: String, val vers: String)
+@Serializable data class CoachLoad(val id: String, val sens: Int)
+@Serializable data class CoachGene(val zone: String, val jours: Int)
 @Serializable data class CoachPlan(val seance: String? = null, val repos: Boolean? = null, val duree_max: Int? = null, val series_moins: Int? = null,
-                                   val remplacements: List<CoachRep> = emptyList(), val explications: List<String> = emptyList())
+                                   val remplacements: List<CoachRep> = emptyList(), val explications: List<String> = emptyList(),
+                                   val charges: List<CoachLoad> = emptyList(), val gene: CoachGene? = null, val sans_materiel_jours: Int? = null) {
+    /** le plan change-t-il la séance du jour (et pas seulement les jours suivants) ? */
+    val today get() = seance != null || duree_max != null || (series_moins ?: 0) > 0 || remplacements.isNotEmpty() || gene != null || sans_materiel_jours != null
+}
+
+/**
+ * Ce que le coach a décidé pour plusieurs jours (Philippe, 14 novembre 17 h 22 : « Tous les ajouts ») :
+ * cran de charge pour la prochaine fois, zone à ménager quelques jours, séances au poids du corps (vacances).
+ */
+object CoachState {
+    @Serializable data class Bias(val dir: Int, val t: Long)
+    @Serializable private data class Saved(val bias: Map<String, Bias> = emptyMap(), val genes: Map<String, String> = emptyMap(), val noGear: String? = null)
+    private var s = Saved()
+    var v by mutableIntStateOf(0)
+    private fun today() = java.time.LocalDate.now()
+    private fun live(until: String) = runCatching { !java.time.LocalDate.parse(until).isBefore(today()) }.getOrDefault(false)
+    val bias get() = s.bias
+    /** zones ménagées et date de fin (incluse) */
+    val genes: Map<String, String> get() = s.genes.filterValues { live(it) }
+    val noGear: String? get() = s.noGear?.takeIf { live(it) }
+    private val BW = setOf("chair", "wall", "mat")
+    /** matériel et restrictions effectivement utilisés par le programme */
+    private var effIn: Gear? = null; private var effKey = ""; private var effOut: Gear? = null
+    fun eff(g: Gear): Gear {
+        val key = "$v|${today()}"
+        if (g === effIn && key == effKey) return effOut!!
+        effIn = g; effKey = key; effOut = effRaw(g); return effOut!!
+    }
+    private fun effRaw(g: Gear): Gear {
+        val gz = genes.keys; val ng = noGear != null
+        if (gz.isEmpty() && !ng) return g
+        return g.copy(limits = g.limits + gz, items = if (ng) g.items.filter { it in BW }.toSet() + "mat" else g.items)
+    }
+    fun load(ctx: Context) { s = runCatching { Json.decodeFromString<Saved>(ctx.getSharedPreferences("force", Context.MODE_PRIVATE).getString("coachst", null) ?: return) }.getOrDefault(Saved()) }
+    private fun save(ctx: Context) { ctx.getSharedPreferences("force", Context.MODE_PRIVATE).edit().putString("coachst", Json.encodeToString(Saved.serializer(), s)).apply(); v++; Adapt.v++ }
+    fun apply(ctx: Context, p: CoachPlan) {
+        val now = System.currentTimeMillis()
+        var b = s.bias; p.charges.filter { it.id in Prog.EX && (it.sens == 1 || it.sens == -1) }.forEach { b = b + (it.id to Bias(it.sens, now)) }
+        var gz = s.genes; p.gene?.takeIf { it.zone in Gear.LIMITS.map { l -> l.first } }?.let { gz = gz + (it.zone to today().plusDays(it.jours.coerceIn(1, 14).toLong() - 1).toString()) }
+        val ng = p.sans_materiel_jours?.let { today().plusDays(it.coerceIn(1, 21).toLong() - 1).toString() } ?: s.noGear
+        s = Saved(b, gz, ng); save(ctx)
+    }
+    fun endGene(ctx: Context, zone: String) { s = s.copy(genes = s.genes - zone); save(ctx) }
+    fun endNoGear(ctx: Context) { s = s.copy(noGear = null); save(ctx) }
+    fun fmt(d: String) = runCatching { java.time.LocalDate.parse(d).format(java.time.format.DateTimeFormatter.ofPattern("d MMM", L.loc)) }.getOrDefault(d)
+}
 @Serializable data class CoachReply(val texte: String = "", val choix: List<String> = emptyList(), val plan: CoachPlan? = null, val erreur: String? = null)
 
 /** Adaptation de la séance du jour décidée avec le coach ; ne vaut que pour la date du jour. */
@@ -48,7 +96,9 @@ object Adapt {
         p.seance?.takeIf { it in Prog.sess(st.c) }?.let { s -> Store.setSettings { it.s = s } }
         val inSess = Prog.orderEx(st.c, Store.st.value.s, st.w, Store.st.value)
         val ok = p.remplacements.filter { r -> r.de in Prog.EX && r.vers in Prog.EX && r.vers in Prog.alternatives(r.de, inSess) }.associate { it.de to it.vers }
-        cur = Saved(today(), p.duree_max?.coerceIn(15, 90), (p.series_moins ?: 0).coerceIn(0, 2), ok, p.explications.take(6))
+        CoachState.apply(ctx, p)
+        if (p.seance != null || p.duree_max != null || (p.series_moins ?: 0) > 0 || ok.isNotEmpty())
+            cur = Saved(today(), p.duree_max?.coerceIn(15, 90), (p.series_moins ?: 0).coerceIn(0, 2), ok, p.explications.take(6))
         save(ctx)
     }
     fun clear(ctx: Context) { cur = null; save(ctx) }
@@ -85,15 +135,26 @@ object CoachApi {
             putJsonArray("surcharges") { Recovery.MUS.filter { MU.over(it) }.forEach { add(tr(it)) } }
             putJsonArray("dernieres_seances") { log.sortedByDescending { it.d }.take(5).forEach { e -> addJsonObject {
                 put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()); put("seance", e.s); put("ressenti", e.f)
-                putJsonArray("exercices") { e.ex.forEach { x -> addJsonObject { put("nom", tr(x.n)); put("kg", x.kg); put("objectif", x.target); put("fait", x.done)
+                putJsonArray("exercices") { e.ex.forEach { x -> addJsonObject { put("id", x.id); put("nom", tr(x.n)); put("kg", x.kg); put("objectif", x.target); put("fait", x.done)
                     x.sets.mapNotNull { it.res }.takeIf { it.isNotEmpty() }?.let { r -> put("reserve_moyenne", r.average()) } } } }
             } } }
+            putJsonObject("adaptations_en_cours") {
+                putJsonObject("zones_menagees_jusqu_au") { CoachState.genes.forEach { (z, d) -> put(z, d) } }
+                put("sans_materiel_jusqu_au", CoachState.noGear)
+                putJsonArray("charges_a_ajuster") { CoachState.bias.forEach { (id, b) -> addJsonObject { put("id", id); put("sens", b.dir) } } }
+            }
+            Balance.compute(log).let { b -> putJsonObject("equilibre_4_semaines") {
+                putJsonObject("series_par_semaine") { b.sets.forEach { (m, v) -> put(tr(m), Math.round(v * 10) / 10.0) } }
+                putJsonArray("desequilibres") { b.pairs.filter { it.state != 0 }.forEach { add(it.advice) } }
+                putJsonArray("peu_travailles") { b.low.forEach { add(tr(it)) } }
+                putJsonArray("rattrapage_cette_semaine") { Balance.weekRes().pairs.filter { it.state != 0 }.forEach { add(if (it.state == -1) it.a else it.b) } }
+            } }
             putJsonArray("activite_3_jours") { days.sortedByDescending { it.date }.take(3).forEach { d -> addJsonObject { put("date", d.date); put("pas", d.steps); put("activite", d.act); put("pas_avec_sac", d.rsteps) } } }
         }
     }
 
     /** Un échange avec le coach. messages : alternance user / assistant, en commençant par user. */
-    suspend fun ask(messages: List<Pair<String, String>>): CoachReply = withContext(Dispatchers.IO) {
+    suspend fun ask(messages: List<Pair<String, String>>, mode: String = "avant"): CoachReply = withContext(Dispatchers.IO) {
         val tok = runCatching { Store.sb?.auth?.currentAccessTokenOrNull() }.getOrNull() ?: return@withContext CoachReply(erreur = "compte")
         runCatching {
             val c = URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/" + FN).openConnection() as HttpURLConnection
@@ -101,7 +162,7 @@ object CoachApi {
             c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("apikey", BuildConfig.SUPABASE_KEY)
             c.setRequestProperty("Authorization", "Bearer $tok")
             val body = buildJsonObject {
-                put("lang", if (L.en) "en" else "fr"); put("context", context())
+                put("lang", if (L.en) "en" else "fr"); put("mode", mode); put("context", context())
                 putJsonArray("messages") { messages.forEach { (r, t) -> addJsonObject { put("role", r); put("content", t) } } }
             }
             c.outputStream.use { it.write(body.toString().toByteArray()) }
@@ -110,6 +171,25 @@ object CoachApi {
             val r = runCatching { json.decodeFromString<CoachReply>(txt) }.getOrElse { CoachReply(erreur = "api") }
             if (code !in 200..299 && r.erreur == null) r.copy(erreur = if (code == 404) "absent" else "api") else r
         }.getOrElse { CoachReply(erreur = "reseau") }
+    }
+
+    /** suggestion du jour (une par jour au plus, gardée sur le téléphone) */
+    suspend fun suggestion(ctx: Context): String? {
+        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE); val d = java.time.LocalDate.now().toString()
+        p.getString("coachsug", null)?.let { if (it.startsWith("$d|")) return it.substringAfter("|").ifBlank { null } }
+        if (!p.getBoolean("coach_ok", false) || Store.user.value == null) return null
+        val r = ask(listOf("user" to t("Une suggestion pour aujourd'hui ?", "A suggestion for today?")), "suggestion")
+        if (r.erreur != null) return null
+        p.edit().putString("coachsug", "$d|${r.texte.trim()}").apply(); return r.texte.trim().ifBlank { null }
+    }
+    /** mot du coach sur la semaine (gardé pour la semaine) */
+    suspend fun bilan(ctx: Context, key: String, force: Boolean): String? {
+        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        p.getString("coachbilan", null)?.let { if (it.startsWith("$key|") && !force) return it.substringAfter("|") }
+        if (!force) return null
+        val r = ask(listOf("user" to t("Fais-moi le bilan de ma semaine.", "Give me my week's review.")), "bilan")
+        if (r.erreur != null) return errText(r.erreur)
+        p.edit().putString("coachbilan", "$key|${r.texte.trim()}").apply(); return r.texte.trim()
     }
 
     fun errText(e: String) = when (e) {
