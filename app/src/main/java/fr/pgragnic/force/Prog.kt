@@ -267,7 +267,10 @@ object Prog {
     fun r1(x: Double) = (x * 10).roundToInt() / 10.0
     fun fk(x: Double): String { val v = r1(x); return (if (v == floor(v)) v.toLong().toString() else v.toString()).let { if (L.en) it else it.replace('.', ',') } }
     fun maxKg(st: Settings) = gear.dbWeights().lastOrNull() ?: st.bar
-    private fun need(id: String) = if (id in HEAVY) 2 else 3
+    /** Séances réussies avant une hausse : 2 pour les gros exercices de jambes, 3 pour le reste.
+     *  Les exercices qui chargent le bas du dos (soulevés de terre, rowing penché deux bras, swing) restent à 3
+     *  (Philippe, 14 novembre 2026, douleur au bas du dos après la hausse des charges : « Ok » pour 3 séances au lieu de 2). */
+    private fun need(id: String) = if (id in HEAVY && "dos" !in (EX[id]?.stress ?: emptyList())) 2 else 3
     /** L'exercice a une charge réglable (haltère, kettlebell ou élastique). */
     fun hasDb(id: String) = EX[id]?.lt.let { it == "kg" || it == "band" }
     fun toolOf(id: String) = EX[id]?.tool ?: ""

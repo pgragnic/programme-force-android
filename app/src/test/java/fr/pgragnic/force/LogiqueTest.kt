@@ -102,6 +102,18 @@ class LogiqueTest {
         assertTrue("${Prog.kgOf(id, 1, st)} <= $k0", Prog.kgOf(id, 1, st) > k0)
     }
 
+    @Test fun basDuDosTroisSeancesAvantHausse() {
+        // soulevé de terre jambes tendues : 2 séances réussies ne suffisent plus, il en faut 3 ; le goblet squat reste à 2
+        GearStore.g.value = base.copy(dbMode = "fixed", fixed = listOf(10.0, 10.5, 11.0, 11.5, 12.0))
+        for ((id, need) in listOf("rdl" to 3, "squat" to 2)) {
+            Prog.computeLoads(emptyList(), st); val k0 = Prog.kgOf(id, 1, st)
+            Prog.computeLoads(listOf(0, 7).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
+            assertEquals(need == 2, Prog.kgOf(id, 1, st) > k0)
+            Prog.computeLoads(listOf(0, 7, 15).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
+            assertTrue("$id", Prog.kgOf(id, 1, st) > k0)
+        }
+    }
+
     @Test fun plafondPetitesChargesUnCranToutesLesDeuxSemaines() {
         // 4,8 → 5,8 kg = + 21 % : au-delà du plafond, permis seulement 14 jours après le premier essai ou la dernière hausse
         GearStore.g.value = base.copy(level = 1)

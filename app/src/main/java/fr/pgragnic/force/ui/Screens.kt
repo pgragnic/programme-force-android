@@ -647,6 +647,8 @@ fun ThemePanel() {
 
 /** Nouveautés de l'appli, la plus récente en premier. */
 val NEWS = listOf(
+    "14 novembre 2026" to listOf(
+        "Bas du dos ménagé : soulevés de terre, rowing penché deux bras et swing montent après 3 séances réussies au lieu de 2."),
     "8 novembre 2026" to listOf(
         "L'appli parle anglais : elle suit la langue du téléphone, ou ton choix dans Infos → Langue.",
         "Voix de séance, notification et rappel en anglais quand l'appli est en anglais."),
