@@ -58,8 +58,8 @@ private fun Check(t: String, on: Boolean, sub: String? = null, enabled: Boolean 
 private fun Seg(opts: List<String>, sel: Int, onSel: (Int) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         opts.forEachIndexed { i, t ->
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (i == sel) C.ink else C.bg).clickable { onSel(i) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
-                Text(t, color = if (i == sel) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (i == sel) C.brand else C.chip).clickable { onSel(i) }.padding(vertical = 10.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                Text(t, color = if (i == sel) C.onBrand else C.ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
             }
         }
     }
@@ -103,9 +103,9 @@ fun SetupScreen(onDone: () -> Unit) {
                 tabNames.forEachIndexed { i, n ->
                     if (i == 1 && !needDetail) return@forEachIndexed
                     val on = step == i
-                    Text(n, color = if (on) C.bg else C.ink, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2, lineHeight = 14.sp,
+                    Text(n, color = if (on) C.onBrand else C.ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2, lineHeight = 14.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) C.ink else C.surface).clickable { step = i }
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) C.brand else C.surface).clickable { step = i }
                             .heightIn(min = 44.dp).wrapContentHeight().padding(horizontal = 4.dp, vertical = 6.dp))
                 }
             }
