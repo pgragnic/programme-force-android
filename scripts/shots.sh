@@ -50,6 +50,12 @@ cap() { adb exec-out screencap -p > shots/$1.png; }
 # touche un élément par sa description (icônes sans texte, ex. « Aide »)
 tapd() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml shots/ui.xml >/dev/null
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml',encoding='utf-8').read();m=re.search(r'content-desc=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
+# coach : point avant séance (sans compte sur le téléphone virtuel : la dernière réponse doit demander un compte)
+case " $POSES " in *" coach "*)
+  shot coach-0 --es lang fr --es theme light --ez seed true --ez tired true --ei tab 0
+  tapt "Faire le point avec le coach"; cap coach-1; tapt "J'accepte"; cap coach-2
+  tapt "Un peu fatigué"; tapt "30 min"; cap coach-3; tapt "Genou"; sleep 4; cap coach-4;;
+esac
 # fiche Play Store : écrans en clair, français et anglais (à lancer avec un émulateur haute définition, profil pixel_6)
 case " $POSES " in *" store "*)
   for L in fr en; do b="--es lang $L --es theme light --ez seed true --ez tired true"
