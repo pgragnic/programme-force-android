@@ -49,7 +49,8 @@ fun Seg(items: List<Pair<String, Boolean>>, modifier: Modifier = Modifier, check
     Row(modifier.height(40.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, C.s.outline, RoundedCornerShape(20.dp))) {
         items.forEachIndexed { i, (lab, on) ->
             if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(C.s.outline))
-            Row(Modifier.weight(1f).fillMaxHeight().background(if (on) C.sel else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
+            // largeur selon la longueur du libellé (« Comme le téléphone » plus large que « Clair »)
+            Row(Modifier.weight(maxOf(1f, lab.length / 9f)).fillMaxHeight().background(if (on) C.sel else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 if (on && check) Icon(Icons.Default.Check, null, tint = C.onSel, modifier = Modifier.padding(end = 4.dp).size(16.dp))
                 Text(lab, color = if (on) C.onSel else C.ink, fontWeight = FontWeight.Medium, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
@@ -368,7 +369,7 @@ fun ProgresScreen() {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Progrès", "Progress"), Modifier.weight(1f)); HelpButton("progres") }
             // ordre demandé par Philippe : « Je veux les onglets dans l'ordre activité, courbe, semaine »
-            Seg3(listOf(t("Activité", "Activity"), t("Courbes", "Charts"), t("Semaine", "Week")), sub) { sub = it }
+            Seg(listOf(t("Activité", "Activity"), t("Courbes", "Charts"), t("Semaine", "Week")).mapIndexed { i, l -> l to (sub == i) }, Modifier.fillMaxWidth()) { sub = it }
         }
         Box(Modifier.weight(1f)) {
             when (sub) {
