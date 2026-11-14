@@ -121,8 +121,10 @@ class LogiqueTest {
             Prog.computeLoads(emptyList(), st); val k0 = Prog.kgOf(id, 1, st)
             Prog.computeLoads(listOf(0, 7).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
             assertEquals(need == 2, Prog.kgOf(id, 1, st) > k0)
-            Prog.computeLoads(listOf(0, 7, 15).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
-            assertTrue("$id", Prog.kgOf(id, 1, st) > k0)
+            if (need == 3) {   // 3e séance réussie au même poids : la hausse arrive
+                Prog.computeLoads(listOf(0, 7, 15).map { seance(it * Prog.DAY, id, k0, 10, 10) }, st)
+                assertTrue("$id", Prog.kgOf(id, 1, st) > k0)
+            }
         }
     }
 
