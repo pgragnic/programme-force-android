@@ -88,7 +88,7 @@ case " $POSES " in *" m3 "*)
   b="--es lang fr --ez seed true --ez tired true --ez over true"
   shot m3-seance $b --ei tab 0; shot m3-seance-clair $b --es theme light --ei tab 0
   shot m3-corps $b --ei tab 1; adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*35/100)) 400; sleep 2; cap m3-corps-liste
-  shot m3-corps-clair $b --es theme light --ei tab 1
+  shot m3-corps-clair $b --es theme light --ei tab 1; tapt "Dos"; sleep 2; cap m3-corps-clair-dos
   shot m3-progres $b --ei tab 2; shot m3-reglages $b --ei tab 3; shot m3-reglages-clair $b --es theme light --ei tab 3
   shot m3-affichage $b --ei tab 3 --es sub affichage
   shot m3-dyn $b --ez dyn true --ei tab 0; shot m3-dyn-clair $b --ez dyn true --es theme light --ei tab 0

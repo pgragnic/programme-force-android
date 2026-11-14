@@ -36,7 +36,7 @@ fun CorpsScreen() {
     // muscle choisi dans la liste : détail, et seul ce muscle en couleur sur les deux vues (demande de Philippe :
     // « Détails pour chaque muscle, en cliquant dessus »)
     var sel by remember { mutableStateOf(Demo.muscle) }
-    val colors = remember(MU, C.dark, sel) { Recovery.MUS.filter { sel == null || it == sel }.associateWith { if (MU.over(it)) Recovery.overCol(C.rgb(C.danger)) else Recovery.recCol(MU.R[it]!!, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort)) } }   // muscle choisi seul en couleur, les autres gris clair
+    val colors = remember(MU, C.dark, sel) { Recovery.MUS.filter { sel == null || it == sel }.associateWith { if (MU.over(it)) Recovery.overCol(C.rgb(C.danger)) else Recovery.recCol(MU.R[it]!!, 0xFF4D4D, 0xFFA21A, 0x16C26A) } }   // muscle choisi seul en couleur, les autres gris clair
     val st by Store.st.collectAsState(); val gear by GearStore.g.collectAsState()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {

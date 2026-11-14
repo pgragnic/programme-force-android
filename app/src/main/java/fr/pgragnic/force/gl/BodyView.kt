@@ -157,7 +157,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
         void main(){
           if (uFlat > 0.5) { o = vec4(uCol, uAlpha); return; }
           vec3 n = normalize(vN); vec3 v = normalize(uEye - vW);
-          vec3 c = mix(uCol, vC, uUse);
+          vec3 c = mix(uCol, vC, uUse); vec3 base = c;
           float fl = length(vF); float fib = 1.0; float dl = vL * 3.0;
           // stries régulières le long des fibres : vU croît perpendiculairement aux fibres (calculé hors ligne, tools/corps/muscles.py)
           if (fl > 0.3) { vec3 F = vF / fl; float a = dot(vR, F); float u = vU;
@@ -174,7 +174,12 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
           float d = 0.80*max(dot(n,L1),0.0) + 0.42*max(dot(n,L2),0.0);
           float spec = uUse > 0.5 ? pow(max(dot(n, normalize(L1+v)),0.0), 28.0) * 0.20 * fib : 0.0;
           float rim = uUse > 0.5 ? pow(1.0 - max(dot(n,v),0.0), 2.5) * 0.24 : 0.0;
-          o = vec4(min(c*(hemi + vec3(d)) + vec3(spec + rim), vec3(1.0)), uAlpha);
+          vec3 lit = c*(hemi + vec3(d));
+          // muscles : couleur plus franche (Philippe, 14 novembre 21 h 39 : « Les couleurs ne ressortent pas assez ») —
+          // une part de la couleur pure, éclairée doucement, puis saturation renforcée
+          if (uUse > 0.5) { lit = mix(lit, base*(0.72 + 0.38*clamp(d, 0.0, 1.0)), 0.45);
+            float g = dot(lit, vec3(0.299, 0.587, 0.114)); lit = max(mix(vec3(g), lit, 1.35), vec3(0.0)); }
+          o = vec4(min(lit + vec3(spec + rim), vec3(1.0)), uAlpha);
         }"""
 
     private fun shader(t: Int, src: String) = glCreateShader(t).also { glShaderSource(it, src); glCompileShader(it) }
