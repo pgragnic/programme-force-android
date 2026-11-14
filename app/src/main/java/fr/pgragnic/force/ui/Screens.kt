@@ -50,7 +50,7 @@ fun Seg(items: List<Pair<String, Boolean>>, modifier: Modifier = Modifier, @Supp
     Row(modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.surface).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEachIndexed { i, (lab, on) ->
             // largeur selon la longueur du libellé (« Comme le téléphone » plus large que « Clair »)
-            Box(Modifier.weight(maxOf(1f, lab.length / 9f)).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (on) C.segOn else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
+            Box(Modifier.weight(maxOf(1f, lab.length / 7f)).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (on) C.segOn else Color.Transparent).clickable { onClick(i) }.padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center) {
                 Text(lab, color = if (on) C.ink else C.muted, fontWeight = FontWeight.ExtraBold, fontSize = if (small) 12.sp else 14.sp, maxLines = 1, softWrap = false)
             }
@@ -158,7 +158,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                     Text(t(" cette semaine", " this week"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(bottom = 5.dp))
                 }
                 Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.effort, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.padding(top = 2.dp))
-                Text(t("Cycle ${st.c} · sur 8 semaines", "Cycle ${st.c} · of 8 weeks"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(t("Cycle ${st.c} · sur 8", "Cycle ${st.c} · of 8"), color = C.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
         // sélecteur compact : semaine (déplie cycles et semaines) et séance
@@ -198,7 +198,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 Text(t("Séance ${st.s}", "Workout ${st.s}"), color = C.brand, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 Text("≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", color = C.muted, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
             }
-            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 28.sp)
+            Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.Black, lineHeight = 26.sp)
             if (mus.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // puces façon Fitness ; un muscle surchargé ressort en rouge
                 mus.forEach { m -> val o = m in over

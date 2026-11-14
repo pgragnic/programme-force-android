@@ -97,13 +97,12 @@ fun CorpsScreen() {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(C.surface).clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // anneau de récupération façon Apple Fitness, dans la couleur exacte du niveau (plein et rouge vif si surchargé)
-                    Ring(if (ov) 1f else r / 100f, c, 44.dp, 7.dp)
+                    Box(contentAlignment = Alignment.Center) { Ring(if (ov) 1f else r / 100f, c, 46.dp, 6.dp); Text("$r", color = c, fontWeight = FontWeight.Black, fontSize = 14.sp) }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
                             (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
-                    Text("$r %", color = c, fontWeight = FontWeight.Black, fontSize = 18.sp)
                     Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
                 }
                 if (sel == m) MuscleDetail(m, log, st, gear, MU.V[m]!!, MU.tot)
