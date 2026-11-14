@@ -129,8 +129,9 @@ fun SeanceScreen(onStart: () -> Unit) {
     if (st.s !in S) { LaunchedEffect(st.s, gear.perWeek) { Store.setSettings { it.s = Prog.nextSess(Store.st.value, Store.log.value, Store.days.value) } }; return }
     var weeks by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(log) { Store.rollWeek() }
-    val order = remember(st.c, st.w, st.s, log, gear) { Prog.orderEx(st.c, st.s, st.w, st) }
-    val P = remember(st.c, st.w, st.s, st.rest, log, gear) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+    val av = Adapt.v
+    val order = remember(st.c, st.w, st.s, log, gear, av) { Prog.orderEx(st.c, st.s, st.w, st) }
+    val P = remember(st.c, st.w, st.s, st.rest, log, gear, av) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
     val nSets = P.count { it.k == "work" }
     // muscles pas encore récupérés sollicités par la séance (Philippe : « Et si je souhaite faire une séance par jour ? », choix « 3 » :
     // alerte avant de démarrer, avec une autre séance proposée)
@@ -161,6 +162,17 @@ fun SeanceScreen(onStart: () -> Unit) {
         // style épuré (Philippe, 14 novembre : « Mon sentiment cest que l'application est trop chargée », « Partons sur le bleu vif ») :
         // titre, une carte « Prochaine séance » avec un seul bouton, puis des tuiles à un seul chiffre
         Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Séance", "Workout"), Modifier.weight(1f)); HelpButton("seance") }
+        // coach (Claude) : faire le point avant la séance (maquette du parcours, « Ok pour maquette du parcours »)
+        var coach by remember { mutableStateOf(false) }
+        if (coach) CoachScreen(onClose = { coach = false }, onStart = onStart)
+        Row(Modifier.fillMaxWidth().glam().clickable { coach = true }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            CoachAvatar(36); Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (Adapt.on) t("Séance adaptée avec le coach", "Workout adapted with the coach") else t("Faire le point avec le coach", "Check in with the coach"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (Adapt.on) Adapt.notes.firstOrNull() ?: t("Touche pour en parler", "Tap to talk about it") else t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout"), color = C.muted, fontSize = 13.sp, maxLines = 2)
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = C.muted)
+        }
         Column(Modifier.fillMaxWidth().glam().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Cap(t("Prochaine séance", "Next workout"), Modifier.weight(1f))

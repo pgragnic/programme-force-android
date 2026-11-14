@@ -436,7 +436,8 @@ object Prog {
             a.forEachIndexed { i, x -> perm(a.take(i) + a.drop(i + 1), pre + x) }
         }
         perm(rest, emptyList())
-        return best ?: ex
+        // remplacements du jour décidés avec le coach (Adapt)
+        return (best ?: ex).map { Adapt.swap(it) }.distinct()
     }
 
     /**
@@ -445,7 +446,8 @@ object Prog {
      * et les zones à travailler passent en dernier.
      */
     fun phases(c: Int, w: Int, s: String, restS: Int, st: Settings, log: List<Entry>): List<Phase> {
-        val cap = gear.maxMin?.let { it * 60.0 }
+        // durée maximale habituelle, ou celle du jour décidée avec le coach si elle est plus courte
+        val cap = listOfNotNull(gear.maxMin, Adapt.maxMin).minOrNull()?.let { it * 60.0 }
         val ns = HashMap<String, Int>()
         var P = build(c, w, s, restS, st, log, ns)
         if (cap == null) return P
@@ -494,7 +496,7 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            val ns = nsOver[id] ?: (W.s + if (gear.focus(id)) 1 else 0)
+            val ns = nsOver[id] ?: adaptSets(W.s + if (gear.focus(id)) 1 else 0)
             for (i in 1..ns) {
                 P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
                     det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",
