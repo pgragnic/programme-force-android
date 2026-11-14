@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
@@ -47,8 +48,8 @@ private fun Check(t: String, on: Boolean, sub: String? = null, enabled: Boolean 
             Text(t, color = if (enabled) C.ink else C.muted, fontSize = 16.sp)
             if (sub != null) Text(sub, color = C.muted, fontSize = 12.sp)
         }
-        Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(if (on) C.effort else C.bg).border(1.5.dp, if (on) C.effort else C.muted, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-            if (on) Icon(Icons.Default.Check, null, tint = C.onColor, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(if (on) C.brand else Color.Transparent).border(1.5.dp, if (on) C.brand else C.muted, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
+            if (on) Icon(Icons.Default.Check, null, tint = C.onBrand, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -96,7 +97,7 @@ fun SetupScreen(onDone: () -> Unit) {
         if (tabs) {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onDone) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = C.ink) }
-                Text(t("Matériel et profil", "Equipment and profile"), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, modifier = Modifier.weight(1f))
+                Text(t("Matériel et profil", "Equipment and profile"), color = C.ink, fontWeight = FontWeight.Normal, fontSize = 22.sp, modifier = Modifier.weight(1f))
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 tabNames.forEachIndexed { i, n ->
@@ -110,7 +111,7 @@ fun SetupScreen(onDone: () -> Unit) {
             }
         } else Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (step == 0) { if (cur.done) onDone() } else go(-1) }, enabled = step > 0 || cur.done) { Icon(Icons.Default.ArrowBack, fr.pgragnic.force.tr("Retour"), tint = if (step > 0 || cur.done) C.ink else C.bg) }
-            Text(tr(steps[step]).uppercase(), color = C.ink, fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+            Text(tr(steps[step]), color = C.ink, fontWeight = FontWeight.Normal, fontSize = 22.sp, modifier = Modifier.weight(1f))
             Text("${step + 1}/4", color = C.muted)
             // premier lancement plus court : on peut commencer tout de suite et compléter plus tard dans Infos → Matériel et profil
             if (!cur.done && okStep1(g)) TextButton(onClick = { step = 3; go(1) }) { Text(t("Passer", "Skip"), fontWeight = FontWeight.Bold) }

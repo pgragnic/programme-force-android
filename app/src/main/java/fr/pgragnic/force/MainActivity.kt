@@ -108,13 +108,13 @@ class MainActivity : ComponentActivity() {
                     PlayerScreen(cur, onClose = { Live.end(this@MainActivity) }, onEnd = { ending = true })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
-                    NavigationBar(containerColor = C.surface) {
+                    NavigationBar(containerColor = C.s.surfaceContainer) {
                         // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
                         val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.PlayCircleOutline, t("Corps", "Body") to Icons.Default.Accessibility,
                             t("Progrès", "Progress") to Icons.Default.ShowChart, t("Réglages", "Settings") to Icons.Default.Tune)
                         items.forEachIndexed { i, (t, ic) ->
                             NavigationBarItem(selected = tab == i, onClick = { tab = i }, modifier = Modifier.tourTarget(if (i == 1) "corps" else null), icon = { Icon(ic, t) }, label = { Text(t, maxLines = 1, softWrap = false, fontSize = 11.sp) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = C.effort, selectedTextColor = C.effort, indicatorColor = C.bg, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
+                                colors = NavigationBarItemDefaults.colors(selectedIconColor = C.onSel, selectedTextColor = C.ink, indicatorColor = C.sel, unselectedIconColor = C.muted, unselectedTextColor = C.muted))
                         }
                     }
                 }) { pad ->

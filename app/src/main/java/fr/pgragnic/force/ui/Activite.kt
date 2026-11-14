@@ -94,7 +94,7 @@ fun ActiviteScreen(inProgres: Boolean = false) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column {
-            if (!inProgres) Text("Pas & activités", fontSize = 28.sp, fontWeight = FontWeight.Black, color = C.ink)
+            if (!inProgres) H1("Pas & activités")
             Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
@@ -197,7 +197,7 @@ fun ActiviteScreen(inProgres: Boolean = false) {
         val tot = ks + kd
         Panel {
             Text("Dépense estimée · 7 jours", color = C.muted, fontSize = 12.sp)
-            Text(Kcal.kr(tot), color = C.ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
+            Text(Kcal.kr(tot), color = C.ink, fontSize = 28.sp, fontWeight = FontWeight.Normal)
             Text(t("Estimation à ± 25 %", "Estimate, ± 25%"), color = C.muted, fontSize = 12.sp)
             Row(Modifier.padding(top = 10.dp)) {
                 Column(Modifier.weight(1f)) {

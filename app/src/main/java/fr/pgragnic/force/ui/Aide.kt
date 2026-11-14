@@ -80,14 +80,14 @@ private fun helpOf(screen: String): Pair<String, List<HelpItem>> = when (screen)
 @Composable
 fun HelpButton(screen: String, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
-    Box(modifier.size(40.dp).tourTarget(if (screen == "seance") "help" else null).clip(CircleShape).border(1.dp, C.line, CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
-        Text("?", color = C.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+    Box(modifier.size(40.dp).tourTarget(if (screen == "seance") "help" else null).clip(CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.HelpOutline, fr.pgragnic.force.tr("Aide"), tint = C.muted, modifier = Modifier.size(24.dp))
     }
     if (open) {
         val (title, items) = helpOf(screen)
         ModalBottomSheet(onDismissRequest = { open = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = C.surface) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(title, color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text(title, color = C.ink, fontSize = 24.sp, fontWeight = FontWeight.Normal)
                 items.forEach {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(it.h, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -95,7 +95,7 @@ fun HelpButton(screen: String, modifier: Modifier = Modifier) {
                     }
                 }
                 Button(onClick = { open = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = C.effort, contentColor = C.onColor)) { Text(t("Compris", "Got it"), fontWeight = FontWeight.Black, fontSize = 16.sp) }
+                    colors = ButtonDefaults.buttonColors(containerColor = C.brand, contentColor = C.onBrand)) { Text(t("Compris", "Got it"), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
             }
         }
     }
@@ -113,7 +113,7 @@ fun ExSheet(id: String, sub: String?, inSess: List<String>, swap: Boolean, onClo
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(tr(e.n), color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
+                    Text(tr(e.n), color = C.ink, fontSize = 22.sp, fontWeight = FontWeight.Normal, lineHeight = 28.sp)
                     if (!sub.isNullOrBlank()) Text(sub, color = C.muted, fontSize = 13.sp)
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, t("Fermer", "Close"), tint = C.muted) }
@@ -154,7 +154,7 @@ fun ExSheet(id: String, sub: String?, inSess: List<String>, swap: Boolean, onClo
                 if (alts.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.bg)) {
                     Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(t("Trop dur ou pas le matériel ?", "Too hard or missing the equipment?"), color = C.muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Text(if (open) t("Fermer", "Close") else t("Remplacer", "Replace"), color = C.effort, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(if (open) t("Fermer", "Close") else t("Remplacer", "Replace"), color = C.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                     if (open) alts.forEach { a ->
                         val x = Prog.EX[a]!!
@@ -214,7 +214,7 @@ fun TourOverlay() {
     Box(Modifier.fillMaxSize().onSizeChanged { size = Size(it.width.toFloat(), it.height.toFloat()) }.pointerInput(Unit) { detectTapGestures { } }) {
         if (!visible || r == null) return@Box
         val pad = with(den) { 6.dp.toPx() }; val rad = with(den) { 16.dp.toPx() }
-        val green = C.effort
+        val green = C.brand
         Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
             drawRect(Color(0xB305080A))
             val tl = Offset(r.left - pad, r.top - pad); val sz = Size(r.width + 2 * pad, r.height + 2 * pad)

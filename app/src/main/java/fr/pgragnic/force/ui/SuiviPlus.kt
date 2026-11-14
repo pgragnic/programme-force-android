@@ -69,7 +69,7 @@ fun BilanPanel() {
     val log by Store.log.collectAsState(); val days by Store.days.collectAsState(); val st by Store.st.collectAsState(); val remote by Store.bilan.collectAsState()
     val auto = remember(log, days, st) { Bilan.auto(log, days, st) }
     Panel {
-        Text("Bilan de la semaine", color = C.ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+        Text("Bilan de la semaine", color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp)
         Text(t("Semaine du ", "Week of ") + LocalDate.now().with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("d MMMM", fr.pgragnic.force.L.loc)), color = C.muted, fontSize = 12.sp)
         val r = remote
         val rDate = r?.get("date")?.jsonPrimitive?.contentOrNull
@@ -93,7 +93,7 @@ fun ProgressPanel() {
     val log by Store.log.collectAsState(); val st by Store.st.collectAsState()
     val L = remember(log) { log.filter { it.ex.isNotEmpty() }.sortedBy { it.d } }
     Panel {
-        Text("Progression", color = C.ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+        Text("Progression", color = C.ink, fontWeight = FontWeight.Medium, fontSize = 16.sp)
         Text("Poids du jour (kg)", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         LineChart(L.filter { it.bw != null }.map { Pt(it.d, it.bw!!) }, "Note ton poids à la fin d'au moins deux séances pour voir la courbe.")
 
