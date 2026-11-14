@@ -61,6 +61,17 @@ case " $POSES " in *" reco "*)
   shot reco-seance --es lang fr --ez seed true --ez tired true --ez over true --ei tab 0;;
 esac
 # marche lestée : pas faits avec le sac
+case " $POSES " in *" m3 "*)
+  sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
+  b="--es lang fr --ez seed true --ez tired true --ez over true"
+  shot m3-seance $b --ei tab 0; shot m3-seance-clair $b --es theme light --ei tab 0
+  shot m3-corps $b --ei tab 1; adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*35/100)) 400; sleep 2; cap m3-corps-liste
+  shot m3-corps-clair $b --es theme light --ei tab 1
+  shot m3-progres $b --ei tab 2; shot m3-reglages $b --ei tab 3; shot m3-reglages-clair $b --es theme light --ei tab 3
+  shot m3-affichage $b --ei tab 3 --es sub affichage
+  shot m3-dyn $b --ez dyn true --ei tab 0; shot m3-dyn-clair $b --ez dyn true --es theme light --ei tab 0
+  shot m3-lecteur --es demo squat --ef k 0.5;;
+esac
 case " $POSES " in *" lest "*)
   shot lest-a --es lang fr --ez seed true --ei tab 2 --es sub 0
   sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
@@ -98,7 +109,7 @@ case " $POSES " in *" warn "*)
 esac
 case " $POSES " in *" tabs "*) shot fr-tabs --es lang fr --es gear kb --ei setupstep 3 --ez opensetup true;; esac
 case " $POSES " in *" setup4 "*) shot fr-setup4 --es lang fr --es gear new --ei setupstep 3; sw fr-setup4-b; sw fr-setup4-c;; esac
-for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = lest ] || [ "$p" = barre ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
+for p in $POSES; do [ "$p" = quick ] || [ "$p" = setup4 ] || [ "$p" = tabs ] || [ "$p" = video ] || [ "$p" = clips ] || [ "$p" = muscle ] || [ "$p" = ergo ] || [ "$p" = aide ] || [ "$p" = six ] || [ "$p" = warn ] || [ "$p" = reco ] || [ "$p" = lest ] || [ "$p" = barre ] || [ "$p" = m3 ] && continue; id=${p%@*}; k=0.5; [ "$id" != "$p" ] && k=${p#*@}; shot pose-$id-$k --es demo $id --ef k $k; done
 # Vidéo de démonstration (fiche Google Play) : 30 s de séance guidée, en français et en anglais, en meilleure définition
 case " $POSES " in *" video "*)
   adb shell wm size 720x1520; adb shell wm density 320; sleep 3

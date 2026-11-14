@@ -5,6 +5,9 @@ on:
       poses:
         description: "Poses à capturer (séparées par des espaces)"
         default: "row1 squat calf"
+      api:
+        description: "Version d'Android de l'émulateur (31 et plus pour Material You)"
+        default: "30"
 permissions:
   contents: write
 jobs:
@@ -24,7 +27,7 @@ jobs:
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ inputs.api }}
           arch: x86_64
           target: google_apis
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim

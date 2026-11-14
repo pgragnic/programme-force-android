@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
         Crash.sendPending(this)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
         intent.getStringExtra("theme")?.let { C.mode = it }
+        if (intent.hasExtra("dyn")) C.dyn = intent.getBooleanExtra("dyn", false)
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
         Demo.tired = intent.getBooleanExtra("tired", false); Demo.over = intent.getBooleanExtra("over", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
