@@ -446,7 +446,9 @@ object Prog {
         }
         perm(rest, emptyList())
         // remplacements du jour décidés avec le coach (Adapt)
-        return (best ?: ex).map { Adapt.swap(it) }.distinct()
+        val base = (best ?: ex).map { Adapt.swap(it) }.distinct()
+        // muscle peu travaillé les 2 semaines passées : petit exercice ajouté en fin de séance (Balance.extras)
+        return base + Balance.extras(base).filter { it !in base }
     }
 
     /**
@@ -467,6 +469,10 @@ object Prog {
             val id = exo.filter { ns[it]!! > 2 }.sortedWith(compareBy<String>({ rank(it) }, { -ns[it]!! }, { -exo.indexOf(it) })).firstOrNull() ?: break
             ns[id] = ns[id]!! - 1
             P = build(c, w, s, restS, st, log, ns)
+        }
+        // toujours trop long : l'exercice ajouté pour un muscle peu travaillé saute
+        if (P.sumOf { it.dur } > cap && orderEx(c, s, w, st).any { it in Balance.extraIds }) {
+            Balance.noExtra = true; try { P = build(c, w, s, restS, st, log, ns) } finally { Balance.noExtra = false }
         }
         return P
     }
@@ -505,7 +511,7 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            val ns = nsOver[id] ?: adaptSets(W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0)
+            val ns = nsOver[id] ?: if (id in Balance.extraIds && id !in sessEx(c, s)) 2 else adaptSets(W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0)
             for (i in 1..ns) {
                 P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
                     det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",

@@ -54,8 +54,24 @@ object Balance {
     private var key = ""; private var lagM: Set<String> = emptySet(); var week: Res? = null; private set
     fun weekRes(): Res {
         val log = Store.log.value; val m = Prog.mondayOf(System.currentTimeMillis()); val k = "$m|${log.size}|${log.maxOfOrNull { it.d }}"
-        if (k != key) { key = k; val r = compute(log, 14, m); week = r; lagM = r.pairs.flatMap { it.lag }.toSet() }
+        if (k != key) { key = k; val r = compute(log, 14, m); week = r; lagM = r.pairs.flatMap { it.lag }.toSet() + r.low
+            // travail déjà fait depuis lundi, par muscle (séries pondérées)
+            doneM = Recovery.MUS.associateWith { mu -> log.filter { it.d >= m }.sumOf { e -> e.ex.sumOf { x -> (if (x.sets.isNotEmpty()) x.sets.size else 3) * (Prog.MAP[x.id]?.get(mu) ?: 0.0) } } } }
         return week!!
+    }
+    private var doneM: Map<String, Double> = emptyMap()
+    /** exercices ajoutés pour un muscle peu travaillé (2 séries en fin de séance) */
+    val extraIds = HashSet<String>()
+    /** vrai pendant que Prog.phases retire l'ajout faute de temps */
+    var noExtra = false
+    /** Muscle peu travaillé (Philippe, 14 novembre 19 h 38 : « Ok pour les mollets ») : si aucun exercice de la séance ne le travaille
+     *  et qu'il n'a pas encore eu 2 séries cette semaine, petit exercice de 2 séries en fin de séance, faisable avec le matériel. */
+    fun extras(order: List<String>): List<String> {
+        val w = weekRes(); if (noExtra || w.low.isEmpty()) return emptyList()
+        return w.low.filter { m -> (doneM[m] ?: 0.0) < 2 && order.none { (Prog.MAP[it]?.get(m) ?: 0.0) >= .7 } }.mapNotNull { m ->
+            Prog.MAP.entries.filter { (id, r) -> (r[m] ?: 0.0) >= .7 && id in Prog.EX && Prog.ok(id) }
+                .sortedWith(compareBy({ -(it.value[m] ?: 0.0) }, { it.value.size }, { it.key })).firstOrNull()?.key
+        }.distinct().also { extraIds += it }
     }
     fun boost(id: String): Boolean { weekRes(); return lagM.isNotEmpty() && (Prog.MAP[id] ?: emptyMap()).any { it.value >= .7 && it.key in lagM } }
 }
