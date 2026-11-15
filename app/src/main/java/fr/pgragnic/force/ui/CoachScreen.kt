@@ -124,9 +124,14 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
                             if (start && p.repos != true && p.today) { onClose(); onStart() }
                             else msgs += Msg(true, if (p.today) t("C'est noté, ta séance du jour est prête.", "Done, today's workout is ready.") else t("C'est noté pour tes prochaines séances.", "Noted for your next workouts."))
                         }, onAdjust = { input = t("Je préfère ", "I'd rather ") }) }
-                        if (m.chips.isNotEmpty() && m === msgs.last()) Row(Modifier.padding(top = 6.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            m.chips.forEach { c -> Text(c, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(C.brand.copy(alpha = .1f)).clickable(enabled = !busy) { send(c) }.padding(horizontal = 12.dp, vertical = 8.dp)) }
+                        // avec un plan, « accepter » se fait par les boutons de la carte : réponses rapides qui l'acceptent retirées,
+                        // « garder la séance » traité dans l'appli (Philippe, 15 novembre 10 h 16 : « Je ne vois pas le plan, comment je peux l'accepter ? »)
+                        val chips = if (m.plan == null) m.chips else m.chips.filterNot { c -> c.lowercase().let { "accept" in it || "appliqu" in it || "valide" in it || "ok pour" in it } }
+                        if (chips.isNotEmpty() && m === msgs.last()) Row(Modifier.padding(top = 6.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            chips.forEach { c -> Text(c, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(C.brand.copy(alpha = .1f)).clickable(enabled = !busy) {
+                                    if (m.plan != null && c.lowercase().let { "garder" in it || "habituelle" in it }) { msgs += Msg(false, c); msgs += Msg(true, t("D'accord, on garde ta séance habituelle. Rien n'est changé.", "Alright, we keep your usual workout. Nothing changed.")) }
+                                    else send(c) }.padding(horizontal = 12.dp, vertical = 8.dp)) }
                         }
                     }
                 }

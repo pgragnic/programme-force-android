@@ -177,8 +177,9 @@ fun SeanceScreen(onStart: () -> Unit) {
         var sug by remember { mutableStateOf<String?>(null) }
         var sugOpen by remember { mutableStateOf(false) }; var sugLong by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { sug = CoachApi.suggestion(cctx) }
-        val running = remember(cs) { CoachState.genes.map { (z, d) -> t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "$z protected until ${CoachState.fmt(d)}") } +
-            listOfNotNull(CoachState.noGear?.let { t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
+        // (clé, libellé) : clé "" = sans matériel ; ✕ pour arrêter avant la date (Philippe, 15 novembre 10 h 16 : « Et comment je peux remettre à zéro ? »)
+        val running = remember(cs) { CoachState.genes.map { (z, d) -> z to t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "$z protected until ${CoachState.fmt(d)}") } +
+            listOfNotNull(CoachState.noGear?.let { "" to t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
         Row(Modifier.fillMaxWidth().glam().clickable { coach = if (debrief) "apres" else "avant" }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             CoachAvatar(36); Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -191,7 +192,12 @@ fun SeanceScreen(onStart: () -> Unit) {
                 // texte long du coach (Philippe, 15 novembre 9 h 13 : « Laissons le coach faire la longueur souhaitée mais il faut prévoir quelque chose qui permet d'étendre l'affichage »)
                 if (sugLong || sugOpen) Text(if (sugOpen) t("Réduire", "Show less") else t("Lire la suite", "Read more"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(8.dp)).clickable { sugOpen = !sugOpen }.padding(vertical = 2.dp))
-                running.forEach { Text("• $it", color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp)) }
+                running.forEach { (z, l) -> Row(Modifier.padding(top = 4.dp).clip(RoundedCornerShape(12.dp)).background(C.brand.copy(alpha = .1f))
+                    .clickable { if (z.isEmpty()) CoachState.endNoGear(cctx) else CoachState.endGene(cctx, z) }.padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(l, color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Icon(Icons.Default.Close, t("Arrêter", "Stop"), tint = C.brand, modifier = Modifier.padding(start = 4.dp).size(14.dp)) } }
+                if (Adapt.on) Text(t("Revenir à la séance habituelle", "Back to the usual workout"), color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(8.dp)).clickable { Adapt.clear(cctx) }.padding(vertical = 2.dp))
             }
             Box(Modifier.size(36.dp).clip(CircleShape).background(C.chip).clickable { coach = "libre" }, contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.Chat, t("Parler au coach", "Talk to the coach"), tint = C.ink, modifier = Modifier.size(18.dp)) }
