@@ -148,7 +148,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     var warn by remember { mutableStateOf(false) }
     if (warn) AlertDialog(onDismissRequest = { warn = false }, containerColor = C.surface,
         title = { Text(t("Muscles pas encore récupérés", "Muscles not recovered yet"), color = C.ink, fontWeight = FontWeight.Bold) },
-        text = { Text((if (over.isNotEmpty()) t("Surchargés : ", "Overloaded: ") + over.joinToString(", ") { tr(it) } + t(". Les retravailler maintenant freine leur récupération ; mieux vaut une autre séance ou du repos. ", ". Working them now slows their recovery; better pick another workout or rest. ") else "") +
+        text = { Text((if (over.isNotEmpty()) t("Surchargés : ", "Overloaded: ") + over.joinToString(", ") { mus(it) } + t(". Les retravailler maintenant freine leur récupération ; mieux vaut une autre séance ou du repos. ", ". Working them now slows their recovery; better pick another workout or rest. ") else "") +
             (if (sore.isNotEmpty()) t("Cette séance sollicite surtout ", "This workout mostly works ") + sore.joinToString(", ") { "${tr(it)} (${MU.R[it]} %)" } + ". " else "") +
             (alt?.let { t("La séance $it (${tr(S[it]!!.t)}) les ménage davantage.", "Workout $it (${tr(S[it]!!.t)}) is easier on them.") } ?: t("Un jour de repos ou une activité douce leur ferait du bien.", "A rest day or light activity would help them.")),
             color = C.muted) },
@@ -211,7 +211,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 val c = if (over.isNotEmpty()) Color(0xFFD92D20) else C.warm
                 Icon(Icons.Default.ErrorOutline, null, tint = c, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
                 Text(if (over.isNotEmpty()) t("${over.size} muscle${if (over.size > 1) "s" else ""} encore surchargé${if (over.size > 1) "s" else ""}", "${over.size} muscle${if (over.size > 1) "s" else ""} still overloaded")
-                    else t("Encore en récupération : ", "Still recovering: ") + sore.take(2).joinToString(", ") { tr(it) }, color = c, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    else t("Encore en récupération : ", "Still recovering: ") + sore.take(2).joinToString(", ") { mus(it) }, color = c, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                 Icon(Icons.Default.ChevronRight, null, tint = C.muted, modifier = Modifier.size(18.dp))
             }
             Row(Modifier.padding(top = 16.dp).fillMaxWidth().heightIn(min = 52.dp).tourTarget("start").clip(RoundedCornerShape(26.dp)).background(C.brand)

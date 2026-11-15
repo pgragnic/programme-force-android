@@ -153,11 +153,18 @@ fun ExSheet(id: String, sub: String?, inSess: List<String>, swap: Boolean, onClo
                 Head(t("MUSCLES TRAVAILLÉS", "MUSCLES WORKED"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     mus.forEach { (m, v) ->
-                        Text(tr(m), color = C.ink, fontSize = 12.sp, fontWeight = if (v >= .7) FontWeight.Bold else FontWeight.Normal,
+                        Text(mus(m), color = C.ink, fontSize = 12.sp, fontWeight = if (v >= .7) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(if (v >= .7) C.mhot.copy(alpha = .38f) else C.bg).padding(horizontal = 10.dp, vertical = 5.dp))
                     }
                 }
             }
+            // dos ménagé (profil ou coach) et exercice qui sollicite le dos : consigne de prudence
+            val dosOn = "dos" in CoachState.eff(gear).limits
+            if (dosOn && (Prog.MAP[id] ?: emptyMap()).let { (it["Dos"] ?: 0.0) >= .25 || (it["Lombaires"] ?: 0.0) >= .25 })
+                Text((if (id == "row1" || id == "kbrow") t("Dos ménagé : garde l'appui sur le genou, le buste immobile. ", "Back protected: keep your hand on your knee, torso still. ")
+                      else t("Dos ménagé : garde le dos bien gainé et le buste immobile. ", "Back protected: keep your core braced and torso still. ")) +
+                    (if (swap) t("Si ça tire dans le bas du dos, touche Remplacer.", "If your lower back pulls, tap Replace.") else t("Si ça tire dans le bas du dos, passe cet exercice.", "If your lower back pulls, skip this exercise.")),
+                    color = C.ink, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.warm.copy(alpha = .14f)).padding(12.dp))
             val how = e.cues.ifEmpty { listOf(e.tip).filter { it.isNotBlank() } }
             if (how.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Head(t("COMMENT FAIRE", "HOW TO DO IT")); how.forEach { Line("✓", C.effort, tr(it)) }

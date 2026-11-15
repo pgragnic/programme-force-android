@@ -66,7 +66,7 @@ fun CorpsScreen() {
                     val ox = (x + with(dens) { 14.dp.toPx() }).let { if (it > maxX) x - wPx - with(dens) { 14.dp.toPx() } else it }.coerceAtLeast(0f)
                     val oy = (y - with(dens) { 24.dp.toPx() }).coerceAtLeast(0f)
                     Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(ox.toInt(), oy.toInt()) }.width(150.dp).clip(RoundedCornerShape(10.dp)).background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                        Text(fr.pgragnic.force.tr(m) + " · $r %", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(fr.pgragnic.force.mus(m) + " · $r %", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         if (MU.over(m)) Text(t("surchargé, +${Prog.fk(Prog.r1(MU.ex[m]!!))} séries", "overloaded, +${Prog.fk(Prog.r1(MU.ex[m]!!))} sets"), color = Color(0xFFE3141E), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(if (r >= 90) t("prêt à travailler", "ready to train") else t("prêt dans ~", "ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = Color(0xFF555555), fontSize = 12.sp)
                     }
@@ -85,7 +85,7 @@ fun CorpsScreen() {
                     // anneau de récupération façon Apple Fitness, dans la couleur exacte du niveau (plein et rouge vif si surchargé)
                     Box(contentAlignment = Alignment.Center) { Ring(if (ov) 1f else r / 100f, c, 40.dp, 5.dp); Text("$r", color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(fr.pgragnic.force.mus(m), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
                             (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
@@ -105,7 +105,7 @@ fun CorpsScreen() {
             tired.take(3).forEach { m ->
                 val r = MU.R[m]!!; val ov = MU.over(m); val h = MU.ready[m] ?: 0
                 Column(Modifier.weight(1f).glam().clickable { all = true; sel = m }.padding(12.dp)) {
-                    Text(fr.pgragnic.force.tr(m), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(fr.pgragnic.force.mus(m), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
                         Text("$r", color = if (ov) Color(0xFFD92D20) else C.ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
                         Text(" %", color = if (ov) Color(0xFFD92D20) else C.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 3.dp))

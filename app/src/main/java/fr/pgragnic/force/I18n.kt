@@ -45,3 +45,8 @@ fun tr(s: String): String {
 
 /** Texte avec valeurs : version française ou anglaise. */
 fun t(fr: String, en: String) = if (L.en) en else fr
+
+
+/** Nom affiché d'un muscle. « Dos » devient « Dorsaux » pour ne pas le confondre avec le dos à ménager (colonne, bas du dos)
+ *  (Philippe, 15 novembre 10 h 08 : « Ok pour les 2 »). La clé interne reste « Dos ». */
+fun mus(m: String): String = if (m == "Dos") t("Dorsaux", "Lats") else tr(m)

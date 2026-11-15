@@ -144,7 +144,7 @@ object CoachApi {
                 putJsonArray("charges_a_ajuster") { CoachState.bias.forEach { (id, b) -> addJsonObject { put("id", id); put("sens", b.dir) } } }
             }
             Balance.compute(log).let { b -> putJsonObject("equilibre_4_semaines") {
-                putJsonObject("series_par_semaine") { b.sets.forEach { (m, v) -> put(tr(m), Math.round(v * 10) / 10.0) } }
+                putJsonObject("series_par_semaine") { b.sets.forEach { (m, v) -> put(mus(m), Math.round(v * 10) / 10.0) } }
                 putJsonArray("desequilibres") { b.pairs.filter { it.state != 0 }.forEach { add(it.advice) } }
                 putJsonArray("peu_travailles") { b.low.forEach { add(tr(it)) } }
                 putJsonArray("rattrapage_cette_semaine") { Balance.weekRes().pairs.filter { it.state != 0 }.forEach { add(if (it.state == -1) it.a else it.b) } }

@@ -41,7 +41,7 @@ object Bilan {
         cur.forEach { e -> e.ex.forEach { x -> val b = before[x.id]; if (b != null && x.kg > b) ups[x.id] = b to x.kg } }
         if (ups.isNotEmpty()) out += t("Charges en hausse : ", "Loads up: ") + ups.entries.joinToString(", ") { (id, p) -> "${tr(Prog.EX[id]?.n ?: id)} ${Prog.fk(p.first)} → ${Prog.fk(p.second)} kg" } + "."
         val hard = cur.flatMap { it.ex }.filter { it.f == "Difficile" }.map { Prog.EX[it.id]?.n ?: it.id }.distinct()
-        if (hard.isNotEmpty()) out += t("Ressenti difficile sur : ${hard.joinToString(", ")}. La charge restera la même la prochaine fois.", "Felt hard on: ${hard.joinToString(", ") { tr(it) }}. The load will stay the same next time.")
+        if (hard.isNotEmpty()) out += t("Ressenti difficile sur : ${hard.joinToString(", ") { mus(it) }}. La charge restera la même la prochaine fois.", "Felt hard on: ${hard.joinToString(", ") { mus(it) }}. The load will stay the same next time.")
         val ld = LocalDate.now(); val steps = (0..6).mapNotNull { i -> days.firstOrNull { it.date == ld.minusDays(i.toLong()).toString() }?.steps?.takeIf { it > 0 } }
         if (steps.isNotEmpty()) out += t("Pas : ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} par jour en moyenne sur 7 jours.", "Steps: ${String.format(fr.pgragnic.force.L.loc, "%,d", steps.average().roundToInt())} per day on average over 7 days.")
         val acts = days.filter { it.act != null && Recovery.dayTs(it) >= m0 }
@@ -52,7 +52,7 @@ object Bilan {
         val MU = Recovery.muscles(log, days)
         val tired = Recovery.MUS.filter { MU.R[it]!! < 60 }; val mid = Recovery.MUS.filter { MU.R[it]!! in 60..89 }
         out += if (tired.isEmpty() && mid.isEmpty()) "Tous les muscles sont prêts." else
-            (if (tired.isNotEmpty()) t("Encore fatigués : ${tired.joinToString(", ")}. ", "Still tired: ${tired.joinToString(", ") { tr(it) }}. ") else "") + (if (mid.isNotEmpty()) t("En récupération : ${mid.joinToString(", ")}.", "Recovering: ${mid.joinToString(", ") { tr(it) }}.") else "")
+            (if (tired.isNotEmpty()) t("Encore fatigués : ${tired.joinToString(", ") { mus(it) }}. ", "Still tired: ${tired.joinToString(", ") { mus(it) }}. ") else "") + (if (mid.isNotEmpty()) t("En récupération : ${mid.joinToString(", ") { mus(it) }}.", "Recovering: ${mid.joinToString(", ") { mus(it) }}.") else "")
         val doneS = cur.map { it.s }.toSet()
         val left = Prog.sess(st.c).keys.filter { it !in doneS }
         if (left.isNotEmpty() && L.isNotEmpty()) {

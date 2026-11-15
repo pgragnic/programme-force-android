@@ -45,13 +45,13 @@ fun BalancePanel() {
             }
             p.advice?.let { Text(it, color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
         }
-        if (R.low.isNotEmpty()) Text(t("Peu travaillés : ", "Little work: ") + R.low.joinToString(", ") { tr(it) } + ".", color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+        if (R.low.isNotEmpty()) Text(t("Peu travaillés : ", "Little work: ") + R.low.joinToString(", ") { mus(it) } + ".", color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
         HorizontalDivider(color = C.line, modifier = Modifier.padding(vertical = 12.dp))
         Text(t("Cette semaine", "This week"), color = C.muted, fontSize = 12.sp)
         if (!(lagPairs.isEmpty() && W.low.isNotEmpty())) Text(if (lagPairs.isEmpty()) t("Rien à rattraper : tes deux dernières semaines sont équilibrées.", "Nothing to catch up: your last two weeks are balanced.")
             else t("Le programme rattrape : +1 série sur les exercices de ", "The program catches up: +1 set on exercises for ") + lagPairs.joinToString(", ") { (if (it.state == -1) it.a else it.b).lowercase() } + ".",
             color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-        if (W.low.isNotEmpty()) Text((if (lagPairs.isEmpty()) t("Le programme rattrape pour ", "The program catches up for ") else t("Et pour ", "And for ")) + W.low.joinToString(", ") { tr(it).lowercase() } + t(" : 1 série de plus, ou un petit exercice de 2 séries en fin de séance s'il n'y en a pas, jusqu'à 2 séries faites dans la semaine.", ": 1 more set, or a short 2-set exercise at the end of a workout if there is none, until 2 sets are done this week."),
+        if (W.low.isNotEmpty()) Text((if (lagPairs.isEmpty()) t("Le programme rattrape pour ", "The program catches up for ") else t("Et pour ", "And for ")) + W.low.joinToString(", ") { mus(it).lowercase() } + t(" : 1 série de plus, ou un petit exercice de 2 séries en fin de séance s'il n'y en a pas, jusqu'à 2 séries faites dans la semaine.", ": 1 more set, or a short 2-set exercise at the end of a workout if there is none, until 2 sets are done this week."),
             color = C.ink, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
