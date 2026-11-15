@@ -99,14 +99,11 @@ fun ActiviteScreen(inProgres: Boolean = false) {
             Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
         }
 
-        // Health Connect
-        Panel {
+        // Health Connect : panneau masqué quand l'option est coupée (Philippe, 15 novembre 19 h 10 : « Je veux que le panneau "pas automatiques"
+        // disparaisse quand l'option health connect est désactivé ») ; on la réactive dans Réglages → Health Connect
+        if (hcOn) Panel {
             Text("Pas automatiques", color = C.ink, fontWeight = FontWeight.Bold)
             when {
-                !hcOn -> {
-                    Text(t("Désactivé : tu saisis tes pas à la main. Tu peux l'activer ici ou dans Réglages.", "Off: you enter your steps by hand. You can turn it on here or in Settings."), color = C.muted, fontSize = 13.sp)
-                    TextButton(onClick = { Health.setOn(ctx, true); if (avail) launcher.launch(Health.PERMS) }) { Text(t("Activer Health Connect", "Turn on Health Connect")) }
-                }
                 !avail -> {
                     Text("Installe ou mets à jour l'appli Health Connect pour importer tes pas (téléphone, montre, Google Fit, Samsung Santé…).", color = C.muted, fontSize = 13.sp)
                     TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }) { Text("Ouvrir le Play Store") }
