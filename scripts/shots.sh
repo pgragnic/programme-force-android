@@ -63,6 +63,9 @@ case " $POSES " in *" coach "*)
   shot ctab --es lang fr --es theme light --ez seed true --ei tab 9; sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
   for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap ctab-$i; done
   shot ctab-sait --es lang fr --es theme light --ez seed true --ei tab 3 --es sub coach
+  shot reg-main --es lang fr --es theme light --ez seed true --ei tab 3
+  shot reg-hc --es lang fr --es theme light --ez seed true --ei tab 3 --es sub hc
+  shot reg-apropos --es lang fr --es theme light --ez seed true --ei tab 3 --es sub apropos; adb shell input swipe 540 1900 540 300 400; sleep 1; adb shell input swipe 540 1900 540 300 400; sleep 1.5; cap reg-apropos-bas
   tapt "+ Ajouter"; sleep 1; cap ctab-objectif; adb shell input keyevent 4; sleep 1
   shot ctab-seance --es lang fr --es theme light --ez seed true --ei tab 0;;
 esac
