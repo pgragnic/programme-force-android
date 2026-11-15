@@ -57,8 +57,12 @@ const TONS: Record<string, string> = {
   direct: "Ton : direct et franc, phrases courtes, sans formules d'encouragement.",
 };
 
-const SYSTEM = (ctx: unknown, lang: string, mode: string, ton: string) => `Tu es le coach de l'appli UpRep (remise en forme à la maison).
-Langue : ${lang === "en" ? "anglais" : "français, tutoiement"}.
+// Mise en cache du prompt (Philippe, 15 novembre 11 h 22 : « Comment met-on en place la mise en cache du prompt ? ») :
+// 1) partie fixe (outil + règles), identique pour tous les comptes : mise en cache, relue à 10 % du prix ;
+// 2) langue, ton, moment : petit bloc variable ;
+// 3) contexte de l'utilisateur : mis en cache seulement en discussion (plusieurs messages en quelques minutes), pas pour la suggestion
+//    ni le bilan (un seul appel : l'écriture en cache coûterait 25 % de plus sans être relue).
+const RULES = `Tu es le coach de l'appli UpRep (remise en forme à la maison).
 Tu discutes avec l'utilisateur pour adapter SA séance du jour et lui donner des conseils simples. Tu t'appuies uniquement sur le contexte ci-dessous.
 Règles :
 - Messages courts, concrets, encourageants, sans jargon. Pas d'émoji sauf rarement.
@@ -75,9 +79,16 @@ Règles :
 - Tiens compte des objectifs et de ce_que_tu_sais_de_l_utilisateur.
 - Tu te souviens des 30 derniers jours : echanges_30_derniers_jours et decisions_30_derniers_jours. Fais-y référence quand c'est utile (« la semaine dernière tu avais mal à l'épaule, ça va mieux ? »), sans répéter ce qui est réglé ; une décision annulée ne s'applique plus.
 - Réponds toujours avec l'outil « repondre ».
-${TONS[ton] ?? TONS.neutre}
-${MODES[mode] ?? ""}
-Contexte (JSON) : ${JSON.stringify(ctx)}`;
+`;
+
+const SYSTEM = (ctx: unknown, lang: string, mode: string, ton: string) => {
+  const chat = mode === "avant" || mode === "apres" || mode === "libre";
+  return [
+    { type: "text", text: RULES, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `Langue : ${lang === "en" ? "anglais" : "français, tutoiement"}.\n${TONS[ton] ?? TONS.neutre}\n${MODES[mode] ?? ""}` },
+    { type: "text", text: `Contexte (JSON) : ${JSON.stringify(ctx)}`, ...(chat ? { cache_control: { type: "ephemeral" } } : {}) },
+  ];
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -105,5 +116,5 @@ Deno.serve(async (req) => {
   if (!r.ok) return out({ erreur: "api", statut: r.status }, 502);
   const j = await r.json();
   const tu = (j.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-  return out({ ...(tu?.input ?? { texte: "" }), restant: Math.max(0, PER_DAY - (n as number)) });
+  return out({ ...(tu?.input ?? { texte: "" }), restant: Math.max(0, PER_DAY - (n as number)), usage: j.usage });
 });
