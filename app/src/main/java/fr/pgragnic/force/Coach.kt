@@ -319,7 +319,7 @@ object PlanText {
         p.sans_materiel_jours != null -> t("Sans matériel ${p.sans_materiel_jours} jour(s)", "No equipment ${p.sans_materiel_jours} day(s)")
         p.repos == true -> t("Jour de repos", "Rest day")
         p.charges.isNotEmpty() && !p.today -> t("Charges ajustées pour la prochaine fois", "Loads adjusted for next time")
-        p.seance != null -> t("Séance ${p.seance} à la place", "Workout ${p.seance} instead")
+        p.seance != null && p.seance != Store.st.value.s -> t("Séance ${p.seance} à la place", "Workout ${p.seance} instead")
         p.duree_max != null -> t("Séance raccourcie à ${p.duree_max} min", "Workout shortened to ${p.duree_max} min")
         else -> t("Séance du jour adaptée", "Today's workout adapted")
     }

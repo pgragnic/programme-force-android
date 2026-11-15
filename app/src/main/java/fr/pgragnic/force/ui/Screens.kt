@@ -503,6 +503,7 @@ fun ReglagesScreen() {
             when (sub) {
                 "prog" -> ProgrammePage()
                 "rappels" -> RappelPanel()
+                "coach" -> CoachSettingsPage()
                 "compte" -> { AccountPanel(); ExportPanel() }
                 "affichage" -> ThemePanel()
                 "avis" -> FeedbackPanel()
@@ -533,12 +534,13 @@ fun ReglagesScreen() {
         "affichage" -> (when (C.mode) { "light" -> t("Thème clair", "Light theme"); "dark" -> t("Thème sombre", "Dark theme"); else -> t("Thème du téléphone", "Phone theme") }) + " · " +
             when (fr.pgragnic.force.L.mode) { "fr" -> "Français"; "en" -> "English"; else -> t("Langue du téléphone", "Phone language") }
         "avis" -> t("Une idée, un souci ?", "An idea, a problem?")
+        "coach" -> t("Ce que sait le coach, ton, rappels, données envoyées", "What the coach knows, tone, reminders, data sent")
         else -> t("Nouveautés, version, confidentialité", "What's new, version, privacy")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { H1(t("Réglages", "Settings"), Modifier.weight(1f)); HelpButton("reglages") }
         // encarts groupés façon Apple Fitness, icônes de couleur (choix de Philippe du 14 novembre, 11 h 15)
-        listOf(REG.take(3), REG.drop(3)).forEach { grp ->
+        listOf(REG.take(4), REG.drop(4)).forEach { grp ->
             Column(Modifier.fillMaxWidth().glam()) {
                 grp.forEachIndexed { i, r ->
                     if (i > 0) HorizontalDivider(color = C.line, thickness = .5.dp, modifier = Modifier.padding(start = 54.dp))
@@ -561,6 +563,7 @@ fun ReglagesScreen() {
 class RegItem(val k: String, val fr: String, val en: String, val ic: androidx.compose.ui.graphics.vector.ImageVector, val c: Long = 0) { fun t() = t(fr, en); val col get() = if (c == 0L) C.brand else Color(c) }
 val REG = listOf(
     RegItem("prog", "Mon programme", "My program", Icons.Default.FitnessCenter),
+    RegItem("coach", "Coach", "Coach", Icons.Default.AutoAwesome),
     RegItem("rappels", "Rappels", "Reminders", Icons.Default.NotificationsNone, 0xFFFF453A),
     RegItem("compte", "Compte et sauvegarde", "Account and backup", Icons.Default.CloudDone, 0xFF0A84FF),
     RegItem("affichage", "Affichage", "Display", Icons.Default.DarkMode, 0xFF8E8E93),

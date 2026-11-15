@@ -182,29 +182,7 @@ fun CoachTab(onStart: () -> Unit) {
                 Text(b.value, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 4.dp)) }
         }
 
-        // réglages du coach
-        SecHead(t("Réglages du coach", "Coach settings"))
-        Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
-            Row(Modifier.fillMaxWidth().clickable { sheet = "sait" }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(t("Ce que sait le coach", "What the coach knows"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text(t("Profil, matériel, santé et ${d.memo.size} préférence(s) retenue(s)", "Profile, equipment, health and ${d.memo.size} saved preference(s)"), color = C.muted, fontSize = 12.sp)
-                }
-                Icon(Icons.Default.ChevronRight, null, tint = C.muted)
-            }
-            Text(t("Ton du coach", "Coach's tone"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
-            val tons = listOf("encourageant" to t("Encourageant", "Encouraging"), "neutre" to t("Neutre", "Neutral"), "direct" to t("Direct", "Direct"))
-            Seg(tons.map { it.second to (d.ton == it.first) }, Modifier.fillMaxWidth(), check = false, small = true) { i -> CoachData.update { it.copy(ton = tons[i].first) } }
-            Text(t("Rappels", "Reminders"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(t("Debrief 30 min après la séance", "Debrief 30 min after the workout"), color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                Switch(d.remDebrief, { v -> CoachData.update { it.copy(remDebrief = v) } })
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(t("Suggestion du matin (8 h)", "Morning suggestion (8 am)"), color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                Switch(d.remMorning, { v -> CoachData.update { it.copy(remMorning = v) }; CoachRem.schedule(ctx) })
-            }
-        }
+        Text(t("Ton, rappels et ce que sait le coach : Réglages → Coach.", "Tone, reminders and what the coach knows: Settings → Coach."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 16.dp, start = 4.dp))
         if (!prefs.getBoolean("coach_ok", false)) Text(t("Le coach utilise Claude, l'IA d'Anthropic. Il te demandera ton accord au premier échange.", "The coach uses Claude, Anthropic's AI. It will ask for your consent at the first chat."),
             color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, start = 4.dp))
     }
@@ -219,31 +197,6 @@ fun CoachTab(onStart: () -> Unit) {
             d.bilans.entries.sortedByDescending { it.key }.forEach { (k, v) -> Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
                 Text(t("Semaine du ", "Week of ") + runCatching { LocalDate.parse(k).format(DateTimeFormatter.ofPattern("d MMMM yyyy", L.loc)) }.getOrDefault(k), color = C.muted, fontSize = 12.sp)
                 Text(v, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 4.dp)) } }
-        }
-        "sait" -> Sheet(t("Ce que sait le coach", "What the coach knows"), { sheet = null }) {
-            val g = GearStore.g.value
-            Text(t("Envoyé à chaque message. Les préférences retenues se suppriment avec ✕ ; le profil, le matériel et la santé se changent dans Réglages → Mon programme.",
-                "Sent with each message. Saved preferences can be removed with ✕; profile, equipment and health are changed in Settings → My program."), color = C.muted, fontSize = 13.sp)
-            Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                @Composable fun L1(a: String, b: String) = Row { Text(a, color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f)); Text(b, color = C.muted, fontSize = 12.sp) }
-                L1(tr(Gear.LEVELS.getOrNull(g.level ?: -1) ?: "—") + t(" · ${g.perWeek} séances / semaine", " · ${g.perWeek} workouts / week"), t("profil", "profile"))
-                val names = remember { Prog.raw["EQ"]?.jsonArray?.flatMap { c -> c.jsonArray[1].jsonArray.map { it.jsonArray } }?.associate { it[0].jsonPrimitive.content to it[1].jsonPrimitive.content } ?: emptyMap() }
-                L1(g.items.joinToString(", ") { tr(names[it] ?: it) }.ifBlank { t("Poids du corps", "Bodyweight") }, t("matériel", "equipment"))
-                L1(Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { tr(it.second) }.ifBlank { t("Aucune zone à ménager", "No area to protect") }, t("santé", "health"))
-                d.goals.forEach { L1(it.text, t("objectif", "goal")) }
-            }
-            Cap(t("Préférences retenues", "Saved preferences"), Modifier.padding(top = 8.dp, start = 4.dp))
-            Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (d.memo.isEmpty()) Text(t("Le coach retient ce que tu lui dis de durable (« je n'aime pas les burpees »). Rien pour l'instant.", "The coach keeps what you tell it that lasts (“I don't like burpees”). Nothing yet."), color = C.muted, fontSize = 13.sp)
-                d.memo.forEach { m -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("« ${m.text} »", color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.Close, t("Retirer", "Remove"), tint = C.muted, modifier = Modifier.size(20.dp).clickable { CoachData.update { it.copy(memo = it.memo - m, removed = it.removed + m.id) } }) } }
-                var nm by remember { mutableStateOf("") }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(nm, { nm = it.take(120) }, Modifier.weight(1f), placeholder = { Text(t("Ajouter une préférence…", "Add a preference…")) }, singleLine = true)
-                    IconButton(onClick = { if (nm.isNotBlank()) { val x = nm.trim(); CoachData.update { it.copy(memo = it.memo + CMemo(System.currentTimeMillis(), x, "moi")) }; nm = "" } }) { Icon(Icons.Default.Add, t("Ajouter", "Add"), tint = C.brand) }
-                }
-            }
         }
         "data" -> Sheet(t("Données envoyées", "Data sent"), { sheet = null }) {
             Text(t("Voici, en clair, le dernier contexte envoyé à Anthropic avec ton message. Rien d'autre n'est transmis (ni ton e-mail, ni ton nom).",
@@ -269,6 +222,65 @@ fun CoachTab(onStart: () -> Unit) {
             val st = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis() + 30 * 864e5.toLong())
             DatePickerDialog(onDismissRequest = { pick = false }, confirmButton = { TextButton(onClick = {
                 st.selectedDateMillis?.let { date = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }; pick = false }) { Text("OK") } }) { DatePicker(st) }
+        }
+    }
+}
+
+
+/** Réglages du coach, dans Réglages → Coach (Philippe, 15 novembre 12 h 08 : « Déplace les "réglages du coach" dans réglages »). */
+@Composable
+fun CoachSettingsPage() {
+    val ctx = LocalContext.current
+    @Suppress("UNUSED_VARIABLE") val dv = CoachData.v
+    val d = CoachData.d
+    var data by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Cap(t("Ce que sait le coach", "What the coach knows"), Modifier.padding(start = 4.dp))
+            val g = GearStore.g.value
+            Text(t("Envoyé à chaque message. Les préférences retenues se suppriment avec ✕ ; le profil, le matériel et la santé se changent dans Réglages → Mon programme.",
+                "Sent with each message. Saved preferences can be removed with ✕; profile, equipment and health are changed in Settings → My program."), color = C.muted, fontSize = 13.sp)
+            Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                @Composable fun L1(a: String, b: String) = Row { Text(a, color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f)); Text(b, color = C.muted, fontSize = 12.sp) }
+                L1(tr(Gear.LEVELS.getOrNull(g.level ?: -1) ?: "—") + t(" · ${g.perWeek} séances / semaine", " · ${g.perWeek} workouts / week"), t("profil", "profile"))
+                val names = remember { Prog.raw["EQ"]?.jsonArray?.flatMap { c -> c.jsonArray[1].jsonArray.map { it.jsonArray } }?.associate { it[0].jsonPrimitive.content to it[1].jsonPrimitive.content } ?: emptyMap() }
+                L1(g.items.joinToString(", ") { tr(names[it] ?: it) }.ifBlank { t("Poids du corps", "Bodyweight") }, t("matériel", "equipment"))
+                L1(Gear.LIMITS.filter { it.first in g.limits }.joinToString(", ") { tr(it.second) }.ifBlank { t("Aucune zone à ménager", "No area to protect") }, t("santé", "health"))
+                d.goals.forEach { L1(it.text, t("objectif", "goal")) }
+            }
+            Cap(t("Préférences retenues", "Saved preferences"), Modifier.padding(top = 8.dp, start = 4.dp))
+            Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (d.memo.isEmpty()) Text(t("Le coach retient ce que tu lui dis de durable (« je n'aime pas les burpees »). Rien pour l'instant.", "The coach keeps what you tell it that lasts (“I don't like burpees”). Nothing yet."), color = C.muted, fontSize = 13.sp)
+                d.memo.forEach { m -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("« ${m.text} »", color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.Close, t("Retirer", "Remove"), tint = C.muted, modifier = Modifier.size(20.dp).clickable { CoachData.update { it.copy(memo = it.memo - m, removed = it.removed + m.id) } }) } }
+                var nm by remember { mutableStateOf("") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(nm, { nm = it.take(120) }, Modifier.weight(1f), placeholder = { Text(t("Ajouter une préférence…", "Add a preference…")) }, singleLine = true)
+                    IconButton(onClick = { if (nm.isNotBlank()) { val x = nm.trim(); CoachData.update { it.copy(memo = it.memo + CMemo(System.currentTimeMillis(), x, "moi")) }; nm = "" } }) { Icon(Icons.Default.Add, t("Ajouter", "Add"), tint = C.brand) }
+                }
+            }
+        
+        Cap(t("Ton du coach", "Coach's tone"), Modifier.padding(top = 8.dp, start = 4.dp))
+        val tons = listOf("encourageant" to t("Encourageant", "Encouraging"), "neutre" to t("Neutre", "Neutral"), "direct" to t("Direct", "Direct"))
+        Seg(tons.map { it.second to (d.ton == it.first) }, Modifier.fillMaxWidth(), check = false, small = true) { i -> CoachData.update { it.copy(ton = tons[i].first) } }
+        Cap(t("Rappels du coach", "Coach reminders"), Modifier.padding(top = 8.dp, start = 4.dp))
+        Column(Modifier.fillMaxWidth().glam().padding(horizontal = 14.dp, vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Debrief 30 min après la séance", "Debrief 30 min after the workout"), color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Switch(d.remDebrief, { v -> CoachData.update { it.copy(remDebrief = v) } })
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Suggestion du matin (8 h)", "Morning suggestion (8 am)"), color = C.ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Switch(d.remMorning, { v -> CoachData.update { it.copy(remMorning = v) }; CoachRem.schedule(ctx) })
+            }
+        }
+        Cap(t("Données envoyées", "Data sent"), Modifier.padding(top = 8.dp, start = 4.dp))
+        Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
+            Text(t("Le dernier contexte envoyé à Anthropic avec ton message, en clair. Rien d'autre n'est transmis (ni ton e-mail, ni ton nom).",
+                "The last context sent to Anthropic with your message, in plain text. Nothing else is sent (no e-mail, no name)."), color = C.muted, fontSize = 13.sp)
+            Text(if (data) t("Masquer", "Hide") else t("Afficher", "Show"), color = C.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).clickable { data = !data }.padding(2.dp))
+            if (data) Text(CoachData.lastSent ?: t("Aucun échange pour l'instant.", "No exchange yet."), color = C.ink, fontSize = 11.sp, fontFamily = FontFamily.Monospace, lineHeight = 15.sp,
+                modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.bg).horizontalScroll(rememberScrollState()).padding(12.dp))
         }
     }
 }
