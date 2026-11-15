@@ -67,7 +67,8 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
         t("Je t'écoute : une gêne qui dure, des vacances sans matériel, peu de temps, une rando à préparer ?", "I'm listening: lasting discomfort, holidays without equipment, little time, a hike to prepare?"),
         listOf(t("Une gêne qui dure", "Lasting discomfort"), t("Je pars sans matériel", "I'm away without equipment"), t("Séance express", "Quick workout"), t("Préparer une rando", "Prepare a hike")))) } }
     fun log(m: Msg, plan: CoachPlan? = null) = CoachData.addMsg(CMsg(m.t, m.coach, m.text, plan, mode))
-    LaunchedEffect(Unit) { msgs.lastOrNull()?.let { if (!it.old) log(it) } }
+    // la question d'ouverture n'est gardée dans l'historique que si l'utilisateur répond (ouvrir puis fermer ne laisse pas de trace)
+    var opened by remember { mutableStateOf(msgs.lastOrNull()?.takeIf { !it.old }) }
     // historique envoyé à l'API : commence par l'utilisateur, puis alterne
     // les derniers échanges des 3 derniers jours sont renvoyés au coach pour qu'il se souvienne de la conversation
     val prior = remember { val lim = System.currentTimeMillis() - 3 * 864e5.toLong()
@@ -102,6 +103,7 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
     }
     fun send(txt: String) {
         val s = txt.trim(); if (s.isEmpty() || busy) return
+        opened?.let { log(it); opened = null }
         val um = Msg(false, s); msgs += um; log(um); hist += "user" to s; input = ""
         if (step < Q.size - 1) {
             // questions posées par l'appli, sans appel à l'API
@@ -124,7 +126,7 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
             }
             // adaptations qui durent plusieurs jours, avec ✕ pour les arrêter
             val cs = CoachState.v
-            val running = remember(cs) { CoachState.genes.map { (z, d) -> z to t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "${z} protected until ${CoachState.fmt(d)}") } +
+            val running = remember(cs) { CoachState.genes.map { (z, d) -> z to PlanText.zoneOff(z) + t(" jusqu'au ", " until ") + CoachState.fmt(d) } +
                 listOfNotNull(CoachState.noGear?.let { "" to t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
             if (running.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 running.forEach { (z, l) -> Row(Modifier.clip(RoundedCornerShape(16.dp)).background(C.chip).clickable { if (z.isEmpty()) CoachState.endNoGear(ctx) else CoachState.endGene(ctx, z) }.padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),

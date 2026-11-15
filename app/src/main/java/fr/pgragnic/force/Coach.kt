@@ -256,6 +256,8 @@ object PlanText {
     class Diff(val beforeN: Int, val afterN: Int, val beforeMin: Int, val afterMin: Int, val lines: List<Line>)
 
     private fun zoneName(z: String) = tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)
+    /** « Genou ménagé », « Épaule ménagée » */
+    fun zoneOff(z: String) = zoneName(z) + t(if (z in setOf("cheville", "hanche", "epaule")) " ménagée" else " ménagé", " protected")
 
     /** Avant / après de la séance [s] (séance du jour par défaut) avec le plan, sans rien enregistrer. */
     fun diff(p: CoachPlan): Diff? = runCatching {
@@ -277,7 +279,7 @@ object PlanText {
                     when { (p.series_moins ?: 0) > 0 -> t("Moins de séries aujourd'hui", "Fewer sets today"); p.duree_max != null -> t("Pour tenir en ${p.duree_max} min", "To fit in ${p.duree_max} min"); else -> null }, false)
                 else -> Line(x?.let { lab(it.first, it.second) }, y?.let { lab(it.first, it.second) },
                     p.remplacements.firstOrNull { it.de == x?.first && it.vers == y?.first }?.raison
-                        ?: if (gz != null && x != null && gz in (Prog.EX[x.first]?.stress ?: emptyList())) t("${zoneName(gz)} ménagé(e)", "${zoneName(gz)} protected")
+                        ?: if (gz != null && x != null && gz in (Prog.EX[x.first]?.stress ?: emptyList())) zoneOff(gz)
                         else if (p.sans_materiel_jours != null) t("Sans matériel", "No equipment")
                         else if (p.seance != null && p.seance != st.s) t("Autre séance : ${p.seance}", "Other workout: ${p.seance}")
                         else if (y == null && p.duree_max != null) t("Pour tenir en ${p.duree_max} min", "To fit in ${p.duree_max} min") else null, false)
@@ -296,7 +298,7 @@ object PlanText {
             else -> l.before.substringBefore(" · ") + " → " + l.after.substringBefore(" · ")
         } + (l.why?.let { " ($it)" } ?: "") }
         if (dd != null && dd.beforeMin != dd.afterMin) out += t("Durée : ≈ ${dd.beforeMin} → ≈ ${dd.afterMin} min", "Duration: ≈ ${dd.beforeMin} → ≈ ${dd.afterMin} min")
-        p.gene?.let { out += t("${zoneName(it.zone)} ménagé(e) pendant ${it.jours} jour(s) : exercices qui la sollicitent remplacés", "${zoneName(it.zone)} protected for ${it.jours} day(s): exercises that load it replaced") }
+        p.gene?.let { out += zoneOff(it.zone) + t(" pendant ${it.jours} jour${if (it.jours > 1) "s" else ""} : exercices qui la sollicitent remplacés", " for ${it.jours} day(s): exercises that load it replaced") }
         p.sans_materiel_jours?.let { out += t("Séances au poids du corps pendant $it jour(s)", "Bodyweight workouts for $it day(s)") }
         p.charges.forEach { c -> out += t("Prochaine fois : ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 cran" else "−1 cran"}", "Next time: ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 step" else "−1 step"}") +
             (c.raison?.let { " ($it)" } ?: "") }
@@ -305,7 +307,7 @@ object PlanText {
     }
 
     fun title(p: CoachPlan): String = when {
-        p.gene != null -> t("${zoneName(p.gene.zone)} ménagé(e) ${p.gene.jours} jour(s)", "${zoneName(p.gene.zone)} protected ${p.gene.jours} day(s)")
+        p.gene != null -> zoneOff(p.gene.zone) + t(" ${p.gene.jours} jour${if (p.gene.jours > 1) "s" else ""}", " ${p.gene.jours} day(s)")
         p.sans_materiel_jours != null -> t("Sans matériel ${p.sans_materiel_jours} jour(s)", "No equipment ${p.sans_materiel_jours} day(s)")
         p.repos == true -> t("Jour de repos", "Rest day")
         p.charges.isNotEmpty() && !p.today -> t("Charges ajustées pour la prochaine fois", "Loads adjusted for next time")

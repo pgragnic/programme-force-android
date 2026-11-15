@@ -134,7 +134,7 @@ fun CoachTab(onStart: () -> Unit) {
             if (!any) Text(t("Rien en ce moment : ton programme suit son cours normal.", "Nothing right now: your program runs as usual."), color = C.muted, fontSize = 13.sp)
             else {
                 androidx.compose.foundation.layout.FlowRow {
-                    CoachState.genes.forEach { (z, until) -> XChip(t("${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} ménagé → ${CoachState.fmt(until)}", "${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} protected → ${CoachState.fmt(until)}")) { CoachState.endGene(ctx, z) } }
+                    CoachState.genes.forEach { (z, until) -> XChip(PlanText.zoneOff(z) + " → " + CoachState.fmt(until)) { CoachState.endGene(ctx, z) } }
                     CoachState.noGear?.let { XChip(t("Sans matériel → ${CoachState.fmt(it)}", "No equipment → ${CoachState.fmt(it)}")) { CoachState.endNoGear(ctx) } }
                     if (Adapt.on) XChip(t("Séance du jour adaptée", "Today's workout adapted")) { Adapt.clear(ctx) }
                     pend.forEach { (id, b) -> XChip(tr(Prog.EX[id]?.n ?: id) + if (b.dir > 0) t(" +1 cran", " +1 step") else t(" −1 cran", " −1 step")) { CoachState.endBias(ctx, id) } }

@@ -181,7 +181,7 @@ fun SeanceScreen(onStart: () -> Unit) {
         var sugOpen by remember { mutableStateOf(false) }; var sugLong by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { sug = CoachApi.suggestion(cctx) }
         // (clé, libellé) : clé "" = sans matériel ; ✕ pour arrêter avant la date (Philippe, 15 novembre 10 h 16 : « Et comment je peux remettre à zéro ? »)
-        val running = remember(cs) { CoachState.genes.map { (z, d) -> z to t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "$z protected until ${CoachState.fmt(d)}") } +
+        val running = remember(cs) { CoachState.genes.map { (z, d) -> z to PlanText.zoneOff(z) + t(" jusqu'au ", " until ") + CoachState.fmt(d) } +
             listOfNotNull(CoachState.noGear?.let { "" to t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
         Row(Modifier.fillMaxWidth().glam().clickable { coach = if (debrief) "apres" else "avant" }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             CoachAvatar(36); Spacer(Modifier.width(12.dp))
@@ -291,7 +291,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                         val was = baseOrder.getOrNull(i)
                         if (was != null && was != id) {
                             val gz = CoachState.genes.keys.firstOrNull { it in (Prog.EX[was]?.stress ?: emptyList()) }
-                            val why = Adapt.whyOf(id) ?: gz?.let { z -> t("${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} ménagé(e)", "${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} protected") }
+                            val why = Adapt.whyOf(id) ?: gz?.let { PlanText.zoneOff(it) }
                                 ?: if (CoachState.noGear != null) t("sans matériel", "no equipment") else t("séance adaptée", "adapted workout")
                             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(t("Coach", "Coach"), color = C.onBrand, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.brand).padding(horizontal = 6.dp, vertical = 1.dp))

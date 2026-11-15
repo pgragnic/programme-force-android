@@ -39,8 +39,8 @@ object Demo {
                 CMsg(now - 26 * h + 3000, true, "On monte le goblet squat d'un cran la prochaine fois : tu as fait toutes tes répétitions avec 3 en réserve.", p2),
                 CMsg(now - h, false, "J'ai mal à l'épaule depuis hier"), CMsg(now - h + 1000, true, "On la ménage 2 jours : le développé militaire est remplacé par des pompes, sans bras au-dessus de la tête.", p1)),
             journal = listOf(
-                CDecision(now - h + 2000, "discussion", "Épaule ménagé(e) 2 jour(s)", "J'ai mal à l'épaule depuis hier",
-                    listOf("Développé militaire debout → Pompes (Épaule ménagée : pas de bras au-dessus de la tête)", "Épaule ménagé(e) pendant 2 jour(s) : exercices qui la sollicitent remplacés"), p1, today.toString(), until = today.plusDays(1).toString()),
+                CDecision(now - h + 2000, "discussion", "Épaule ménagée 2 jours", "J'ai mal à l'épaule depuis hier",
+                    listOf("Développé militaire debout → Pompes (Épaule ménagée : pas de bras au-dessus de la tête)", "Épaule ménagée pendant 2 jours : exercices qui la sollicitent remplacés"), p1, today.toString(), until = today.plusDays(1).toString()),
                 CDecision(now - 26 * h + 4000, "debrief", "Charges ajustées pour la prochaine fois", "Trop facile", listOf("Prochaine fois : Goblet squat +1 cran (tu as trouvé ça trop facile)"), p2, today.minusDays(1).toString())),
             goals = listOf(CGoal(1, "Rando de 20 km", today.plusDays(30).toString(), today.minusDays(15).toString())),
             memo = listOf(CMemo(2, "N'aime pas les burpees"), CMemo(3, "S'entraîne plutôt le matin")),
