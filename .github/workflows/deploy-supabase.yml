@@ -27,7 +27,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: inputs.fonction
         with:
-          version: 2.54.11
+          version: latest
       - name: Fonction coach → clever-service
         if: inputs.fonction
         run: |
