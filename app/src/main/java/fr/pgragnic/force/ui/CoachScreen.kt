@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,10 +115,26 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
 
     // la fenêtre gère elle-même barres système et clavier : sur certains téléphones (Xiaomi) les marges calculées par Compose
     // valaient 0 et la zone de saisie passait sous la barre de navigation (Philippe, 15 novembre 9 h 52 : « je ne peux pas taper un texte libre... »)
+    // Le correctif précédent ne suffisait pas sur le Xiaomi de Philippe (15 novembre 19 h 23, capture : « Je ne peux toujours pas parler
+    // de façon libre au coach ? ») : la fenêtre du coach passait encore sous les boutons de navigation. On mesure donc, à l'écran,
+    // où arrive le bas de la fenêtre du coach et où commence la barre de navigation (connue de la fenêtre principale, dont les marges
+    // sont justes), et on remonte la zone de saisie de l'écart. Clavier ouvert, la fenêtre rétrécit au-dessus du clavier : écart nul.
+    val av = androidx.compose.ui.platform.LocalView.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val navPx = WindowInsets.navigationBars.getBottom(density).takeIf { it > 0 }
+        ?: androidx.core.view.ViewCompat.getRootWindowInsets(av)?.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+    fun navTopOnScreen(): Int { val r = av.rootView; val l = IntArray(2); r.getLocationOnScreen(l); return l[1] + r.height - navPx }
+    var lift by remember { mutableStateOf(0.dp) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = true)) {
         val dv = androidx.compose.ui.platform.LocalView.current
         LaunchedEffect(Unit) { (dv.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
-        Column(Modifier.fillMaxSize().background(C.bg)) {
+        Column(Modifier.fillMaxSize().background(C.bg).onGloballyPositioned { c ->
+            val l = IntArray(2); dv.getLocationOnScreen(l)
+            val bottom = l[1] + c.positionInWindow().y.toInt() + c.size.height
+            val over = (bottom - navTopOnScreen()).coerceAtLeast(0)
+            val d = with(density) { over.toDp() }
+            if (d != lift) lift = d
+        }) {
             Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Retour", "Back"), tint = C.ink) }
                 CoachAvatar(); Spacer(Modifier.width(10.dp))
@@ -167,7 +185,7 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
                 }
                 if (busy) item { Text(t("Le coach réfléchit…", "The coach is thinking…"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(start = 4.dp)) }
             }
-            Row(Modifier.fillMaxWidth().padding(12.dp).clip(RoundedCornerShape(26.dp)).background(C.card1).padding(start = 18.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp + lift).clip(RoundedCornerShape(26.dp)).background(C.card1).padding(start = 18.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicTextField(input, { input = it.take(500) }, Modifier.weight(1f).padding(vertical = 14.dp),
                     textStyle = androidx.compose.ui.text.TextStyle(color = C.ink, fontSize = 15.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(C.brand),
                     decorationBox = { inner -> if (input.isEmpty()) Text(t("Écris au coach…", "Message the coach…"), color = C.muted, fontSize = 15.sp); inner() })
