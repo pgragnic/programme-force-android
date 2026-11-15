@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
         Demo.tired = intent.getBooleanExtra("tired", false); Demo.over = intent.getBooleanExtra("over", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
+        if (intent.getBooleanExtra("seed", false) && CoachData.d.msgs.isEmpty()) Demo.seedCoach(this)
         intent.getStringExtra("gear")?.let { Demo.gear(it) }
         intent.getIntExtra("perweek", 0).takeIf { it in 3..6 }?.let { GearStore.save(this, GearStore.g.value.copy(perWeek = it)) }
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
