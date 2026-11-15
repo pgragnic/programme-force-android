@@ -185,6 +185,14 @@ object CoachApi {
                 putJsonArray("peu_travailles") { b.low.forEach { add(tr(it)) } }
                 putJsonArray("rattrapage_cette_semaine") { Balance.weekRes().pairs.filter { it.state != 0 }.forEach { add(if (it.state == -1) it.a else it.b) } }
             } }
+            // mémoire du coach sur 30 jours (Philippe, 15 novembre 11 h 15 : « Je voudrais que le coach se souvienne des 30 derniers jours ») :
+            // échanges résumés (texte coupé à 240 caractères, 80 messages au plus) et décisions prises, en plus de la conversation en cours
+            val lim30 = System.currentTimeMillis() - 30 * 864e5.toLong()
+            fun dd(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+            putJsonArray("echanges_30_derniers_jours") { CoachData.d.msgs.filter { it.t >= lim30 && it.text.isNotBlank() }.takeLast(80).forEach { m -> addJsonObject {
+                put("date", dd(m.t)); put("qui", if (m.coach) "coach" else "utilisateur"); put("texte", m.text.take(240)) } } }
+            putJsonArray("decisions_30_derniers_jours") { CoachData.d.journal.filter { it.id >= lim30 }.take(30).forEach { e -> addJsonObject {
+                put("date", dd(e.id)); put("decision", e.title); put("pourquoi", e.why.take(200)); put("annulee", e.undone) } } }
             putJsonArray("objectifs") { CoachData.d.goals.forEach { g -> addJsonObject { put("objectif", g.text); put("date", g.date) } } }
             putJsonArray("ce_que_tu_sais_de_l_utilisateur") { CoachData.d.memo.forEach { add(it.text) } }
             putJsonArray("activite_3_jours") { days.sortedByDescending { it.date }.take(3).forEach { d -> addJsonObject { put("date", d.date); put("pas", d.steps); put("activite", d.act); put("pas_avec_sac", d.rsteps) } } }

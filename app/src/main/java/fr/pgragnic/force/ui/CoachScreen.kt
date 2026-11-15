@@ -70,9 +70,9 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
     // la question d'ouverture n'est gardée dans l'historique que si l'utilisateur répond (ouvrir puis fermer ne laisse pas de trace)
     var opened by remember { mutableStateOf(msgs.lastOrNull()?.takeIf { !it.old }) }
     // historique envoyé à l'API : commence par l'utilisateur, puis alterne
-    // les derniers échanges des 3 derniers jours sont renvoyés au coach pour qu'il se souvienne de la conversation
-    val prior = remember { val lim = System.currentTimeMillis() - 3 * 864e5.toLong()
-        CoachData.d.msgs.filter { it.t >= lim && it.text.isNotBlank() }.takeLast(10).map { (if (it.coach) "assistant" else "user") to it.text } }
+    // fil récent (24 h) renvoyé tel quel ; les 30 derniers jours partent résumés dans le contexte (echanges_30_derniers_jours)
+    val prior = remember { val lim = System.currentTimeMillis() - 864e5.toLong()
+        CoachData.d.msgs.filter { it.t >= lim && it.text.isNotBlank() }.takeLast(8).map { (if (it.coach) "assistant" else "user") to it.text } }
     val hist = remember { mutableStateListOf<Pair<String, String>>().also { h -> h.addAll(prior); opener(mode)?.let { h += "user" to it; h += "assistant" to Q[0].first } } }
     /** alternance user / assistant en commençant par user (messages consécutifs du même côté réunis) */
     fun norm(l: List<Pair<String, String>>): List<Pair<String, String>> {
