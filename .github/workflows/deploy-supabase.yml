@@ -1,0 +1,54 @@
+# Déploiement Supabase lancé à la main (Philippe, 15 novembre 2026 : « Oui on met ça en place ») :
+# fonction coach (supabase/functions/coach/index.ts) publiée sous le nom clever-service, et scripts SQL choisis.
+# Le jeton SUPABASE_ACCESS_TOKEN est un secret du dépôt, créé par Philippe ; il n'apparaît jamais dans le code ni dans les journaux.
+name: deploy-supabase
+on:
+  workflow_dispatch:
+    inputs:
+      fonction:
+        description: "Déployer la fonction coach (clever-service)"
+        type: boolean
+        default: true
+      sql:
+        description: "Scripts SQL à passer, séparés par des virgules (ex. coach-data.sql), vide = aucun"
+        type: string
+        default: ""
+concurrency: deploy-supabase
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      REF: aehfnzvzghwkxugxqqpe
+    steps:
+      - uses: actions/checkout@v4
+      - name: Jeton présent ?
+        run: test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Secret SUPABASE_ACCESS_TOKEN absent"; exit 1; }
+      - uses: supabase/setup-cli@v1
+        if: inputs.fonction
+        with:
+          version: 2.54.11
+      - name: Fonction coach → clever-service
+        if: inputs.fonction
+        run: |
+          mkdir -p supabase/functions/clever-service
+          cp supabase/functions/coach/index.ts supabase/functions/clever-service/index.ts
+          # vérification du jeton d'accès désactivée comme sur la fonction actuelle : la fonction contrôle elle-même le compte
+          supabase functions deploy clever-service --project-ref "$REF" --no-verify-jwt --use-api
+      - name: Scripts SQL
+        if: inputs.sql != ''
+        env:
+          LIST: ${{ inputs.sql }}
+        run: |
+          IFS=',' read -ra F <<< "$LIST"
+          for f in "${F[@]}"; do
+            f="$(echo "$f" | xargs)"; p="supabase/$f"
+            case "$f" in *..*|*/*) echo "::error::nom refusé : $f"; exit 1;; esac
+            test -f "$p" || { echo "::error::$p introuvable"; exit 1; }
+            echo "→ $f"
+            body=$(jq -Rs '{query: .}' < "$p")
+            code=$(curl -sS -o out.json -w '%{http_code}' -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$body")
+            echo "HTTP $code"; head -c 400 out.json; echo
+            test "$code" -lt 300 || exit 1
+          done
