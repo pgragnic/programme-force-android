@@ -1,5 +1,6 @@
 package fr.pgragnic.force.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -174,6 +175,7 @@ fun SeanceScreen(onStart: () -> Unit) {
         val debrief = lastE != null && java.time.Instant.ofEpochMilli(lastE.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now() &&
             cctx.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).getLong("coachdebrief", 0L) != lastE.d && coach == null
         var sug by remember { mutableStateOf<String?>(null) }
+        var sugOpen by remember { mutableStateOf(false) }; var sugLong by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { sug = CoachApi.suggestion(cctx) }
         val running = remember(cs) { CoachState.genes.map { (z, d) -> t("${Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z} ménagé jusqu'au ${CoachState.fmt(d)}", "$z protected until ${CoachState.fmt(d)}") } +
             listOfNotNull(CoachState.noGear?.let { t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
@@ -183,7 +185,12 @@ fun SeanceScreen(onStart: () -> Unit) {
                 Text(when { debrief -> t("Comment s'est passée ta séance ?", "How did your workout go?"); Adapt.on -> t("Séance adaptée avec le coach", "Workout adapted with the coach"); else -> t("Faire le point avec le coach", "Check in with the coach") },
                     color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Text(when { debrief -> t("Dis-le au coach, il ajuste tes prochaines charges", "Tell the coach, it adjusts your next loads"); Adapt.on -> Adapt.notes.firstOrNull() ?: t("Touche pour en parler", "Tap to talk about it")
-                    sug != null -> sug!!; else -> t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout") }, color = C.muted, fontSize = 13.sp, maxLines = 5, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    sug != null -> sug!!; else -> t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout") }, color = C.muted, fontSize = 13.sp,
+                    maxLines = if (sugOpen) Int.MAX_VALUE else 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    onTextLayout = { if (!sugOpen) sugLong = it.hasVisualOverflow }, modifier = Modifier.animateContentSize())
+                // texte long du coach (Philippe, 15 novembre 9 h 13 : « Laissons le coach faire la longueur souhaitée mais il faut prévoir quelque chose qui permet d'étendre l'affichage »)
+                if (sugLong || sugOpen) Text(if (sugOpen) t("Réduire", "Show less") else t("Lire la suite", "Read more"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(8.dp)).clickable { sugOpen = !sugOpen }.padding(vertical = 2.dp))
                 running.forEach { Text("• $it", color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp)) }
             }
             Box(Modifier.size(36.dp).clip(CircleShape).background(C.chip).clickable { coach = "libre" }, contentAlignment = Alignment.Center) {

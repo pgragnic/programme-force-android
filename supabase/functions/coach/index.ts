@@ -45,7 +45,7 @@ const MODES: Record<string, string> = {
   avant: "Moment : l'utilisateur fait le point avant sa séance. Propose un plan adapté à ses réponses.",
   apres: "Moment : la séance vient de se terminer (dernieres_seances[0]). Félicite brièvement, tiens compte du ressenti et de la réserve ; propose si utile plan.charges pour la prochaine fois (exercices trop faciles : +1, trop durs ou en échec : -1). N'utilise pas les autres champs du plan.",
   libre: "Moment : conversation libre. Réponds à la question ; propose un plan seulement si l'utilisateur demande un changement.",
-  suggestion: "Moment : suggestion du jour affichée en haut de l'écran Séance. Une seule phrase de 20 mots maximum, utile pour aujourd'hui (récupération, pas, activité, régularité), ou un texte vide s'il n'y a rien de pertinent. Pas de plan, pas de choix.",
+  suggestion: "Moment : suggestion du jour affichée en haut de l'écran Séance. Message libre, de la longueur que tu juges utile (souvent une à trois phrases), pour aujourd'hui (récupération, pas, activité, régularité), ou un texte vide s'il n'y a rien de pertinent. Pas de plan, pas de choix.",
   bilan: "Moment : bilan de la semaine. Trois phrases maximum : ce qui va bien, l'équilibre des muscles (equilibre_4_semaines, en disant ce que le programme rattrape déjà cette semaine), un ou deux conseils concrets pour la semaine suivante. Pas de plan, pas de choix.",
 };
 
