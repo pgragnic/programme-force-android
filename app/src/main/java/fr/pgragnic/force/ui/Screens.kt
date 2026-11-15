@@ -183,7 +183,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 Text(when { debrief -> t("Comment s'est passée ta séance ?", "How did your workout go?"); Adapt.on -> t("Séance adaptée avec le coach", "Workout adapted with the coach"); else -> t("Faire le point avec le coach", "Check in with the coach") },
                     color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Text(when { debrief -> t("Dis-le au coach, il ajuste tes prochaines charges", "Tell the coach, it adjusts your next loads"); Adapt.on -> Adapt.notes.firstOrNull() ?: t("Touche pour en parler", "Tap to talk about it")
-                    sug != null -> sug!!; else -> t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout") }, color = C.muted, fontSize = 13.sp, maxLines = 3)
+                    sug != null -> sug!!; else -> t("Forme, temps, gêne : il adapte ta séance du jour", "Energy, time, discomfort: it adapts today's workout") }, color = C.muted, fontSize = 13.sp, maxLines = 5, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 running.forEach { Text("• $it", color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 2.dp)) }
             }
             Box(Modifier.size(36.dp).clip(CircleShape).background(C.chip).clickable { coach = "libre" }, contentAlignment = Alignment.Center) {
