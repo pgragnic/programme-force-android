@@ -105,7 +105,11 @@ fun CoachTab(onStart: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) { H1(t("Coach", "Coach"), Modifier.weight(1f)) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 2.dp, top = 2.dp)) {
-            Text(t("${CoachData.leftToday()} / 40 messages aujourd'hui · ", "${CoachData.leftToday()} / 40 messages today · "), color = C.muted, fontSize = 13.sp)
+            // « N messages restants » (Philippe, 15 novembre 11 h 56 : « Que veux dire 40/40 messages aujourd'hui ? » → « Ok ») ; orange sous 5
+            val left = CoachData.leftToday()
+            Text(t("$left message${if (left > 1) "s" else ""} restant${if (left > 1) "s" else ""} aujourd'hui", "$left message${if (left != 1) "s" else ""} left today"),
+                color = if (left < 5) C.warm else C.muted, fontSize = 13.sp, fontWeight = if (left < 5) FontWeight.SemiBold else FontWeight.Normal)
+            Text(" · ", color = C.muted, fontSize = 13.sp)
             Text(t("Données envoyées", "Data sent"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { sheet = "data" })
         }
         // discussion
