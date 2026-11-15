@@ -162,6 +162,8 @@ class Body(ctx: Context) {
     fun propOf(id: String): Pair<String, Float>? = P3(id)?.get("prop")?.jsonObject?.let { it["t"]!!.jsonPrimitive.content to (it["x"]?.jsonPrimitive?.floatOrNull ?: 100f) }
     /** hauteur du dessus de l'accessoire (assise, banc) quand la pose la précise (réglée sur le corps par tools/corps/fix4.py) */
     fun propTop(id: String): Float? = P3(id)?.get("prop")?.jsonObject?.get("y")?.jsonPrimitive?.floatOrNull
+    /** place fixe de l'accessoire au sol (profondeur z, cm), quand la pose la donne : balle de massage */
+    fun propZ(id: String): Float? = P3(id)?.get("prop")?.jsonObject?.get("z")?.jsonPrimitive?.floatOrNull
     fun poseTool(id: String) = P3(id)?.get("tool")?.jsonPrimitive?.contentOrNull
     fun gripOf(id: String): String? = null
     fun isStat(id: String) = flag(id, "stat")

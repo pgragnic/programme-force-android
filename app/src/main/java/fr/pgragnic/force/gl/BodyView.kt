@@ -364,11 +364,13 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                     Matrix.translateM(m, 0, ox, 0f, 0f); Matrix.scaleM(m, 0, L, r, r); objs += Triple(cyl, m, if (ox == 0f) handle else dbc)
                 }
             }
-            fun kettlebell(p: V3, fore: V3, hax: V3) {
-                // la cloche pend sous la main, ou repose le long de l'avant-bras quand le bras est levé
+            fun kettlebell(p: V3, fore: V3, hax: V3, palm: V3? = null) {
+                // la cloche pend sous la main quand le bras pend ; bras plié ou levé (curl, rack, développé), une seule main :
+                // posée sur le dos du poignet et de l'avant-bras (revue des positions du 15 novembre : elle recouvrait l'avant-bras et le visage)
                 val down = V3(0f, -1f, 0f)
-                val off = if (fore.y < -.3f) down else (fore * -1f + down).norm()
-                val c = p + off * 9f
+                val c = if (fore.y < -.3f) p + down * 9f
+                    else if (palm != null) p - palm * 10.5f - fore * 2f
+                    else p + (fore * -1f + down).norm() * 9f
                 objs += Triple(ball, mat(c, 8f, 8f, 8f), dbc)
                 seg(p - hax * 4.5f, p + hax * 4.5f, 1.1f, handle)
                 seg(p - hax * 4.5f, c - hax * 4f + V3(0f, 3f, 0f), 1.1f, handle)
@@ -382,7 +384,7 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 else dumbbell(p, if (id == "squat" || id == "ohtri") FloatArray(16).also { Matrix.setRotateM(it, 0, 90f, 0f, 0f, 1f) } else null)
             } else dbs.forEach { w ->
                 val sd = if (w == "W1") "R" else "L"
-                if (tool == "kb") kettlebell(inHand(w), fore(w), axis(sd))
+                if (tool == "kb") kettlebell(inHand(w), fore(w), axis(sd), b.palm(sd).also { it.x *= sx })
                 else dumbbell(inHand(w), rotTo(axis(sd)))   // poignée dans l'axe des jointures : la main fermée tient le milieu
             }
         }
@@ -469,7 +471,8 @@ class BodyRenderer(private val ctx: Context) : GLSurfaceView.Renderer {
                 }
                 "swissball" -> { val a = jt("A1").lerp(jt("A2"), .5f); objs += Triple(ball, mat(V3(0f, maxOf(30f, a.y - 26f), a.z + 6f), 30f, 30f, 30f), rgb(0x5E93F2)) }
                 "bosu" -> { val a = jt("A1").lerp(jt("A2"), .5f); objs += Triple(ball, mat(V3(0f, 0f, a.z), 32f, 13f, 32f), rgb(0x4B5563)) }
-                "rollball" -> { val a = jt("A1"); objs += Triple(ball, mat(V3(a.x, 3.5f, a.z + 4f), 3.5f, 3.5f, 3.5f), rgb(0xE66AAE)) }
+                // balle fixe au sol quand la pose donne sa place (z) : le pied roule dessus (revue des positions du 15 novembre)
+                "rollball" -> { val a = jt("A1"); objs += Triple(ball, mat(V3(a.x, 3.5f, b.propZ(id) ?: (a.z + 4f)), 3.5f, 3.5f, 3.5f), rgb(0xE66AAE)) }
                 "roller" -> { val n = jt("Nc"); objs += Triple(cyl, mat(V3(0f, 7.5f, n.z), 45f, 7.5f, 7.5f), rgb(0x3B82C4)) }
                 "wall" -> objs += Triple(box, mat(V3(0f, 85f, z + (if (x < 100f) -2f else 2f)), 110f, 170f, 3f), pc)
             }

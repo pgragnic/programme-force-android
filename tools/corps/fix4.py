@@ -40,8 +40,11 @@ def tool_pen(P3, id, k, tool):
     Hh = B.hdr['hand']
     def grip(sd): i = NM.index('hand' + sd); return T[i] + R[i] @ B.grip0[sd] + [0, B.dy, 0]
     def bell(g, s_):
+        # comme BodyView.kt : sous la main bras pendant, sinon sur le dos du poignet (revue des positions du 15 novembre)
         fore = np.array(Q['W' + s_], float) - Q['E' + s_]; fore /= np.linalg.norm(fore)
-        off = np.array([0, -1., 0]) if fore[1] < -.3 else (-fore + [0, -1, 0]); off /= np.linalg.norm(off); return g + off * 9
+        if fore[1] < -.3: return g + np.array([0, -9., 0])
+        sd = 'R' if s_ == '1' else 'L'; pw = R[NM.index('hand' + sd)] @ np.array(Hh[sd]['n']); pw /= np.linalg.norm(pw)
+        return g - pw * 10.5 - fore * 2
     sph = np.random.default_rng(0).normal(size=(200, 3)); sph /= np.linalg.norm(sph, axis=1, keepdims=True)
     if tool == 'bb':
         a, c = grip('R'), grip('L'); ax = (a - c) / np.linalg.norm(a - c); pts = np.array([(a + c) / 2 + ax * t for t in np.linspace(-60, 60, 121)])
