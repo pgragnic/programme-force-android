@@ -128,12 +128,26 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = true)) {
         val dv = androidx.compose.ui.platform.LocalView.current
         LaunchedEffect(Unit) { (dv.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
+        // clavier : sur le Xiaomi, la fenêtre ne rétrécit pas quand il s'ouvre (Philippe, 19 h 45 : « Je vois la zone de saisie clavier fermé,
+        // par contre je ne la vois plus clavier ouvert »). La partie visible de la fenêtre (getWindowVisibleDisplayFrame, en coordonnées
+        // d'écran) s'arrête au-dessus du clavier : la zone de saisie remonte jusque-là.
+        var bottom by remember { mutableStateOf(0) }; var visBottom by remember { mutableStateOf(Int.MAX_VALUE) }
+        DisposableEffect(dv) {
+            val r = android.graphics.Rect()
+            val lis = android.view.ViewTreeObserver.OnGlobalLayoutListener { dv.getWindowVisibleDisplayFrame(r); if (r.bottom > 0) visBottom = r.bottom }
+            dv.viewTreeObserver.addOnGlobalLayoutListener(lis); lis.onGlobalLayout()
+            onDispose { dv.viewTreeObserver.removeOnGlobalLayoutListener(lis) }
+        }
+        LaunchedEffect(bottom, visBottom) {
+            val limit = minOf(navTopOnScreen(), visBottom)
+            val d = with(density) { (bottom - limit).coerceAtLeast(0).toDp() }
+            if (d != lift) lift = d
+        }
+        // clavier qui s'ouvre : on garde le dernier message visible au-dessus de la zone de saisie
+        LaunchedEffect(lift) { if (lift > 0.dp && msgs.isNotEmpty()) list.scrollToItem(msgs.size - 1) }
         Column(Modifier.fillMaxSize().background(C.bg).onGloballyPositioned { c ->
             val l = IntArray(2); dv.getLocationOnScreen(l)
-            val bottom = l[1] + c.positionInWindow().y.toInt() + c.size.height
-            val over = (bottom - navTopOnScreen()).coerceAtLeast(0)
-            val d = with(density) { over.toDp() }
-            if (d != lift) lift = d
+            bottom = l[1] + c.positionInWindow().y.toInt() + c.size.height
         }) {
             Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Retour", "Back"), tint = C.ink) }
