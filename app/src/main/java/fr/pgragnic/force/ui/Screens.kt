@@ -862,11 +862,9 @@ fun LegalPanel() {
     Panel {
         Text("Santé et confidentialité", color = C.ink, fontWeight = FontWeight.Bold)
         Text(t("UpRep n'est pas un dispositif médical. En cas de doute sur ta santé, demande l'avis d'un médecin avant de t'entraîner, et arrête en cas de douleur ou de malaise.", "UpRep is not a medical device. If in doubt about your health, ask a doctor before training, and stop if you feel pain or unwell."), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-        Row {
-            TextButton(onClick = { open(SITE + "confidentialite.html") }, contentPadding = PaddingValues(0.dp)) { Text("Politique de confidentialité") }
-            Spacer(Modifier.width(16.dp))
-            TextButton(onClick = { open(SITE + "suppression.html") }, contentPadding = PaddingValues(0.dp)) { Text("Supprimer mon compte") }
-        }
+        // liens l'un sous l'autre : côte à côte, « Supprimer mon compte » était coupé (Philippe, 15 novembre 17 h 43 : « Supprimer mon compte est tronqué »)
+        TextButton(onClick = { open(SITE + "confidentialite.html") }, contentPadding = PaddingValues(0.dp)) { Text(t("Politique de confidentialité", "Privacy policy")) }
+        TextButton(onClick = { open(SITE + "suppression.html") }, contentPadding = PaddingValues(0.dp)) { Text(t("Supprimer mon compte", "Delete my account")) }
     }
 }
 
