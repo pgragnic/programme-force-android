@@ -34,7 +34,7 @@ jobs:
           mkdir -p supabase/functions/clever-service
           cp supabase/functions/coach/index.ts supabase/functions/clever-service/index.ts
           # vérification du jeton d'accès désactivée comme sur la fonction actuelle : la fonction contrôle elle-même le compte
-          supabase functions deploy clever-service --project-ref "$REF" --no-verify-jwt --use-api
+          supabase functions deploy clever-service --remote="$REF" --no-verify-jwt --use-api --yes
       - name: Scripts SQL
         if: inputs.sql != ''
         env:
