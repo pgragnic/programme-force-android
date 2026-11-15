@@ -90,8 +90,12 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
         } else { step = Q.size; ask() }
     }
 
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(C.bg).systemBarsPadding().imePadding()) {
+    // la fenêtre gère elle-même barres système et clavier : sur certains téléphones (Xiaomi) les marges calculées par Compose
+    // valaient 0 et la zone de saisie passait sous la barre de navigation (Philippe, 15 novembre 9 h 52 : « je ne peux pas taper un texte libre... »)
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = true)) {
+        val dv = androidx.compose.ui.platform.LocalView.current
+        LaunchedEffect(Unit) { (dv.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
+        Column(Modifier.fillMaxSize().background(C.bg)) {
             Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, t("Retour", "Back"), tint = C.ink) }
                 CoachAvatar(); Spacer(Modifier.width(10.dp))
