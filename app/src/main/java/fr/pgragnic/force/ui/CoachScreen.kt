@@ -165,6 +165,7 @@ private fun PlanCard(p: CoachPlan, onApply: (Boolean) -> Unit, onAdjust: () -> U
         Cap(if (p.repos == true || !p.today) t("Proposition du coach", "Coach's suggestion") else t("Séance adaptée", "Adapted workout"))
         val s = p.seance ?: st.s
         if (p.repos != true && p.today) Text(t("Séance $s · ", "Workout $s · ") + tr(Prog.sess(st.c)[s]?.t ?: ""), color = C.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+        if (p.today && p.repos != true) PlanDiff(p)
         p.explications.forEach { e ->
             Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(26.dp).clip(CircleShape).background(C.brand.copy(alpha = .12f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Check, null, tint = C.brand, modifier = Modifier.size(16.dp)) }
@@ -189,5 +190,53 @@ private fun PlanCard(p: CoachPlan, onApply: (Boolean) -> Unit, onAdjust: () -> U
                     Text(t("Ajuster", "Adjust"), color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
             }
         }
+    }
+}
+
+
+/** Avant / après de la séance du jour avec le plan du coach (Philippe, 15 novembre 10 h 25 : « En fait il faudrait un avant/après »,
+ *  « Histoire de voir ce qu'apporte le coach comme modifications »). */
+@Composable
+private fun PlanDiff(p: CoachPlan) {
+    val st = Store.st.value; val log = Store.log.value
+    class Row1(val id: String, val sets: Int, val label: String)
+    class Snap(val ex: List<Row1>, val min: Int)
+    fun snap(s: String): Snap {
+        val P = Prog.phases(st.c, st.w, s, st.rest, st, log)
+        val ex = Prog.orderEx(st.c, s, st.w, st).map { id -> Row1(id, P.count { it.k == "work" && it.ex == id }, Prog.work(id, st.w).label) }
+        return Snap(ex, ((P.sumOf { it.dur } + 59) / 60).toInt())
+    }
+    val cmp = remember(p, Adapt.v) {
+        runCatching {
+            val s1 = p.seance?.takeIf { it in Prog.sess(st.c) } ?: st.s
+            snap(st.s) to Adapt.preview(p, s1) { snap(s1) }
+        }.getOrNull()
+    } ?: return
+    val (b, a) = cmp
+    fun txt(r: Row1) = tr(Prog.EX[r.id]?.n ?: r.id) + " · ${r.sets} × ${r.label}"
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp).clip(RoundedCornerShape(14.dp)).background(C.bg).padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(t("Avant", "Before"), color = C.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(t("  ${b.ex.size} exercices · ≈ ${b.min} min", "  ${b.ex.size} exercises · ≈ ${b.min} min"), color = C.muted, fontSize = 12.sp)
+            Text("  →  ", color = C.muted, fontSize = 12.sp)
+            Text(t("Après", "After"), color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(t("  ${a.ex.size} · ≈ ${a.min} min", "  ${a.ex.size} · ≈ ${a.min} min"), color = C.brand, fontSize = 12.sp)
+        }
+        val n = maxOf(b.ex.size, a.ex.size); var changes = 0
+        for (i in 0 until n) {
+            val x = b.ex.getOrNull(i); val y = a.ex.getOrNull(i)
+            val same = x != null && y != null && x.id == y.id && x.sets == y.sets
+            Column(Modifier.padding(top = 8.dp)) {
+                when {
+                    same -> Text(txt(y!!), color = C.muted, fontSize = 13.sp)
+                    x != null && y != null && x.id == y.id -> { changes++
+                        Text(tr(Prog.EX[y.id]?.n ?: y.id) + t(" · ${x.sets} → ${y.sets} séries", " · ${x.sets} → ${y.sets} sets"), color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                    else -> { changes++
+                        x?.let { Text(txt(it), color = C.muted, fontSize = 13.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) }
+                        Text(y?.let { "→ " + txt(it) } ?: t("→ retiré", "→ removed"), color = if (y != null) C.brand else C.warm, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                }
+            }
+        }
+        if (changes == 0) Text(t("Mêmes exercices : le coach change surtout la suite (charges, zones ménagées).", "Same exercises: the coach mainly changes what comes next (loads, protected areas)."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
     }
 }

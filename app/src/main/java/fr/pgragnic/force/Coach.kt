@@ -40,14 +40,17 @@ object CoachState {
     private fun today() = java.time.LocalDate.now()
     private fun live(until: String) = runCatching { !java.time.LocalDate.parse(until).isBefore(today()) }.getOrDefault(false)
     val bias get() = s.bias
+    /** plan du coach simulé pour l'avant / après de la carte (jamais enregistré) */
+    var preview: CoachPlan? = null
     /** zones ménagées et date de fin (incluse) */
-    val genes: Map<String, String> get() = s.genes.filterValues { live(it) }
-    val noGear: String? get() = s.noGear?.takeIf { live(it) }
+    val genes: Map<String, String> get() = s.genes.filterValues { live(it) } +
+        (preview?.gene?.takeIf { it.zone in Gear.LIMITS.map { l -> l.first } }?.let { mapOf(it.zone to today().plusDays(it.jours.coerceIn(1, 14).toLong() - 1).toString()) } ?: emptyMap())
+    val noGear: String? get() = preview?.sans_materiel_jours?.let { today().plusDays(it.coerceIn(1, 21).toLong() - 1).toString() } ?: s.noGear?.takeIf { live(it) }
     private val BW = setOf("chair", "wall", "mat")
     /** matériel et restrictions effectivement utilisés par le programme */
     private var effIn: Gear? = null; private var effKey = ""; private var effOut: Gear? = null
     fun eff(g: Gear): Gear {
-        val key = "$v|${today()}"
+        val key = "$v|${today()}|${preview?.hashCode()}"
         if (g === effIn && key == effKey) return effOut!!
         effIn = g; effKey = key; effOut = effRaw(g); return effOut!!
     }
@@ -74,7 +77,11 @@ object CoachState {
 /** Adaptation de la séance du jour décidée avec le coach ; ne vaut que pour la date du jour. */
 object Adapt {
     @Serializable private data class Saved(val day: String, val maxMin: Int? = null, val less: Int = 0, val swaps: Map<String, String> = emptyMap(), val notes: List<String> = emptyList())
-    private var cur: Saved? = null
+    private var saved: Saved? = null
+    /** adaptation simulée pour l'avant / après (Philippe, 15 novembre 10 h 24-10 h 25 : « je ne vois pas le nouveau plan complet ! »,
+     *  « En fait il faudrait un avant/après », « Histoire de voir ce qu'apporte le coach comme modifications ») */
+    private var pv: Saved? = null; private var pvOn = false
+    private val cur: Saved? get() = if (pvOn) pv else saved
     /** change à chaque modification, pour recalculer l'écran Séance */
     var v by mutableIntStateOf(0)
     private fun today() = java.time.LocalDate.now().toString()
@@ -85,23 +92,34 @@ object Adapt {
     fun swap(id: String) = if (on) cur?.swaps?.get(id) ?: id else id
 
     fun load(ctx: Context) {
-        cur = runCatching { Json.decodeFromString<Saved>(ctx.getSharedPreferences("force", Context.MODE_PRIVATE).getString("adapt", null) ?: return) }.getOrNull()
+        saved = runCatching { Json.decodeFromString<Saved>(ctx.getSharedPreferences("force", Context.MODE_PRIVATE).getString("adapt", null) ?: return) }.getOrNull()
     }
     private fun save(ctx: Context) {
         ctx.getSharedPreferences("force", Context.MODE_PRIVATE).edit().putString("adapt", cur?.let { Json.encodeToString(Saved.serializer(), it) }).apply(); v++
+    }
+    private fun planned(p: CoachPlan, s: String): Saved? {
+        val st = Store.st.value
+        val inSess = Prog.orderEx(st.c, s, st.w, st)
+        val ok = p.remplacements.filter { r -> r.de in Prog.EX && r.vers in Prog.EX && r.vers in Prog.alternatives(r.de, inSess) }.associate { it.de to it.vers }
+        return if (p.seance != null || p.duree_max != null || (p.series_moins ?: 0) > 0 || ok.isNotEmpty())
+            Saved(today(), p.duree_max?.coerceIn(15, 90), (p.series_moins ?: 0).coerceIn(0, 2), ok, p.explications.take(6)) else saved
     }
     /** Applique un plan du coach. Les remplacements ne sont gardés que s'ils font partie des variantes autorisées par l'appli. */
     fun apply(ctx: Context, p: CoachPlan) {
         val st = Store.st.value
         p.seance?.takeIf { it in Prog.sess(st.c) }?.let { s -> Store.setSettings { it.s = s } }
-        val inSess = Prog.orderEx(st.c, Store.st.value.s, st.w, Store.st.value)
-        val ok = p.remplacements.filter { r -> r.de in Prog.EX && r.vers in Prog.EX && r.vers in Prog.alternatives(r.de, inSess) }.associate { it.de to it.vers }
+        val n = planned(p, Store.st.value.s)
         CoachState.apply(ctx, p)
-        if (p.seance != null || p.duree_max != null || (p.series_moins ?: 0) > 0 || ok.isNotEmpty())
-            cur = Saved(today(), p.duree_max?.coerceIn(15, 90), (p.series_moins ?: 0).coerceIn(0, 2), ok, p.explications.take(6))
+        saved = n
         save(ctx)
     }
-    fun clear(ctx: Context) { cur = null; save(ctx) }
+    /** Calcule [block] comme si le plan était appliqué, sans rien enregistrer. */
+    fun <T> preview(p: CoachPlan, s: String, block: () -> T): T {
+        val n = planned(p, s)
+        pv = n; pvOn = true; CoachState.preview = p
+        try { return block() } finally { pvOn = false; pv = null; CoachState.preview = null }
+    }
+    fun clear(ctx: Context) { saved = null; save(ctx) }
 }
 
 object CoachApi {
