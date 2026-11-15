@@ -135,6 +135,9 @@ fun SeanceScreen(onStart: () -> Unit) {
     val av = Adapt.v
     val order = remember(st.c, st.w, st.s, log, gear, av) { Prog.orderEx(st.c, st.s, st.w, st) }
     val P = remember(st.c, st.w, st.s, st.rest, log, gear, av) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+    // séance sans aucune décision du coach : ce qui diffère porte le badge « Coach » et sa raison (Philippe, 15 novembre 10 h 26 :
+    // « il faut que chaque décision prise par l'IA soit compréhensible par l'utilisateur »)
+    val baseOrder = remember(st.c, st.w, st.s, log, gear, av) { if (Adapt.on || CoachState.genes.isNotEmpty() || CoachState.noGear != null) Adapt.without { Prog.orderEx(st.c, st.s, st.w, st) } else order }
     val nSets = P.count { it.k == "work" }
     // muscles pas encore récupérés sollicités par la séance (Philippe : « Et si je souhaite faire une séance par jour ? », choix « 3 » :
     // alerte avant de démarrer, avec une autre séance proposée)
@@ -285,6 +288,16 @@ fun SeanceScreen(onStart: () -> Unit) {
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(e.n, color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 22.sp)
                         Text(line, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
+                        val was = baseOrder.getOrNull(i)
+                        if (was != null && was != id) {
+                            val gz = CoachState.genes.keys.firstOrNull { it in (Prog.EX[was]?.stress ?: emptyList()) }
+                            val why = Adapt.whyOf(id) ?: gz?.let { z -> t("${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} ménagé(e)", "${tr(Gear.LIMITS.firstOrNull { it.first == z }?.second ?: z)} protected") }
+                                ?: if (CoachState.noGear != null) t("sans matériel", "no equipment") else t("séance adaptée", "adapted workout")
+                            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(t("Coach", "Coach"), color = C.onBrand, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.brand).padding(horizontal = 6.dp, vertical = 1.dp))
+                                Text(t(" remplace ${tr(Prog.EX[was]?.n ?: was)} · $why", " replaces ${tr(Prog.EX[was]?.n ?: was)} · $why"), color = C.brand, fontSize = 12.sp, maxLines = 2)
+                            }
+                        }
                     }
                 }
                 HorizontalDivider(color = C.line, modifier = Modifier.padding(start = 110.dp))

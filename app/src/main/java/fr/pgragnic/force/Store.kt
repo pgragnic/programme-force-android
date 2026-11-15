@@ -80,7 +80,7 @@ object Store {
             runCatching { sb!!.auth.awaitInitialization() }
             sb!!.auth.sessionStatus.collect { s ->
                 when (s) {
-                    is SessionStatus.Authenticated -> { val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) pull() }
+                    is SessionStatus.Authenticated -> { val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) { pull(); CoachData.pull() } }
                     is SessionStatus.NotAuthenticated -> { user.value = null; sync.value = t("Connecte-toi (Réglages → Compte et sauvegarde) pour sauvegarder en ligne", "Sign in (Settings → Account and backup) to back up online") }
                     else -> {}
                 }
@@ -352,6 +352,7 @@ object Store {
     fun add(e0: Entry) {
         val e = if (e0._id == null) e0.copy(_id = newId()) else e0
         log.value = log.value + e; sPend += e.d; saveLocal(); push()
+        app?.let { runCatching { CoachRem.afterSession(it) } }
     }
 
     fun update(e0: Entry) {

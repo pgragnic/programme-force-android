@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +31,7 @@ import kotlinx.coroutines.launch
 // Écran du coach (maquette du parcours, Philippe : « Ok pour maquette du parcours ») : faire le point avant la séance
 // (trois questions à réponses rapides), puis Claude propose la séance adaptée ; la conversation peut continuer librement.
 
-private class Msg(val coach: Boolean, val text: String, val chips: List<String> = emptyList(), val plan: CoachPlan? = null)
+private class Msg(val coach: Boolean, val text: String, val chips: List<String> = emptyList(), val plan: CoachPlan? = null, val t: Long = System.currentTimeMillis(), val old: Boolean = false)
 
 /** questions posées par l'appli (sans appel à l'API) selon le moment ; « libre » : aucune */
 private fun scripted(mode: String) = when (mode) {
@@ -55,38 +56,56 @@ fun CoachAvatar(size: Int = 34) = Box(Modifier.size(size.dp).clip(CircleShape).b
 }
 
 @Composable
-fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit) {
+fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit, at: Long? = null) {
     val Q = remember(mode) { scripted(mode) }
+    // discussion conservée (onglet Coach) : les échanges passés s'affichent au-dessus, la conversation reprend
+    val past = remember { CoachData.d.msgs.map { Msg(it.coach, it.text, plan = it.plan, t = it.t, old = true) } }
     val ctx = LocalContext.current; val scope = rememberCoroutineScope()
     val prefs = remember { ctx.getSharedPreferences("force", android.content.Context.MODE_PRIVATE) }
     var consent by remember { mutableStateOf(prefs.getBoolean("coach_ok", false)) }
-    val msgs = remember { mutableStateListOf(if (Q.isNotEmpty()) Msg(true, Q[0].first, Q[0].second) else Msg(true,
+    val msgs = remember { mutableStateListOf<Msg>().apply { addAll(past) }.also { l -> l += (if (Q.isNotEmpty()) Msg(true, Q[0].first, Q[0].second) else Msg(true,
         t("Je t'écoute : une gêne qui dure, des vacances sans matériel, peu de temps, une rando à préparer ?", "I'm listening: lasting discomfort, holidays without equipment, little time, a hike to prepare?"),
-        listOf(t("Une gêne qui dure", "Lasting discomfort"), t("Je pars sans matériel", "I'm away without equipment"), t("Séance express", "Quick workout"), t("Préparer une rando", "Prepare a hike")))) }
+        listOf(t("Une gêne qui dure", "Lasting discomfort"), t("Je pars sans matériel", "I'm away without equipment"), t("Séance express", "Quick workout"), t("Préparer une rando", "Prepare a hike")))) } }
+    fun log(m: Msg, plan: CoachPlan? = null) = CoachData.addMsg(CMsg(m.t, m.coach, m.text, plan, mode))
+    LaunchedEffect(Unit) { msgs.lastOrNull()?.let { if (!it.old) log(it) } }
     // historique envoyé à l'API : commence par l'utilisateur, puis alterne
-    val hist = remember { mutableStateListOf<Pair<String, String>>().also { h -> opener(mode)?.let { h += "user" to it; h += "assistant" to Q[0].first } } }
+    // les derniers échanges des 3 derniers jours sont renvoyés au coach pour qu'il se souvienne de la conversation
+    val prior = remember { val lim = System.currentTimeMillis() - 3 * 864e5.toLong()
+        CoachData.d.msgs.filter { it.t >= lim && it.text.isNotBlank() }.takeLast(10).map { (if (it.coach) "assistant" else "user") to it.text } }
+    val hist = remember { mutableStateListOf<Pair<String, String>>().also { h -> h.addAll(prior); opener(mode)?.let { h += "user" to it; h += "assistant" to Q[0].first } } }
+    /** alternance user / assistant en commençant par user (messages consécutifs du même côté réunis) */
+    fun norm(l: List<Pair<String, String>>): List<Pair<String, String>> {
+        val o = ArrayList<Pair<String, String>>()
+        l.forEach { (r, x) -> if (o.isNotEmpty() && o.last().first == r) o[o.size - 1] = r to (o.last().second + "\n" + x) else o += r to x }
+        while (o.isNotEmpty() && o.first().first != "user") o.removeAt(0)
+        return o
+    }
     var step by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
     val list = rememberLazyListState()
-    LaunchedEffect(msgs.size, busy) { list.animateScrollToItem(max0(msgs.size - 1 + if (busy) 1 else 0)) }
+    var jumped by remember { mutableStateOf(at == null) }
+    LaunchedEffect(msgs.size, busy) {
+        if (!jumped) { jumped = true; val i = msgs.indexOfFirst { it.t >= at!! - 1000 }; if (i >= 0) { list.scrollToItem(i); return@LaunchedEffect } }
+        list.animateScrollToItem(max0(msgs.size - 1 + if (busy) 1 else 0))
+    }
 
     fun ask() {
         busy = true
         scope.launch {
-            val r = CoachApi.ask(hist.toList(), mode)
+            val r = CoachApi.ask(norm(hist.toList()), mode)
             busy = false
             if (r.erreur != null) { msgs += Msg(true, CoachApi.errText(r.erreur)); hist.removeAt(hist.size - 1); return@launch }
             hist += "assistant" to (r.texte + (r.plan?.explications?.takeIf { it.isNotEmpty() }?.let { "\n" + t("Plan proposé : ", "Proposed plan: ") + it.joinToString(" ; ") } ?: ""))
-            msgs += Msg(true, r.texte, r.choix, r.plan)
+            val m = Msg(true, r.texte, r.choix, r.plan); msgs += m; log(m, r.plan)
         }
     }
     fun send(txt: String) {
         val s = txt.trim(); if (s.isEmpty() || busy) return
-        msgs += Msg(false, s); hist += "user" to s; input = ""
+        val um = Msg(false, s); msgs += um; log(um); hist += "user" to s; input = ""
         if (step < Q.size - 1) {
             // questions posées par l'appli, sans appel à l'API
-            step++; val (q, c) = Q[step]; msgs += Msg(true, q, c); hist += "assistant" to q
+            step++; val (q, c) = Q[step]; val qm = Msg(true, q, c); msgs += qm; log(qm); hist += "assistant" to q
         } else { step = Q.size; ask() }
     }
 
@@ -112,25 +131,34 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
                     verticalAlignment = Alignment.CenterVertically) { Text(l, color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.Medium); Icon(Icons.Default.Close, t("Arrêter", "Stop"), tint = C.muted, modifier = Modifier.padding(start = 4.dp).size(14.dp)) } }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(msgs) { m ->
+                itemsIndexed(msgs) { i, m ->
+                    val day = java.time.Instant.ofEpochMilli(m.t).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                    val prevDay = msgs.getOrNull(i - 1)?.let { java.time.Instant.ofEpochMilli(it.t).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+                    if (prevDay != day) Text(if (day == java.time.LocalDate.now()) t("Aujourd'hui", "Today") else day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", L.loc)),
+                        color = C.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (m.coach) Alignment.Start else Alignment.End) {
                         if (m.text.isNotBlank()) Text(m.text, color = if (m.coach) C.ink else C.onBrand, fontSize = 15.sp, lineHeight = 21.sp,
                             modifier = Modifier.fillMaxWidth(.86f).wrapContentWidth(if (m.coach) Alignment.Start else Alignment.End)
                                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = if (m.coach) 6.dp else 20.dp, bottomEnd = if (m.coach) 20.dp else 6.dp))
                                 .background(if (m.coach) C.card1 else C.brand).padding(horizontal = 14.dp, vertical = 10.dp))
-                        m.plan?.let { p -> PlanCard(p, onApply = { start ->
+                        m.plan?.let { p -> PlanCard(p, old = m.old, onApply = { start ->
+                            // journal « Ce que le coach a changé » : pourquoi (les mots de l'utilisateur) et ce que ça change, calculé avant d'appliquer
+                            val why = msgs.lastOrNull { !it.coach && it.t <= m.t }?.text ?: ""
+                            val dd = if (p.today) PlanText.diff(p) else null
+                            CoachData.decide(if (mode == "apres") "debrief" else "discussion", PlanText.title(p), why, PlanText.changes(p, dd), p)
                             Adapt.apply(ctx, p)
                             if (mode == "apres") Store.log.value.maxByOrNull { it.d }?.let { prefs.edit().putLong("coachdebrief", it.d).apply() }
                             if (start && p.repos != true && p.today) { onClose(); onStart() }
-                            else msgs += Msg(true, if (p.today) t("C'est noté, ta séance du jour est prête.", "Done, today's workout is ready.") else t("C'est noté pour tes prochaines séances.", "Noted for your next workouts."))
+                            else { val dm = Msg(true, (if (p.today) t("C'est noté, ta séance du jour est prête.", "Done, today's workout is ready.") else t("C'est noté pour tes prochaines séances.", "Noted for your next workouts.")) +
+                                t(" Tu retrouves ce changement dans l'onglet Coach, avec un bouton pour l'annuler.", " You'll find this change in the Coach tab, with a button to undo it.")); msgs += dm; log(dm) }
                         }, onAdjust = { input = t("Je préfère ", "I'd rather ") }) }
                         // avec un plan, « accepter » se fait par les boutons de la carte : réponses rapides qui l'acceptent retirées,
                         // « garder la séance » traité dans l'appli (Philippe, 15 novembre 10 h 16 : « Je ne vois pas le plan, comment je peux l'accepter ? »)
                         val chips = if (m.plan == null) m.chips else m.chips.filterNot { c -> c.lowercase().let { "accept" in it || "appliqu" in it || "valide" in it || "ok pour" in it } }
-                        if (chips.isNotEmpty() && m === msgs.last()) Row(Modifier.padding(top = 6.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (chips.isNotEmpty() && m === msgs.last() && !m.old) Row(Modifier.padding(top = 6.dp).horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             chips.forEach { c -> Text(c, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(C.brand.copy(alpha = .1f)).clickable(enabled = !busy) {
-                                    if (m.plan != null && c.lowercase().let { "garder" in it || "habituelle" in it }) { msgs += Msg(false, c); msgs += Msg(true, t("D'accord, on garde ta séance habituelle. Rien n'est changé.", "Alright, we keep your usual workout. Nothing changed.")) }
+                                    if (m.plan != null && c.lowercase().let { "garder" in it || "habituelle" in it }) { val a = Msg(false, c); val b = Msg(true, t("D'accord, on garde ta séance habituelle. Rien n'est changé.", "Alright, we keep your usual workout. Nothing changed.")); msgs += a; msgs += b; log(a); log(b) }
                                     else send(c) }.padding(horizontal = 12.dp, vertical = 8.dp)) }
                         }
                     }
@@ -158,14 +186,14 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
 private fun max0(i: Int) = if (i < 0) 0 else i
 
 @Composable
-private fun PlanCard(p: CoachPlan, onApply: (Boolean) -> Unit, onAdjust: () -> Unit) {
-    var done by remember { mutableStateOf(false) }
+private fun PlanCard(p: CoachPlan, old: Boolean = false, onApply: (Boolean) -> Unit, onAdjust: () -> Unit) {
+    var done by remember { mutableStateOf(old) }
     val st = Store.st.value
     Column(Modifier.padding(top = 6.dp).fillMaxWidth().glam().padding(16.dp)) {
         Cap(if (p.repos == true || !p.today) t("Proposition du coach", "Coach's suggestion") else t("Séance adaptée", "Adapted workout"))
         val s = p.seance ?: st.s
         if (p.repos != true && p.today) Text(t("Séance $s · ", "Workout $s · ") + tr(Prog.sess(st.c)[s]?.t ?: ""), color = C.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
-        if (p.today && p.repos != true) PlanDiff(p)
+        if (p.today && p.repos != true && !old) PlanDiff(p)
         p.explications.forEach { e ->
             Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(26.dp).clip(CircleShape).background(C.brand.copy(alpha = .12f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Check, null, tint = C.brand, modifier = Modifier.size(16.dp)) }
@@ -194,49 +222,33 @@ private fun PlanCard(p: CoachPlan, onApply: (Boolean) -> Unit, onAdjust: () -> U
 }
 
 
-/** Avant / après de la séance du jour avec le plan du coach (Philippe, 15 novembre 10 h 25 : « En fait il faudrait un avant/après »,
- *  « Histoire de voir ce qu'apporte le coach comme modifications »). */
+/** Avant / après de la séance du jour avec le plan du coach, raison sous chaque ligne modifiée (Philippe, 15 novembre 10 h 25 :
+ *  « En fait il faudrait un avant/après », « Histoire de voir ce qu'apporte le coach comme modifications » ; 10 h 26 : « il faut que chaque
+ *  décision prise par l'IA soit compréhensible par l'utilisateur »). */
 @Composable
-private fun PlanDiff(p: CoachPlan) {
-    val st = Store.st.value; val log = Store.log.value
-    class Row1(val id: String, val sets: Int, val label: String)
-    class Snap(val ex: List<Row1>, val min: Int)
-    fun snap(s: String): Snap {
-        val P = Prog.phases(st.c, st.w, s, st.rest, st, log)
-        val ex = Prog.orderEx(st.c, s, st.w, st).map { id -> Row1(id, P.count { it.k == "work" && it.ex == id }, Prog.work(id, st.w).label) }
-        return Snap(ex, ((P.sumOf { it.dur } + 59) / 60).toInt())
-    }
-    val cmp = remember(p, Adapt.v) {
-        runCatching {
-            val s1 = p.seance?.takeIf { it in Prog.sess(st.c) } ?: st.s
-            snap(st.s) to Adapt.preview(p, s1) { snap(s1) }
-        }.getOrNull()
-    } ?: return
-    val (b, a) = cmp
-    fun txt(r: Row1) = tr(Prog.EX[r.id]?.n ?: r.id) + " · ${r.sets} × ${r.label}"
+fun PlanDiff(p: CoachPlan) {
+    val dd = remember(p, Adapt.v) { PlanText.diff(p) } ?: return
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp).clip(RoundedCornerShape(14.dp)).background(C.bg).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(t("Avant", "Before"), color = C.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Text(t("  ${b.ex.size} exercices · ≈ ${b.min} min", "  ${b.ex.size} exercises · ≈ ${b.min} min"), color = C.muted, fontSize = 12.sp)
+            Text(t("  ${dd.beforeN} ex. · ≈ ${dd.beforeMin} min", "  ${dd.beforeN} ex. · ≈ ${dd.beforeMin} min"), color = C.muted, fontSize = 12.sp)
             Text("  →  ", color = C.muted, fontSize = 12.sp)
             Text(t("Après", "After"), color = C.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Text(t("  ${a.ex.size} · ≈ ${a.min} min", "  ${a.ex.size} · ≈ ${a.min} min"), color = C.brand, fontSize = 12.sp)
+            Text("  ${dd.afterN} ex. · ≈ ${dd.afterMin} min", color = C.brand, fontSize = 12.sp)
         }
-        val n = maxOf(b.ex.size, a.ex.size); var changes = 0
-        for (i in 0 until n) {
-            val x = b.ex.getOrNull(i); val y = a.ex.getOrNull(i)
-            val same = x != null && y != null && x.id == y.id && x.sets == y.sets
+        dd.lines.forEach { l ->
             Column(Modifier.padding(top = 8.dp)) {
                 when {
-                    same -> Text(txt(y!!), color = C.muted, fontSize = 13.sp)
-                    x != null && y != null && x.id == y.id -> { changes++
-                        Text(tr(Prog.EX[y.id]?.n ?: y.id) + t(" · ${x.sets} → ${y.sets} séries", " · ${x.sets} → ${y.sets} sets"), color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
-                    else -> { changes++
-                        x?.let { Text(txt(it), color = C.muted, fontSize = 13.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) }
-                        Text(y?.let { "→ " + txt(it) } ?: t("→ retiré", "→ removed"), color = if (y != null) C.brand else C.warm, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                    l.same -> Text(l.before ?: "", color = C.muted, fontSize = 13.sp)
+                    l.after == null && l.before?.contains("→") == true -> Text(l.before, color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    else -> {
+                        l.before?.let { Text(it, color = C.muted, fontSize = 13.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) }
+                        Text(l.after?.let { "→ $it" } ?: t("→ retiré", "→ removed"), color = if (l.after != null) C.brand else C.warm, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
+                l.why?.let { Text(it, color = C.muted, fontSize = 11.5.sp) }
             }
         }
-        if (changes == 0) Text(t("Mêmes exercices : le coach change surtout la suite (charges, zones ménagées).", "Same exercises: the coach mainly changes what comes next (loads, protected areas)."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+        if (dd.lines.all { it.same }) Text(t("Mêmes exercices aujourd'hui : le coach change surtout la suite (voir ci-dessous).", "Same exercises today: the coach mainly changes what comes next (see below)."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
     }
 }

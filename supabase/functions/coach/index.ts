@@ -16,7 +16,9 @@ const TOOL = {
     type: "object",
     properties: {
       texte: { type: "string", description: "Message au tutoiement, court (3 phrases maximum), chaleureux et concret." },
-      choix: { type: "array", items: { type: "string" }, maxItems: 4, description: "0 à 4 réponses rapides de 1 à 4 mots." },
+      choix: { type: "array", items: { type: "string" }, maxItems: 4, description: "0 à 4 réponses rapides de 1 à 4 mots. Jamais de réponse pour accepter un plan : la carte du plan a ses boutons." },
+      retenir: { type: "array", items: { type: "string" }, maxItems: 3,
+        description: "Préférences ou faits durables que l'utilisateur vient de dire sur lui (ex. « N'aime pas les burpees », « S'entraîne le matin »), courts, à la 3e personne. Rien de médical ni d'intime. Vide le plus souvent." },
       plan: {
         type: "object",
         description: "Seulement quand tu proposes d'adapter la séance du jour. Chaque champ est facultatif.",
@@ -25,9 +27,9 @@ const TOOL = {
           repos: { type: "boolean", description: "Proposer un jour de repos à la place de la séance." },
           duree_max: { type: "integer", minimum: 15, maximum: 90, description: "Durée maximale du jour, en minutes." },
           series_moins: { type: "integer", minimum: 0, maximum: 2, description: "Séries retirées à chaque exercice (jamais sous 1 série)." },
-          remplacements: { type: "array", items: { type: "object", properties: { de: { type: "string" }, vers: { type: "string" } }, required: ["de", "vers"] },
+          remplacements: { type: "array", items: { type: "object", properties: { de: { type: "string" }, vers: { type: "string" }, raison: { type: "string", description: "Pourquoi, en quelques mots (affiché sous l'exercice)." } }, required: ["de", "vers", "raison"] },
             description: "Uniquement parmi contexte.exercices[].alternatives (identifiants)." },
-          charges: { type: "array", items: { type: "object", properties: { id: { type: "string" }, sens: { type: "integer", enum: [-1, 1] } }, required: ["id", "sens"] },
+          charges: { type: "array", items: { type: "object", properties: { id: { type: "string" }, sens: { type: "integer", enum: [-1, 1] }, raison: { type: "string", description: "Pourquoi, en quelques mots." } }, required: ["id", "sens", "raison"] },
             description: "Après une séance : un cran de charge en plus (1) ou en moins (-1) pour la prochaine fois, par identifiant d'exercice de dernieres_seances[0]." },
           gene: { type: "object", properties: { zone: { type: "string", enum: ["genou", "cheville", "hanche", "epaule", "coude", "dos"] }, jours: { type: "integer", minimum: 1, maximum: 14 } },
             required: ["zone", "jours"], description: "Gêne qui dure : l'appli ménage cette zone pendant ce nombre de jours (exercices remplacés automatiquement)." },
@@ -49,7 +51,13 @@ const MODES: Record<string, string> = {
   bilan: "Moment : bilan de la semaine. Trois phrases maximum : ce qui va bien, l'équilibre des muscles (equilibre_4_semaines, en disant ce que le programme rattrape déjà cette semaine), un ou deux conseils concrets pour la semaine suivante. Pas de plan, pas de choix.",
 };
 
-const SYSTEM = (ctx: unknown, lang: string, mode: string) => `Tu es le coach de l'appli UpRep (remise en forme à la maison).
+const TONS: Record<string, string> = {
+  encourageant: "Ton : chaleureux et encourageant, tu félicites volontiers.",
+  neutre: "Ton : posé et factuel, bienveillant sans en faire trop.",
+  direct: "Ton : direct et franc, phrases courtes, sans formules d'encouragement.",
+};
+
+const SYSTEM = (ctx: unknown, lang: string, mode: string, ton: string) => `Tu es le coach de l'appli UpRep (remise en forme à la maison).
 Langue : ${lang === "en" ? "anglais" : "français, tutoiement"}.
 Tu discutes avec l'utilisateur pour adapter SA séance du jour et lui donner des conseils simples. Tu t'appuies uniquement sur le contexte ci-dessous.
 Règles :
@@ -62,7 +70,11 @@ Règles :
 - Quand tu proposes un plan, l'appli l'affiche avec tes explications et l'utilisateur l'accepte ou non : ne dis pas que c'est déjà fait.
 - Gêne qui dure plusieurs jours : plan.gene. Vacances ou déplacement sans matériel : plan.sans_materiel_jours (les séances sont recomposées au poids du corps). Séance express : duree_max.
 - Les changements de charge (plan.charges) se font seulement après une séance, d'un cran, en t'appuyant sur le ressenti et la réserve (répétitions encore possibles).
+- Chaque décision doit être compréhensible : dis sur quoi tu t'appuies (ex. « d'après tes 3 dernières séances », « tes pectoraux sont à 40 % »), donne une raison pour chaque remplacement et chaque cran de charge.
+- Tiens toujours compte de adaptations_en_cours (zones ménagées, sans matériel) : ne dis jamais qu'un muscle ou une zone ménagée est prêt(e) à travailler.
+- Tiens compte des objectifs et de ce_que_tu_sais_de_l_utilisateur.
 - Réponds toujours avec l'outil « repondre ».
+${TONS[ton] ?? TONS.neutre}
 ${MODES[mode] ?? ""}
 Contexte (JSON) : ${JSON.stringify(ctx)}`;
 
@@ -78,7 +90,7 @@ Deno.serve(async (req) => {
   if (error) return out({ erreur: "quota_indispo" }, 500);
   if ((n as number) > PER_DAY) return out({ erreur: "quota" }, 429);
 
-  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string; mode?: string };
+  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string; mode?: string; ton?: string };
   try { body = await req.json(); } catch { return out({ erreur: "requete" }, 400); }
   const messages = (body.messages ?? []).slice(-20).filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length <= 2000);
   if (!messages.length || messages[0].role !== "user") return out({ erreur: "requete" }, 400);
@@ -86,11 +98,11 @@ Deno.serve(async (req) => {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 900, system: SYSTEM(body.context ?? {}, body.lang ?? "fr", body.mode ?? "avant"), tools: [TOOL],
+    body: JSON.stringify({ model: MODEL, max_tokens: 900, system: SYSTEM(body.context ?? {}, body.lang ?? "fr", body.mode ?? "avant", body.ton ?? "neutre"), tools: [TOOL],
       tool_choice: { type: "tool", name: "repondre" }, messages }),
   });
   if (!r.ok) return out({ erreur: "api", statut: r.status }, 502);
   const j = await r.json();
   const tu = (j.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-  return out(tu?.input ?? { texte: "" });
+  return out({ ...(tu?.input ?? { texte: "" }), restant: Math.max(0, PER_DAY - (n as number)) });
 });

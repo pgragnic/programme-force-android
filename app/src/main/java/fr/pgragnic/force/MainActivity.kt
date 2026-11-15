@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
-        C.load(this); Adapt.load(this); CoachState.load(this); Health.load(this); SessionService.channels(this); Reminder.schedule(this)
+        C.load(this); Adapt.load(this); CoachState.load(this); CoachData.load(this); Health.load(this); CoachRem.schedule(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         Crash.sendPending(this)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
@@ -77,7 +77,9 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun App() {
-        var tab by rememberSaveable { mutableIntStateOf(intent.getIntExtra("tab", 0)) }
+        // onglets : 0 Séance, 1 Corps, 2 Coach, 3 Progrès, 4 Réglages. Les anciens numéros (captures, notifications) restent valables :
+        // 2 = Progrès, 3 = Réglages ; 9 = Coach
+        var tab by rememberSaveable { mutableIntStateOf(when (val x = intent.getIntExtra("tab", 0)) { 2 -> 3; 3 -> 4; 9 -> 2; else -> x }) }
         // Aperçu de contrôle (captures automatiques) : adb shell am start ... --es demo <pose>
         intent.getStringExtra("demo")?.let { d ->
             val k = intent.getFloatExtra("k", -1f)
@@ -117,8 +119,9 @@ class MainActivity : ComponentActivity() {
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
                     // barre d'onglets flottante en capsule blanche (style épuré, Philippe 14 novembre : « Partons sur le bleu vif »)
                     // 4 onglets : Suivi et Activité réunis dans Progrès, Infos devient Réglages (maquettes validées par Philippe : « Ok pour ces écrans ! »)
+                    // 5e onglet Coach au milieu (Philippe, 15 novembre : « 5e onglet au milieu »)
                     val items = listOf<Pair<String, ImageVector>>(t("Séance", "Workout") to Icons.Default.FitnessCenter, t("Corps", "Body") to Icons.Default.Accessibility,
-                        t("Progrès", "Progress") to Icons.Default.BarChart, t("Réglages", "Settings") to Icons.Default.PersonOutline)
+                        t("Coach", "Coach") to Icons.Default.AutoAwesome, t("Progrès", "Progress") to Icons.Default.BarChart, t("Réglages", "Settings") to Icons.Default.PersonOutline)
                     val cap = androidx.compose.foundation.shape.RoundedCornerShape(32.dp)
                     Box(Modifier.fillMaxWidth().background(C.bg).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)) {
                         Row(Modifier.fillMaxWidth().height(64.dp).clip(cap).background(C.s.surfaceContainer).border(1.dp, C.rim, cap).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -143,7 +146,12 @@ class MainActivity : ComponentActivity() {
                                 Live.begin(this@MainActivity, fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)))
                             })
                             1 -> CorpsScreen()
-                            2 -> ProgresScreen()
+                            2 -> fr.pgragnic.force.ui.CoachTab(onStart = {
+                                val st = Store.st.value
+                                val P = Prog.phases(st.c, st.w, st.s, st.rest, st, Store.log.value)
+                                Live.begin(this@MainActivity, fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)))
+                            })
+                            3 -> ProgresScreen()
                             else -> ReglagesScreen()
                         }
                     }
