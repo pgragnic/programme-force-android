@@ -1,0 +1,67 @@
+pike ['pike']
+    poignet L cassé (°) : k 0.08 – 0.58 , max 96.5
+    cheville L trop repliée (°) : k 0.92 – 1.0 , max 34.0
+    cheville R trop repliée (°) : k 1.0 – 1.0 , max 32.7
+pull ['pull', 'kbpull']
+    haltère dans le corps (points) : k 0 – 0 , max 8
+row1 ['row1', 'kbrow']
+    poignet R cassé (°) : k 0.0 – 1.0 , max 78.3
+calf1 ['calf1']
+    cheville L trop repliée (°) : k 0.0 – 1.0 , max 40.4
+    poignet L cassé (°) : k 0.0 – 1.0 , max 175.2
+dbugw ['dbugw']
+    haltère dans le corps (points) : k 0 – 0 , max 1
+ohtri ['ohtri', 'bandext', 'kbohtri']
+    haltère dans le corps (points) : k 0 – 0 , max 3
+squat ['squat', 'kbgoblet', 'medsquat']
+    haltère dans le corps (points) : k 0 – 0 , max 60
+bridge ['bridge']
+    pied L censé posé mais en l'air (cm) : k 0.0 – 0.0 , max 4.8
+    pied R censé posé mais en l'air (cm) : k 0.33 – 0.5 , max 2.3
+catcow []
+    poignet R cassé (°) : k 0.0 – 1.0 , max 120.9
+    poignet L cassé (°) : k 0.0 – 1.0 , max 120.9
+crunch ['crunch', 'crunchbw', 'medcrunch']
+    haltère dans le corps (points) : k 0 – 0 , max 11
+pronet ['pronet']
+    main R censée posée mais en l'air (cm) : k 0.17 – 0.17 , max 4.6
+    main L censée posée mais en l'air (cm) : k 0.17 – 0.17 , max 4.6
+pushup ['pushup', 'closepush']
+    poignet R cassé (°) : k 0.0 – 0.08 , max 87.0
+    poignet L cassé (°) : k 0.0 – 0.08 , max 87.0
+stepup ['stepup']
+    cheville L trop repliée (°) : k 0.75 – 0.75 , max 33.1
+stquad []
+    cheville R trop tendue (°) : k 0.0 – 1.0 , max 69.8
+abwheel ['abwheel']
+    main R censée posée mais en l'air (cm) : k 0.5 – 1.0 , max 5.4
+    main L censée posée mais en l'air (cm) : k 0.5 – 1.0 , max 4.5
+    pied L censé posé mais en l'air (cm) : k 0.75 – 1.0 , max 2.8
+birddog ['birddog']
+    poignet R cassé (°) : k 0.0 – 1.0 , max 99.0
+    poignet L cassé (°) : k 0.0 – 0.33 , max 100.2
+incline ['incline']
+    poignet R cassé (°) : k 0.0 – 0.25 , max 102.1
+    poignet L cassé (°) : k 0.0 – 0.25 , max 102.1
+    cheville R trop tendue (°) : k 1.0 – 1.0 , max 58.7
+    cheville L trop tendue (°) : k 1.0 – 1.0 , max 58.6
+kbfloor ['kbfloor']
+    pied R censé posé mais en l'air (cm) : k 0.0 – 0.0 , max 2.3
+    pied L censé posé mais en l'air (cm) : k 0.0 – 0.0 , max 2.3
+chairdip ['chairdip']
+    poignet R cassé (°) : k 0.0 – 0.08 , max 79.0
+    poignet L cassé (°) : k 0.0 – 0.08 , max 79.0
+fwdlunge ['fwdlunge']
+    haltère dans le corps (points) : k 0 – 0 , max 1
+superman ['superman']
+    main R censée posée mais en l'air (cm) : k 0.08 – 0.08 , max 4.3
+    main L censée posée mais en l'air (cm) : k 0.08 – 0.08 , max 4.2
+wallpush ['wallpush']
+    poignet R cassé (°) : k 0.0 – 0.33 , max 95.5
+    poignet L cassé (°) : k 0.0 – 0.33 , max 95.8
+    cheville L trop repliée (°) : k 0.83 – 1.0 , max 33.8
+    cheville R trop repliée (°) : k 0.92 – 1.0 , max 33.6
+bridge2 ['mbbridge']
+    pied R censé posé mais en l'air (cm) : k 0.33 – 0.58 , max 2.3
+    pied L censé posé mais en l'air (cm) : k 0.33 – 0.58 , max 2.3
+50 poses sans remarque sur 73
