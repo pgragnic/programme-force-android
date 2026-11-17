@@ -54,9 +54,9 @@ tapd() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/
 case " $POSES " in *" coach "*)
   # accueil au premier lancement (données effacées), puis « Continuer sans compte », puis coach réservé aux comptes
   adb shell pm clear fr.pgragnic.force; adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
-  adb shell am start -W -n fr.pgragnic.force/.MainActivity --es lang fr --es theme light >> shots/start.txt; sleep 10; cap welcome
-  tapt "Continuer sans compte"; sleep 2; cap welcome-sans
-  shot welcome-en --es lang en --es theme light --ez noauth false; sleep 1
+  adb shell am start -W -n fr.pgragnic.force/.MainActivity --es lang fr --es theme light >> shots/start.txt; sleep 10; tapt "J'ai compris"; sleep 2; cap welcome
+  tapt "Continuer sans compte"; sleep 2; cap welcome-sans; adb shell input keyevent 4; sleep 1
+  shot welcome-en --es lang en --es theme light --ez noauth false; tapt "I understand"; sleep 2; cap welcome-en
   shot locked-tab --es lang fr --es theme light --ez seed true --ez locked true --ei tab 9
   shot locked-seance --es lang fr --es theme light --ez seed true --ez locked true --ei tab 0
   shot coach-0 --es lang fr --es theme light --ez seed true --ez tired true --ei tab 0
