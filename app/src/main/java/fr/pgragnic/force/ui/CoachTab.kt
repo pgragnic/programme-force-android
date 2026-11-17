@@ -104,6 +104,9 @@ fun CoachTab(onStart: () -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) { H1(t("Coach", "Coach"), Modifier.weight(1f)) }
+        // sans compte : le coach est réservé aux comptes
+        val acct by Store.user.collectAsState()
+        if (!Store.coachOk(acct)) { CoachLocked(Modifier.padding(top = 14.dp)); return@Column }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 2.dp, top = 2.dp)) {
             // « N messages restants » (Philippe, 15 novembre 11 h 56 : « Que veux dire 40/40 messages aujourd'hui ? » → « Ok ») ; orange sous 5
             val left = CoachData.leftToday()

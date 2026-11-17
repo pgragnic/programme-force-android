@@ -64,6 +64,8 @@ fun CoachWeekPanel() {
     var txt by remember { mutableStateOf<String?>(null) }; var busy by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { txt = CoachApi.bilan(ctx, key, false) }
     val fold = rememberFold("coach")
+    val acct by Store.user.collectAsState()
+    if (!Store.coachOk(acct)) return
     Panel {
         FoldHead(t("Le mot du coach", "Coach's word"), null, fold) { CoachAvatar(30) }
         if (!fold.value) return@Panel

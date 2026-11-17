@@ -55,6 +55,14 @@ object Store {
      *  l'application ? » ; 20 h 28 : « Avec email et connection Google »). signedIn reste vrai hors ligne tant qu'on ne se déconnecte pas ;
      *  authReady passe à vrai dès que l'état de la session est connu (ou après 4 s). */
     val signedIn = MutableStateFlow(false)
+    /** « Continuer sans compte » choisi à l'accueil (Philippe, 17 novembre 20 h 31 : « On laisse la possibilité de se connecter sans compte mais
+     *  en précisant que dans ce cas , on ne peut pas profiter du coach IA » ; 20 h 35 : « On part là-dessus ») */
+    val guest = MutableStateFlow(false)
+    /** captures / démonstration : on montre le coach même sans compte */
+    var demoCoach = false
+    /** coach disponible : connecté (ou démonstration) */
+    fun coachOk(u: Any?) = u != null || demoCoach
+    fun setGuest(v: Boolean) { guest.value = v; if (::prefs.isInitialized) prefs.edit().putBoolean("guest", v).apply() }
     val authReady = MutableStateFlow(false)
     private fun setSigned(v: Boolean) { signedIn.value = v; if (::prefs.isInitialized) prefs.edit().putBoolean("was_signed", v).apply() }
     val ver = MutableStateFlow(0)
@@ -78,6 +86,8 @@ object Store {
         signedIn.value = prefs.getBoolean("was_signed", false)
         scope.launch { kotlinx.coroutines.delay(4000); authReady.value = true }
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
+        // utilisateurs déjà là avant l'écran d'accueil (séances sur le téléphone) : pas d'accueil imposé, ils sont « sans compte » d'office
+        guest.value = prefs.getBoolean("guest", false) || (!signedIn.value && log.value.isNotEmpty())
         runCatching { prefs.getString("bilan", null)?.let { bilan.value = json.parseToJsonElement(it).jsonObject } }
         runCatching { days.value = json.decodeFromString<List<DayRec>>(prefs.getString("days", "[]")!!) }
         runCatching { prefs.getString("st", null)?.let { st.value = stFrom(json.parseToJsonElement(it).jsonObject) } }

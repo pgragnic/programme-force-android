@@ -179,10 +179,12 @@ fun SeanceScreen(onStart: () -> Unit) {
             cctx.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).getLong("coachdebrief", 0L) != lastE.d && coach == null
         var sug by remember { mutableStateOf<String?>(null) }
         var sugOpen by remember { mutableStateOf(false) }; var sugLong by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { sug = CoachApi.suggestion(cctx) }
+        LaunchedEffect(Store.user.collectAsState().value) { if (Store.coachOk(Store.user.value)) sug = CoachApi.suggestion(cctx) }
         // (clé, libellé) : clé "" = sans matériel ; ✕ pour arrêter avant la date (Philippe, 15 novembre 10 h 16 : « Et comment je peux remettre à zéro ? »)
         val running = remember(cs) { CoachState.genes.map { (z, d) -> z to PlanText.zoneOff(z) + t(" jusqu'au ", " until ") + CoachState.fmt(d) } +
             listOfNotNull(CoachState.noGear?.let { "" to t("Sans matériel jusqu'au ${CoachState.fmt(it)}", "No equipment until ${CoachState.fmt(it)}") }) }
+        val acct by Store.user.collectAsState()
+        if (!Store.coachOk(acct)) CoachLocked() else
         Row(Modifier.fillMaxWidth().glam().clickable { coach = if (debrief) "apres" else "avant" }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             CoachAvatar(36); Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

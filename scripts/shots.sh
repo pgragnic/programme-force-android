@@ -5,7 +5,7 @@ mkdir -p shots
 adb install -r app/build/outputs/apk/debug/*.apk
 adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
 adb shell cmd uimode night yes || true
-shot() { n=$1; shift; adb shell am force-stop fr.pgragnic.force; sleep 2; adb shell am start -W -n fr.pgragnic.force/.MainActivity "$@" >> shots/start.txt; sleep 9; adb exec-out screencap -p > shots/$n.png; }
+shot() { n=$1; shift; adb shell am force-stop fr.pgragnic.force; sleep 2; adb shell am start -W -n fr.pgragnic.force/.MainActivity --ez noauth true "$@" >> shots/start.txt; sleep 9; adb exec-out screencap -p > shots/$n.png; }
 sw() { adb shell input swipe 160 500 160 150 500; sleep 3; adb exec-out screencap -p > shots/$1.png; }
 QUICK=0; case " $POSES " in *" quick "*) QUICK=1;; esac
 if [ $QUICK = 0 ]; then
@@ -52,6 +52,13 @@ tapd() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/
   b=$(python3 -c "import re,sys;x=open('shots/ui.xml',encoding='utf-8').read();m=re.search(r'content-desc=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; sleep 3; }
 # coach : point avant séance (sans compte sur le téléphone virtuel : la dernière réponse doit demander un compte)
 case " $POSES " in *" coach "*)
+  # accueil au premier lancement (données effacées), puis « Continuer sans compte », puis coach réservé aux comptes
+  adb shell pm clear fr.pgragnic.force; adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
+  adb shell am start -W -n fr.pgragnic.force/.MainActivity --es lang fr --es theme light >> shots/start.txt; sleep 10; cap welcome
+  tapt "Continuer sans compte"; sleep 2; cap welcome-sans
+  shot welcome-en --es lang en --es theme light --ez noauth false; sleep 1
+  shot locked-tab --es lang fr --es theme light --ez seed true --ez locked true --ei tab 9
+  shot locked-seance --es lang fr --es theme light --ez seed true --ez locked true --ei tab 0
   shot coach-0 --es lang fr --es theme light --ez seed true --ez tired true --ei tab 0
   tapt "Faire le point avec le coach"; cap coach-1; tapt "J'accepte"; cap coach-2
   tapt "Un peu fatigué"; tapt "30 min"; cap coach-3; tapt "Genou"; sleep 4; cap coach-4
