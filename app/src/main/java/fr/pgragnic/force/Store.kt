@@ -51,6 +51,12 @@ object Store {
     val st = MutableStateFlow(Settings())
     val sync = MutableStateFlow("")
     val user = MutableStateFlow<String?>(null)
+    /** Connexion obligatoire (Philippe, 17 novembre 20 h 25 : « Je souhaite que les utilisateurs soient obligés de s'authentifier pour ouvrir
+     *  l'application ? » ; 20 h 28 : « Avec email et connection Google »). signedIn reste vrai hors ligne tant qu'on ne se déconnecte pas ;
+     *  authReady passe à vrai dès que l'état de la session est connu (ou après 4 s). */
+    val signedIn = MutableStateFlow(false)
+    val authReady = MutableStateFlow(false)
+    private fun setSigned(v: Boolean) { signedIn.value = v; if (::prefs.isInitialized) prefs.edit().putBoolean("was_signed", v).apply() }
     val ver = MutableStateFlow(0)
     val days = MutableStateFlow<List<DayRec>>(emptyList())
     /** Dernier bilan de la semaine écrit dans la base (table bilans), s'il y en a un. */
@@ -69,6 +75,8 @@ object Store {
         if (::prefs.isInitialized) return
         app = ctx.applicationContext
         prefs = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        signedIn.value = prefs.getBoolean("was_signed", false)
+        scope.launch { kotlinx.coroutines.delay(4000); authReady.value = true }
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
         runCatching { prefs.getString("bilan", null)?.let { bilan.value = json.parseToJsonElement(it).jsonObject } }
         runCatching { days.value = json.decodeFromString<List<DayRec>>(prefs.getString("days", "[]")!!) }
@@ -80,8 +88,8 @@ object Store {
             runCatching { sb!!.auth.awaitInitialization() }
             sb!!.auth.sessionStatus.collect { s ->
                 when (s) {
-                    is SessionStatus.Authenticated -> { val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) { pull(); CoachData.pull() } }
-                    is SessionStatus.NotAuthenticated -> { user.value = null; sync.value = t("Connecte-toi (Réglages → Compte et sauvegarde) pour sauvegarder en ligne", "Sign in (Settings → Account and backup) to back up online") }
+                    is SessionStatus.Authenticated -> { authReady.value = true; setSigned(true); val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) { pull(); CoachData.pull() } }
+                    is SessionStatus.NotAuthenticated -> { authReady.value = true; if (s.isSignOut) setSigned(false); else if (!prefs.getBoolean("was_signed", false)) signedIn.value = false; user.value = null; sync.value = t("Connecte-toi (Réglages → Compte et sauvegarde) pour sauvegarder en ligne", "Sign in (Settings → Account and backup) to back up online") }
                     else -> {}
                 }
             }
@@ -403,7 +411,7 @@ object Store {
         return try { c.auth.updateUser { password = pw }; recovery.value = false; null } catch (t: Throwable) { t.message ?: "Erreur" }
     }
 
-    suspend fun signOut() { runCatching { sb?.auth?.signOut() }; user.value = null }
+    suspend fun signOut() { runCatching { sb?.auth?.signOut() }; user.value = null; setSigned(false) }
 
     /** Envoie un avis ou une idée d'amélioration (possible sans compte). */
     suspend fun sendFeedback(kind: String, txt: String, contact: String?): String? {
@@ -431,7 +439,7 @@ object Store {
         return try {
             c.postgrest.rpc("supprimer_mon_compte")
             runCatching { c.auth.signOut() }
-            user.value = null
+            user.value = null; setSigned(false)
             log.value = emptyList(); days.value = emptyList(); bilan.value = null; dPending.clear(); dDel.clear(); sPend.clear(); sDel.clear(); st.value = Settings()
             prefs.edit().remove("log").remove("days").remove("dpend").remove("ddel").remove("spend").remove("sdel").remove("bilan").remove("st").apply()
             ver.value++

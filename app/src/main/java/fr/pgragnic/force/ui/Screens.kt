@@ -652,13 +652,19 @@ fun ProgressionPanel(st: Settings) {
 
 /** Compte et sauvegarde en ligne. */
 @Composable
-fun AccountPanel() {
+fun AccountPanel(welcome: Boolean = false) {
     val user by Store.user.collectAsState()
     var email by remember { mutableStateOf("") }; var pw by remember { mutableStateOf("") }; var pw2 by remember { mutableStateOf("") }
     var show by remember { mutableStateOf(false) }; var create by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
         Panel {
-            Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
+            if (!welcome) Text("Compte et sauvegarde en ligne", color = C.ink, fontWeight = FontWeight.Bold)
+            // écran d'accueil : Google d'abord (le plus simple), puis l'e-mail
+            if (welcome && user == null && Store.googleReady) {
+                val act0 = androidx.compose.ui.platform.LocalContext.current
+                Button(onClick = { scope.launch { msg = Store.signInGoogle(act0) } }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(t("Continuer avec Google", "Continue with Google"), fontWeight = FontWeight.Bold) }
+                Text(t("ou avec ton e-mail", "or with your email"), color = C.muted, fontSize = 13.sp, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
             val rec by Store.recovery.collectAsState()
             if (rec) {
                 // arrivée par le lien « mot de passe oublié »
@@ -712,7 +718,7 @@ fun AccountPanel() {
                 if (!create) TextButton(onClick = { scope.launch { msg = if (email.isBlank()) t("Renseigne ton e-mail.", "Enter your email.") else Store.resetPassword(email.trim()) } }, contentPadding = PaddingValues(0.dp)) {
                     Text(t("Mot de passe oublié ?", "Forgot password?"), color = C.muted, fontSize = 13.sp)
                 }
-                if (Store.googleReady) {
+                if (Store.googleReady && !welcome) {
                     val act = androidx.compose.ui.platform.LocalContext.current
                     OutlinedButton(onClick = { scope.launch { msg = Store.signInGoogle(act) } }, modifier = Modifier.fillMaxWidth()) { Text(t("Continuer avec Google", "Continue with Google"), fontWeight = FontWeight.Bold) }
                 }

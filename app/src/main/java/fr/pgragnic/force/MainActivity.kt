@@ -109,8 +109,12 @@ class MainActivity : ComponentActivity() {
                 val s = fr.pgragnic.force.ui.Session(st.c, st.w, st.s, P, Live.voice(this@MainActivity)); s.start(); s.enter(pi); Live.begin(this@MainActivity, s)
             }
         }
+        val signed by Store.signedIn.collectAsState(); val authReady by Store.authReady.collectAsState()
+        // captures d'écran et démonstration : pas d'écran de connexion
+        val demo = intent.getBooleanExtra("seed", false) || intent.getBooleanExtra("noauth", false) || intent.hasExtra("shot")
         Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
             when {
+                !demo && !signed && cur == null -> if (authReady) fr.pgragnic.force.ui.WelcomeScreen() else Box(Modifier.fillMaxSize())
                 cur == null && (!gear.done || setup) -> SetupScreen { setupOpen.value = false }
                 cur != null && (ending || cur.done) -> EndScreen(cur) { Live.end(this@MainActivity); ending = false }
                 cur != null -> {
