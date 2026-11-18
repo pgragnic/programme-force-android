@@ -98,7 +98,7 @@ object Store {
             runCatching { sb!!.auth.awaitInitialization() }
             sb!!.auth.sessionStatus.collect { s ->
                 when (s) {
-                    is SessionStatus.Authenticated -> { authReady.value = true; setSigned(true); val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) { pull(); CoachData.pull() } }
+                    is SessionStatus.Authenticated -> { authReady.value = true; setSigned(true); val was = user.value; user.value = s.session.user?.email ?: sb!!.auth.currentUserOrNull()?.email; if (was == null) { pull(); CoachData.pull() } }   // connexion depuis l'appli : signIn / signInGoogle lancent eux-mêmes les deux récupérations
                     is SessionStatus.NotAuthenticated -> { authReady.value = true; if (s.isSignOut) setSigned(false); else if (!prefs.getBoolean("was_signed", false)) signedIn.value = false; user.value = null; sync.value = t("Connecte-toi (Réglages → Compte et sauvegarde) pour sauvegarder en ligne", "Sign in (Settings → Account and backup) to back up online") }
                     else -> {}
                 }
@@ -390,7 +390,7 @@ object Store {
             else c.auth.signInWith(Email) { this.email = email; password = pw }
             user.value = c.auth.currentUserOrNull()?.email
             if (user.value == null) "Compte créé : ouvre l'e-mail reçu sur ce téléphone et touche le lien, l'appli s'ouvrira connectée."
-            else { pull(); null }
+            else { pull(); CoachData.pull(); null }
         } catch (t: Throwable) { t.message ?: "Erreur de connexion" }
     }
 
@@ -404,7 +404,7 @@ object Store {
             val res = androidx.credentials.CredentialManager.create(activity).getCredential(activity, req)
             val cred = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(res.credential.data)
             c.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.IDToken) { idToken = cred.idToken; provider = io.github.jan.supabase.auth.providers.Google }
-            user.value = c.auth.currentUserOrNull()?.email; pull(); null
+            user.value = c.auth.currentUserOrNull()?.email; pull(); CoachData.pull(); null
         } catch (t: androidx.credentials.exceptions.GetCredentialCancellationException) { null }
         catch (t: Throwable) { t("Connexion Google impossible : ", "Google sign-in failed: ") + (t.message ?: "") }
     }
