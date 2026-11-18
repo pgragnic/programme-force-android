@@ -56,7 +56,7 @@ private fun Sheet(title: String, onClose: () -> Unit, content: @Composable Colum
 }
 
 @Composable
-private fun SecHead(title: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp, start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun SecHead(title: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp, start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
     Cap(title, Modifier.weight(1f))
     action?.let { Text(it, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onAction() }.padding(2.dp)) }
 }
@@ -73,7 +73,7 @@ private fun XChip(label: String, onX: () -> Unit) = Row(Modifier.padding(end = 6
 private fun DecisionCard(e: CDecision, full: Boolean, onSee: (Long) -> Unit) {
     val ctx = LocalContext.current
     val active = CoachData.active(e)
-    Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
+    Column(Modifier.fillMaxWidth().glam().then(if (full) Modifier else Modifier.clickable { onSee(-e.id) }).padding(if (full) 14.dp else 12.dp)) {
         Text(dayTxt(e.id) + " · " + srcTxt(e.src) + when { e.undone -> t(" · annulé", " · undone"); !active -> t(" · terminé", " · ended"); else -> "" }, color = C.muted, fontSize = 12.sp)
         Text(e.title, color = if (active) C.ink else C.muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 3.dp))
         if (full) {
@@ -81,8 +81,8 @@ private fun DecisionCard(e: CDecision, full: Boolean, onSee: (Long) -> Unit) {
             Text(t("Ce que ça change", "What it changes"), color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
             e.changes.forEach { Text("• $it", color = C.ink, fontSize = 13.sp, lineHeight = 18.sp) }
             e.until?.let { Text(t("Jusqu'au ${CoachState.fmt(it)} inclus, puis retour normal", "Until ${CoachState.fmt(it)} included, then back to normal"), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
-        } else Text(e.changes.take(2).joinToString(" · "), color = C.muted, fontSize = 13.sp, maxLines = 2, modifier = Modifier.padding(top = 2.dp))
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        } else Text(e.changes.take(2).joinToString(" · "), color = C.muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        if (full) Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(t("Voir la discussion", "See the chat"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onSee(e.id) }.padding(2.dp))
             if (active) Text(t("Annuler", "Undo"), color = C.warm, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { CoachData.undo(ctx, e.id) }.padding(2.dp))
         }
@@ -117,17 +117,17 @@ fun CoachTab(onStart: () -> Unit) {
         }
         // discussion
         val last = d.msgs.lastOrNull()
-        Row(Modifier.padding(top = 14.dp).fillMaxWidth().glam().clickable { chat = "libre" to null }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = 12.dp).fillMaxWidth().glam().clickable { chat = "libre" to null }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             CoachAvatar(36); Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(if (last == null) t("Parler au coach", "Talk to the coach") else t("Reprendre la discussion", "Continue the chat"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Text(last?.let { dayTxt(it.t) + " : « " + it.text.take(80) + (if (it.text.length > 80) "…" else "") + " »" } ?: t("Une gêne, peu de temps, des vacances, une rando… il adapte ton programme.", "Discomfort, little time, holidays, a hike… it adapts your program."),
-                    color = C.muted, fontSize = 13.sp, maxLines = 2)
+                    color = C.muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
             Icon(Icons.Default.ChevronRight, null, tint = C.brand)
         }
         Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState())) {
-            listOf(t("Faire le point avant ma séance", "Pre-workout check-in") to "avant", t("Debrief de ma dernière séance", "Debrief my last workout") to "apres").forEach { (l, m) ->
+            listOf(t("Avant ma séance", "Before my workout") to "avant", t("Debrief de la dernière", "Debrief the last one") to "apres").forEach { (l, m) ->
                 Text(l, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(end = 6.dp).clip(RoundedCornerShape(16.dp)).background(C.brand.copy(alpha = .1f))
                     .clickable { chat = m to null }.padding(horizontal = 12.dp, vertical = 8.dp))
             }
@@ -136,24 +136,28 @@ fun CoachTab(onStart: () -> Unit) {
         // en cours
         val pend = CoachState.bias.filter { (id, b) -> log.none { e -> e.d > b.t && e.ex.any { it.id == id } } }
         val any = CoachState.genes.isNotEmpty() || CoachState.noGear != null || Adapt.on || pend.isNotEmpty()
-        SecHead(t("En cours", "Active"))
-        Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
-            if (!any) Text(t("Rien en ce moment : ton programme suit son cours normal.", "Nothing right now: your program runs as usual."), color = C.muted, fontSize = 13.sp)
-            else {
+        if (any) {
+            SecHead(t("En cours · touche ✕ pour arrêter", "Active · tap ✕ to stop"))
+            run {
                 androidx.compose.foundation.layout.FlowRow {
                     CoachState.genes.forEach { (z, until) -> XChip(PlanText.zoneOff(z) + " → " + CoachState.fmt(until)) { CoachState.endGene(ctx, z) } }
                     CoachState.noGear?.let { XChip(t("Sans matériel → ${CoachState.fmt(it)}", "No equipment → ${CoachState.fmt(it)}")) { CoachState.endNoGear(ctx) } }
                     if (Adapt.on) XChip(t("Séance du jour adaptée", "Today's workout adapted")) { Adapt.clear(ctx) }
                     pend.forEach { (id, b) -> XChip(tr(Prog.EX[id]?.n ?: id) + if (b.dir > 0) t(" +1 cran", " +1 step") else t(" −1 cran", " −1 step")) { CoachState.endBias(ctx, id) } }
                 }
-                Text(t("Touche une puce pour l'arrêter. Le détail est dans « Ce que le coach a changé ».", "Tap a chip to stop it. Details are in “What the coach changed”."), color = C.muted, fontSize = 12.sp)
             }
         }
 
         // objectifs
+        if (d.goals.isEmpty()) Row(Modifier.padding(top = 10.dp).fillMaxWidth().glam().clickable { addGoal = true }.padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(t("Ajouter un objectif", "Add a goal"), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(t("Rando, poids, course… le coach en tient compte", "Hike, weight, race… the coach takes it into account"), color = C.muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+            Icon(Icons.Default.Add, null, tint = C.brand)
+        } else {
         SecHead(t("Objectifs", "Goals"), t("+ Ajouter", "+ Add")) { addGoal = true }
         Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (d.goals.isEmpty()) Text(t("Une rando, un poids, une course… Le coach en tient compte dans ses conseils.", "A hike, a weight, a race… The coach takes it into account."), color = C.muted, fontSize = 13.sp)
             d.goals.forEach { g ->
                 val end = g.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }; val start = runCatching { LocalDate.parse(g.from) }.getOrDefault(LocalDate.now())
                 Column {
@@ -170,19 +174,20 @@ fun CoachTab(onStart: () -> Unit) {
             }
         }
 
-        // journal
-        SecHead(t("Ce que le coach a changé", "What the coach changed"), if (d.journal.size > 2) t("Tout voir", "See all") else null) { sheet = "journal" }
+        }
+        // journal : la dernière décision seulement, le reste dans « Tout voir »
+        SecHead(t("Ce que le coach a changé", "What the coach changed"), if (d.journal.size > 1) t("Tout voir (${d.journal.size})", "See all (${d.journal.size})") else null) { sheet = "journal" }
         if (d.journal.isEmpty()) Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
             Text(t("Rien pour l'instant. Chaque changement accepté apparaîtra ici avec sa raison et un bouton pour l'annuler.", "Nothing yet. Each accepted change will show here with its reason and an undo button."), color = C.muted, fontSize = 13.sp) }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { d.journal.take(2).forEach { DecisionCard(it, false) { at -> chat = "libre" to at } } }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { d.journal.take(1).forEach { DecisionCard(it, false) { at -> if (at < 0) sheet = "journal" else chat = "libre" to at } } }
 
         // bilans
-        SecHead(t("Bilans", "Reviews"), if (d.bilans.size > 1) t("Archives", "Archive") else null) { sheet = "bilans" }
-        Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
-            val b = d.bilans.maxByOrNull { it.key }
-            if (b == null) Text(t("Le mot du coach sur ta semaine : demande-le dans Progrès → Semaine.", "The coach's word on your week: ask for it in Progress → Week."), color = C.muted, fontSize = 13.sp)
-            else { Text(t("Semaine du ", "Week of ") + runCatching { LocalDate.parse(b.key).format(DateTimeFormatter.ofPattern("d MMMM", L.loc)) }.getOrDefault(b.key), color = C.muted, fontSize = 12.sp)
-                Text(b.value, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 4.dp)) }
+        d.bilans.maxByOrNull { it.key }?.let { b ->
+        SecHead(t("Bilan de la semaine", "Weekly review"), t("Archives", "Archive")) { sheet = "bilans" }
+        Column(Modifier.fillMaxWidth().glam().clickable { sheet = "bilans" }.padding(12.dp)) {
+            run { Text(t("Semaine du ", "Week of ") + runCatching { LocalDate.parse(b.key).format(DateTimeFormatter.ofPattern("d MMMM", L.loc)) }.getOrDefault(b.key), color = C.muted, fontSize = 12.sp)
+                Text(b.value, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)) }
+        }
         }
 
         Text(t("Ton, rappels et ce que sait le coach : Réglages → Coach.", "Tone, reminders and what the coach knows: Settings → Coach."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 16.dp, start = 4.dp))
