@@ -98,7 +98,9 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         if ((p.k == "rest" || p.k == "switch") && p.dur > 15 && prev < p.dur - 10 && pt >= p.dur - 10) voice.say("Dix secondes. Prépare-toi")
         P.getOrNull(pi + 1)?.let { nx -> if ((p.k == "rest" || p.k == "switch") && nx.k == "work" && p.dur > 8 && prev < p.dur - 6 && pt >= p.dur - 6)
             voice.say((if (nx.set == 1) t("Première série", "First set") else t("Série ${nx.set}", "Set ${nx.set}")) + if (nx.m == "uni") (if (Prog.uniRight(nx.pose, 0)) t(", côté droit", ", right side") else t(", côté gauche", ", left side")) else "") }
-        if (p.k == "work" && pt < p.dur) { val c = Prog.cueAt(p, pt); if (c != null && c.first != lastCue) { lastCue = c.first; voice.say(c.second) } }
+        // repères dits 0,4 s en avance : la boucle tourne toutes les 200 ms et la voix met ~0,3 s à partir (Philippe, 18 novembre 12 h 05 :
+        // « Pour le gobelet squat, le tiens est un peu tard ? » — pause d'1 s en bas, « Tiens » entendu presque au moment de remonter)
+        if (p.k == "work" && pt < p.dur) { val c = Prog.cueAt(p, minOf(pt + CUE_LEAD, p.dur - 0.01)); if (c != null && c.first != lastCue) { lastCue = c.first; voice.say(c.second) } }
         if (pt >= p.dur) enter(pi + 1)
     }
 
@@ -271,3 +273,6 @@ private fun SetPanel(ses: Session, pw: Phase) {
         }
     }
 }
+
+/** avance des repères vocaux (s) */
+private const val CUE_LEAD = 0.4
