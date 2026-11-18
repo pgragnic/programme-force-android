@@ -1,0 +1,33 @@
+TITRE (30 car. max)
+UpRep – remise en forme
+
+DESCRIPTION COURTE (80 car. max)
+Séances guidées à la maison et un coach IA qui adapte chaque séance à ta forme.
+
+DESCRIPTION LONGUE
+UpRep t'accompagne pour te (re)mettre en forme chez toi, sans abonnement à la salle et sans publicité.
+
+★ Un coach IA qui s'adapte à toi
+Fatigué, pressé, une gêne à l'épaule, des vacances sans matériel, une rando à préparer ? Dis-le au coach : il adapte ta séance du jour, explique chaque changement et se souvient de tes 30 derniers jours. Tout ce qu'il change est noté dans l'onglet Coach, avec sa raison, et s'annule en un geste.
+
+★ Avec le matériel que tu as
+Haltères, kettlebell, élastiques, barre de traction, banc ou simplement le poids du corps : indique ton matériel, UpRep compose tes séances.
+
+★ Adaptée à ton corps
+Une gêne au genou, au dos ou à l'épaule ? Les exercices concernés sont remplacés par des variantes plus douces.
+
+★ Guidée de A à Z
+Un personnage 3D montre chaque mouvement, une voix te donne le rythme (descends, tiens, monte), le minuteur gère les temps de repos.
+
+★ Une progression qui suit tes séances
+Charges ajustées après chaque séance, récupération de chaque muscle sur un corps en 3D, équilibre entre les muscles avec rattrapage la semaine suivante. Tes pas avec Health Connect, si tu le souhaites.
+
+★ Compte facultatif
+Connecte-toi avec Google ou ton e-mail pour profiter du coach IA et sauvegarder tes séances d'un téléphone à l'autre. Sans compte, l'appli fonctionne sur ton téléphone, sans le coach.
+
+★ Pour qui ?
+Débutants, sportifs qui reprennent, adeptes de musculation à la maison, de kettlebell ou de renforcement musculaire.
+
+Gratuite. Sans publicité. En français et en anglais.
+Le coach utilise Claude, l'IA d'Anthropic.
+UpRep ne remplace pas un avis médical.

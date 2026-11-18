@@ -1,0 +1,33 @@
+TITLE (30 chars max)
+UpRep – Home Fitness Coach
+
+SHORT DESCRIPTION (80 chars max)
+Guided home workouts and an AI coach that adapts each session to how you feel.
+
+FULL DESCRIPTION
+UpRep helps you get (back) in shape at home, with no gym membership and no ads.
+
+★ An AI coach that adapts to you
+Tired, short on time, a sore shoulder, a trip without equipment, a hike to prepare? Tell the coach: it adapts today's workout, explains every change and remembers your last 30 days. Everything it changes is listed in the Coach tab, with the reason, and can be undone in one tap.
+
+★ With the equipment you have
+Dumbbells, kettlebell, bands, pull-up bar, bench or just your bodyweight: tell UpRep what you have and it builds your workouts.
+
+★ Adapted to your body
+Knee, back or shoulder discomfort? The exercises involved are replaced by gentler variations.
+
+★ Guided from start to finish
+A 3D figure shows every move, a voice sets the pace (down, hold, up), and the timer handles your rest.
+
+★ Progress that follows your workouts
+Loads adjusted after each workout, recovery of each muscle on a 3D body, muscle balance with catch-up the following week. Your steps through Health Connect, if you wish.
+
+★ Optional account
+Sign in with Google or your email to use the AI coach and back up your workouts across phones. Without an account, the app works on your phone, without the coach.
+
+★ Who is it for?
+Beginners, people getting back into exercise, fans of home strength training, kettlebells or bodyweight workouts.
+
+Free. No ads. In English and French.
+The coach uses Claude, Anthropic's AI.
+UpRep is not a substitute for medical advice.
