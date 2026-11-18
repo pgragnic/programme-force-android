@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -56,8 +57,13 @@ private fun Sheet(title: String, onClose: () -> Unit, content: @Composable Colum
 }
 
 @Composable
-private fun SecHead(title: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp, start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-    Cap(title, Modifier.weight(1f))
+private fun SecHead(title: String, action: String? = null, fold: MutableState<Boolean>? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 6.dp, start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    // sections repliables (Philippe, 18 novembre 17 h 43 : « Can we collapse sections ? ») : on touche le titre ; état gardé sur le téléphone
+    Row(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).then(if (fold != null) Modifier.clickable { fold.value = !fold.value } else Modifier), verticalAlignment = Alignment.CenterVertically) {
+        Cap(title)
+        fold?.let { val rot by androidx.compose.animation.core.animateFloatAsState(if (it.value) 180f else 0f, label = "fold")
+            Icon(Icons.Default.ExpandMore, if (it.value) t("Replier", "Collapse") else t("Déplier", "Expand"), tint = C.muted, modifier = Modifier.padding(start = 2.dp).size(18.dp).graphicsLayer { rotationZ = rot }) }
+    }
     action?.let { Text(it, color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onAction() }.padding(2.dp)) }
 }
 
@@ -137,8 +143,9 @@ fun CoachTab(onStart: () -> Unit) {
         val pend = CoachState.bias.filter { (id, b) -> log.none { e -> e.d > b.t && e.ex.any { it.id == id } } }
         val any = CoachState.genes.isNotEmpty() || CoachState.noGear != null || Adapt.on || pend.isNotEmpty()
         if (any) {
-            SecHead(t("En cours · touche ✕ pour arrêter", "Active · tap ✕ to stop"))
-            run {
+            val fo = rememberFold("c_cours"); val n = CoachState.genes.size + (if (CoachState.noGear != null) 1 else 0) + (if (Adapt.on) 1 else 0) + pend.size
+            SecHead(if (fo.value) t("En cours · touche ✕ pour arrêter", "Active · tap ✕ to stop") else t("En cours ($n)", "Active ($n)"), fold = fo)
+            if (fo.value) run {
                 androidx.compose.foundation.layout.FlowRow {
                     CoachState.genes.forEach { (z, until) -> XChip(PlanText.zoneOff(z) + " → " + CoachState.fmt(until)) { CoachState.endGene(ctx, z) } }
                     CoachState.noGear?.let { XChip(t("Sans matériel → ${CoachState.fmt(it)}", "No equipment → ${CoachState.fmt(it)}")) { CoachState.endNoGear(ctx) } }
@@ -156,8 +163,9 @@ fun CoachTab(onStart: () -> Unit) {
             }
             Icon(Icons.Default.Add, null, tint = C.brand)
         } else {
-        SecHead(t("Objectifs", "Goals"), t("+ Ajouter", "+ Add")) { addGoal = true }
-        Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val fg = rememberFold("c_obj")
+        SecHead(if (fg.value) t("Objectifs", "Goals") else t("Objectifs (${d.goals.size})", "Goals (${d.goals.size})"), t("+ Ajouter", "+ Add"), fg) { addGoal = true }
+        if (fg.value) Column(Modifier.fillMaxWidth().glam().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             d.goals.forEach { g ->
                 val end = g.date?.let { runCatching { LocalDate.parse(it) }.getOrNull() }; val start = runCatching { LocalDate.parse(g.from) }.getOrDefault(LocalDate.now())
                 Column {
@@ -176,15 +184,17 @@ fun CoachTab(onStart: () -> Unit) {
 
         }
         // journal : la dernière décision seulement, le reste dans « Tout voir »
-        SecHead(t("Ce que le coach a changé", "What the coach changed"), if (d.journal.size > 1) t("Tout voir (${d.journal.size})", "See all (${d.journal.size})") else null) { sheet = "journal" }
-        if (d.journal.isEmpty()) Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
+        val fj = rememberFold("c_journal")
+        SecHead(t("Ce que le coach a changé", "What the coach changed"), if (d.journal.size > 1) t("Tout voir (${d.journal.size})", "See all (${d.journal.size})") else null, fj) { sheet = "journal" }
+        if (fj.value) { if (d.journal.isEmpty()) Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
             Text(t("Rien pour l'instant. Chaque changement accepté apparaîtra ici avec sa raison et un bouton pour l'annuler.", "Nothing yet. Each accepted change will show here with its reason and an undo button."), color = C.muted, fontSize = 13.sp) }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { d.journal.take(1).forEach { DecisionCard(it, false) { at -> if (at < 0) sheet = "journal" else chat = "libre" to at } } }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { d.journal.take(1).forEach { DecisionCard(it, false) { at -> if (at < 0) sheet = "journal" else chat = "libre" to at } } } }
 
         // bilans
         d.bilans.maxByOrNull { it.key }?.let { b ->
-        SecHead(t("Bilan de la semaine", "Weekly review"), t("Archives", "Archive")) { sheet = "bilans" }
-        Column(Modifier.fillMaxWidth().glam().clickable { sheet = "bilans" }.padding(12.dp)) {
+        val fb = rememberFold("c_bilan")
+        SecHead(t("Bilan de la semaine", "Weekly review"), t("Archives", "Archive"), fb) { sheet = "bilans" }
+        if (fb.value) Column(Modifier.fillMaxWidth().glam().clickable { sheet = "bilans" }.padding(12.dp)) {
             run { Text(t("Semaine du ", "Week of ") + runCatching { LocalDate.parse(b.key).format(DateTimeFormatter.ofPattern("d MMMM", L.loc)) }.getOrDefault(b.key), color = C.muted, fontSize = 12.sp)
                 Text(b.value, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)) }
         }

@@ -69,6 +69,10 @@ case " $POSES " in *" coach "*)
   shot coach-plie --es lang fr --es theme light --ez seed true --ei tab 2 --es sub 2; tapt "Bilan de la semaine"; sleep 1; tapt "Le mot du coach"; sleep 1; cap coach-plie
   shot ctab --es lang fr --es theme light --ez seed true --ei tab 9; sz=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1); W=${sz%x*}; H=${sz#*x}
   for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap ctab-$i; done
+  # sections repliées (on touche les titres), puis on rouvre pour les captures suivantes
+  shot ctab-plie0 --es lang fr --es theme light --ez seed true --ei tab 9
+  tapt "OBJECTIFS"; tapt "BILAN DE LA SEMAINE"; tapt "CE QUE LE COACH A CHANGÉ"; sleep 1; cap ctab-plie
+  tapt "OBJECTIFS (1)"; tapt "BILAN DE LA SEMAINE"; tapt "CE QUE LE COACH A CHANGÉ"
   shot ctab-sait --es lang fr --es theme light --ez seed true --ei tab 3 --es sub coach
   shot reg-main --es lang fr --es theme light --ez seed true --ei tab 3
   shot reg-hc --es lang fr --es theme light --ez seed true --ei tab 3 --es sub hc
