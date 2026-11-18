@@ -1,0 +1,2 @@
+51 poses sans remarque sur 73 ; poses modifiées : bridge bridge2
+Aucune régression.
