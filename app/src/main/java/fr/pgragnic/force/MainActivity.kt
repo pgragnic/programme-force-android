@@ -114,6 +114,20 @@ class MainActivity : ComponentActivity() {
         val demo = intent.getBooleanExtra("seed", false) || intent.getBooleanExtra("noauth", false) || intent.hasExtra("shot")
         // démonstration : coach visible sans compte, sauf capture « locked » (carte « réservé aux comptes »)
         Store.demoCoach = intent.getBooleanExtra("seed", false) && !intent.getBooleanExtra("locked", false)
+        // demande de note Google Play une fois, après la 5e séance, hors séance (Philippe, 18 novembre 23 h 18 : « Yes start » à
+        // « Demander une note dans l'appli après la 5e séance »). Google décide s'il affiche la fenêtre (rien hors Play Store).
+        val nLog = Store.log.collectAsState().value.size
+        LaunchedEffect(nLog, cur == null) {
+            val p = getSharedPreferences("force", MODE_PRIVATE)
+            if (demo || cur != null || nLog < 5 || p.getBoolean("review_asked", false)) return@LaunchedEffect
+            kotlinx.coroutines.delay(1500)
+            runCatching {
+                val m = com.google.android.play.core.review.ReviewManagerFactory.create(this@MainActivity)
+                m.requestReviewFlow().addOnSuccessListener { info ->
+                    m.launchReviewFlow(this@MainActivity, info).addOnCompleteListener { p.edit().putBoolean("review_asked", true).apply() }
+                }
+            }
+        }
         Box(Modifier.fillMaxSize().background(C.bg).systemBarsPadding()) {
             when {
                 !demo && !signed && !guest && cur == null -> if (authReady) fr.pgragnic.force.ui.WelcomeScreen() else Box(Modifier.fillMaxSize())
