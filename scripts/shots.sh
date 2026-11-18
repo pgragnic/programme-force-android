@@ -86,6 +86,11 @@ case " $POSES " in *" store "*)
     shot store-$L-play $b --ei play 5; sleep 6; cap store-$L-play-b
     shot store-$L-seance $b --ei tab 0; shot store-$L-corps $b --ei tab 1; shot store-$L-progres $b --ei tab 2
     for st in 0 1 2 3 4; do shot store-$L-setup$st --es lang $L --es theme light --es gear kb --ei setupstep $st --ez opensetup true; done
+    # coach (18 novembre, mise à jour de la fiche) : discussion avec la carte du plan, onglet Coach, équilibre des muscles
+    [ $L = fr ] && OK="J'accepte" || OK="I agree"; [ $L = fr ] && TALK="Parler au coach" || TALK="Talk to the coach"
+    shot store-$L-chat0 $b --ei tab 0; tapd "$TALK"; sleep 2; tapt "$OK"; sleep 3; cap store-$L-chat
+    shot store-$L-ctab $b --ei tab 9
+    shot store-$L-semaine $b --ei tab 2 --es sub 2
   done;;
 esac
 # écran Corps, échelle continue (option A) : muscles en récupération, toucher une cuisse puis une épaule sur le personnage

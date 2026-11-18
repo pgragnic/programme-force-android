@@ -30,21 +30,21 @@ object Demo {
     /** Données de démonstration de l'onglet Coach (captures) : une discussion, deux décisions, un objectif, une préférence, un bilan. */
     fun seedCoach(ctx: android.content.Context) {
         val now = System.currentTimeMillis(); val h = 3_600_000L; val today = java.time.LocalDate.now()
-        val p1 = CoachPlan(remplacements = listOf(CoachRep("press", "pushup", "Épaule ménagée : pas de bras au-dessus de la tête")), gene = CoachGene("epaule", 2),
-            explications = listOf("Épaule ménagée 2 jours"))
-        val p2 = CoachPlan(charges = listOf(CoachLoad("squat", 1, "tu as trouvé ça trop facile")), explications = listOf("Goblet squat +1 cran"))
+        val p1 = CoachPlan(remplacements = listOf(CoachRep("press", "pushup", t("Épaule ménagée : pas de bras au-dessus de la tête", "Shoulder spared: no arms overhead"))), gene = CoachGene("epaule", 2),
+            explications = listOf(t("Épaule ménagée 2 jours", "Shoulder spared for 2 days")))
+        val p2 = CoachPlan(charges = listOf(CoachLoad("squat", 1, t("tu as trouvé ça trop facile", "you found it too easy"))), explications = listOf(t("Goblet squat +1 cran", "Goblet squat +1 step")))
         CoachState.apply(ctx, p1)
         CoachData.update(false) { it.copy(
-            msgs = listOf(CMsg(now - 26 * h, false, "Je viens de finir ma séance."), CMsg(now - 26 * h + 1000, true, "Bravo ! C'était comment ?"), CMsg(now - 26 * h + 2000, false, "Trop facile"),
-                CMsg(now - 26 * h + 3000, true, "On monte le goblet squat d'un cran la prochaine fois : tu as fait toutes tes répétitions avec 3 en réserve.", p2),
-                CMsg(now - h, false, "J'ai mal à l'épaule depuis hier"), CMsg(now - h + 1000, true, "On la ménage 2 jours : le développé militaire est remplacé par des pompes, sans bras au-dessus de la tête.", p1)),
+            msgs = listOf(CMsg(now - 26 * h, false, t("Je viens de finir ma séance.", "I just finished my workout.")), CMsg(now - 26 * h + 1000, true, t("Bravo ! C'était comment ?", "Well done! How was it?")), CMsg(now - 26 * h + 2000, false, t("Trop facile", "Too easy")),
+                CMsg(now - 26 * h + 3000, true, t("On monte le goblet squat d'un cran la prochaine fois : tu as fait toutes tes répétitions avec 3 en réserve.", "We'll raise the goblet squat one step next time: you did all your reps with 3 in reserve."), p2),
+                CMsg(now - h, false, t("J'ai mal à l'épaule depuis hier", "My shoulder has hurt since yesterday")), CMsg(now - h + 1000, true, t("On la ménage 2 jours : le développé militaire est remplacé par des pompes, sans bras au-dessus de la tête.", "Let's spare it for 2 days: the overhead press is replaced by push-ups, no arms overhead."), p1)),
             journal = listOf(
-                CDecision(now - h + 2000, "discussion", "Épaule ménagée 2 jours", "J'ai mal à l'épaule depuis hier",
-                    listOf("Développé militaire debout → Pompes (Épaule ménagée : pas de bras au-dessus de la tête)", "Épaule ménagée pendant 2 jours : exercices qui la sollicitent remplacés"), p1, today.toString(), until = today.plusDays(1).toString()),
-                CDecision(now - 26 * h + 4000, "debrief", "Charges ajustées pour la prochaine fois", "Trop facile", listOf("Prochaine fois : Goblet squat +1 cran (tu as trouvé ça trop facile)"), p2, today.minusDays(1).toString())),
-            goals = listOf(CGoal(1, "Rando de 20 km", today.plusDays(30).toString(), today.minusDays(15).toString())),
-            memo = listOf(CMemo(2, "N'aime pas les burpees"), CMemo(3, "S'entraîne plutôt le matin")),
-            bilans = mapOf(today.with(java.time.DayOfWeek.MONDAY).minusWeeks(1).toString() to "5 séances sur 4 prévues : belle régularité. Le tirage est un peu en retard sur la poussée, le programme rattrape cette semaine avec une série de rowing en plus."))
+                CDecision(now - h + 2000, "discussion", t("Épaule ménagée 2 jours", "Shoulder spared for 2 days"), t("J'ai mal à l'épaule depuis hier", "My shoulder has hurt since yesterday"),
+                    listOf(t("Développé militaire debout → Pompes (Épaule ménagée : pas de bras au-dessus de la tête)", "Standing overhead press → Push-ups (shoulder spared: no arms overhead)"), t("Épaule ménagée pendant 2 jours : exercices qui la sollicitent remplacés", "Shoulder spared for 2 days: exercises that load it are replaced")), p1, today.toString(), until = today.plusDays(1).toString()),
+                CDecision(now - 26 * h + 4000, "debrief", t("Charges ajustées pour la prochaine fois", "Loads adjusted for next time"), t("Trop facile", "Too easy"), listOf(t("Prochaine fois : Goblet squat +1 cran (tu as trouvé ça trop facile)", "Next time: Goblet squat +1 step (you found it too easy)")), p2, today.minusDays(1).toString())),
+            goals = listOf(CGoal(1, t("Rando de 20 km", "20 km hike"), today.plusDays(30).toString(), today.minusDays(15).toString())),
+            memo = listOf(CMemo(2, t("N'aime pas les burpees", "Doesn't like burpees")), CMemo(3, t("S'entraîne plutôt le matin", "Usually trains in the morning"))),
+            bilans = mapOf(today.with(java.time.DayOfWeek.MONDAY).minusWeeks(1).toString() to t("5 séances sur 4 prévues : belle régularité. Le tirage est un peu en retard sur la poussée, le programme rattrape cette semaine avec une série de rowing en plus.", "5 workouts out of 4 planned: great consistency. Pulling lags a little behind pushing, so this week the program adds one set of rows.")))
         }
         CoachData.setLeft(34)
     }
