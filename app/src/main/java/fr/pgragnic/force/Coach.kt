@@ -162,6 +162,13 @@ object CoachApi {
                 put("series", Prog.WEEKS[st.w].s); put("repetitions", Prog.WEEKS[st.w].r) }
             putJsonArray("seances") { Prog.sess(st.c).forEach { (k, s) -> addJsonObject { put("lettre", k); put("titre", tr(s.t)) } } }
             put("seance_proposee", st.s)
+            // séances de la semaine du programme en cours (Philippe, 19 novembre 18 h 57 : « Ce qui est indiqué sur la première image n'est
+            // pas cohérent avec les autres images ? » — le coach proposait la séance A déjà faite et comptait une séance D pas encore faite)
+            val wk = log.filter { it.c == st.c && it.w == st.w }.sortedBy { it.d }
+            putJsonObject("semaine_du_programme_en_cours") {
+                putJsonArray("seances_faites") { wk.forEach { e -> addJsonObject { put("seance", e.s); put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()) } } }
+                putJsonArray("seances_restantes") { Prog.sess(st.c).keys.filter { k -> wk.none { it.s == k } }.forEach { add(it) } }
+            }
             putJsonArray("exercices") { order.forEach { id -> addJsonObject {
                 put("id", id); put("nom", tr(Prog.EX[id]?.n ?: id)); put("charge", tr(Prog.load(id, st.w, st)))
                 putJsonArray("muscles") { (Prog.MAP[id] ?: emptyMap()).filter { it.value >= .7 }.keys.forEach { add(tr(it)) } }
@@ -170,7 +177,7 @@ object CoachApi {
             putJsonObject("recuperation") { Recovery.MUS.forEach { put(tr(it), MU.R[it]) } }
             putJsonArray("surcharges") { Recovery.MUS.filter { MU.over(it) }.forEach { add(tr(it)) } }
             putJsonArray("dernieres_seances") { log.sortedByDescending { it.d }.take(5).forEach { e -> addJsonObject {
-                put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()); put("seance", e.s); put("ressenti", e.f)
+                put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()); put("seance", e.s); put("cycle", e.c); put("semaine", e.w + 1); put("ressenti", e.f)
                 putJsonArray("exercices") { e.ex.forEach { x -> addJsonObject { put("id", x.id); put("nom", tr(x.n)); put("kg", x.kg); put("objectif", x.target); put("fait", x.done)
                     x.sets.mapNotNull { it.res }.takeIf { it.isNotEmpty() }?.let { r -> put("reserve_moyenne", r.average()) } } } }
             } } }
@@ -227,7 +234,9 @@ object CoachApi {
 
     /** suggestion du jour (une par jour au plus, gardée sur le téléphone) */
     suspend fun suggestion(ctx: Context): String? {
-        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE); val d = java.time.LocalDate.now().toString()
+        val p = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        // gardée pour la journée, mais refaite après une nouvelle séance ou si la séance proposée change
+        val d = java.time.LocalDate.now().toString() + "/" + (Store.log.value.maxOfOrNull { it.d } ?: 0) + "/" + Store.st.value.s
         p.getString("coachsug", null)?.let { if (it.startsWith("$d|")) return it.substringAfter("|").ifBlank { null } }
         if (!p.getBoolean("coach_ok", false) || Store.user.value == null) return null
         val r = ask(listOf("user" to t("Une suggestion pour aujourd'hui ?", "A suggestion for today?")), "suggestion")
