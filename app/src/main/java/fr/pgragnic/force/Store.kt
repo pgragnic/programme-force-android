@@ -83,6 +83,9 @@ object Store {
         if (::prefs.isInitialized) return
         app = ctx.applicationContext
         prefs = ctx.getSharedPreferences("force", Context.MODE_PRIVATE)
+        // nouvelle installation : rien n'est envoyé au compte avant d'avoir relu ses réglages (voir stateReady) ;
+        // installations existantes connectées (pas encore de state_uid) : on garde l'envoi, leurs réglages sont déjà les bons
+        stateReady = prefs.getString("state_uid", null) != null || prefs.getString("owner", null) != null
         signedIn.value = prefs.getBoolean("was_signed", false)
         scope.launch { kotlinx.coroutines.delay(4000); authReady.value = true }
         runCatching { log.value = json.decodeFromString<List<Entry>>(prefs.getString("log", "[]")!!) }
@@ -161,8 +164,12 @@ object Store {
     }
 
     /** Envoie le matériel et le profil avec les réglages. */
+    /** Réglages du compte (matériel, durée des séances, cycle / semaine) pas encore relus sur ce téléphone : on n'envoie rien,
+     *  sinon les valeurs par défaut d'une nouvelle installation écrasent celles du compte (Philippe, 19 novembre 13 h 12, après
+     *  l'installation depuis le Play Store : « j'avais aussi perdu la durée des séances »). */
+    @Volatile private var stateReady = true
     fun pushGear() {
-        val c = sb ?: return; if (user.value == null) return
+        val c = sb ?: return; if (user.value == null || !stateReady) return
         scope.launch { runCatching { c.from("state").upsert(StateRow(stTo(st.value))) } }
     }
     private fun stFrom(o: JsonObject) = Settings(
@@ -181,7 +188,7 @@ object Store {
     fun setSettings(f: (Settings) -> Unit) {
         val s = st.value; f(s); st.value = Settings(s.c, s.w, s.s, s.rest, s.bar, s.n2, s.n05, s.upLeg, s.upBack, s.upTop); saveLocal()
         val c = sb ?: return
-        if (user.value == null) return
+        if (user.value == null || !stateReady) return
         scope.launch { runCatching { c.from("state").upsert(StateRow(stTo(st.value))) } }
     }
 
@@ -330,6 +337,7 @@ object Store {
                 retry = 0
                 // changement de compte : les séances déjà envoyées appartiennent à l'autre compte (elles y restent en ligne) ; le téléphone
                 // reprend celles du compte connecté (retour de Philippe, passage au compte Gmail : « Repartir de zéro sur Gmail »)
+                if (prefs.getString("state_uid", null) != uid) stateReady = false
                 if (prefs.getString("owner", null) != uid) {
                     log.value = log.value.filter { it.d in sPend }; sDel.clear(); dDel.clear()
                     days.value = days.value.filter { it.date in dPending }; bilan.value = null; prefs.edit().remove("bilan").apply()
@@ -339,7 +347,7 @@ object Store {
                 val rows = c.from("sessions").select().decodeList<SessRow>()
                 val server = rows.mapNotNull { r -> runCatching { json.decodeFromJsonElement<Entry>(r.data).copy(_id = r.id) }.getOrNull() }
                 log.value = merge(log.value, server, sPend, sDel)
-                runCatching { c.from("state").select().decodeList<StateRow>().firstOrNull()?.let { r ->
+                runCatching { c.from("state").select().decodeList<StateRow>().also { stateReady = true; prefs.edit().putString("state_uid", uid).apply(); if (it.isEmpty()) pushGear() }.firstOrNull()?.let { r ->
                     st.value = stFrom(r.data)
                     runCatching { devFromOnline(r.data["dev"] as? JsonObject) }
                     val a = app
