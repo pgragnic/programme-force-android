@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import fr.pgragnic.force.*
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.LocalDate
@@ -118,8 +119,6 @@ fun CoachTab(onStart: () -> Unit) {
             val left = CoachData.leftToday()
             Text(t("$left message${if (left > 1) "s" else ""} restant${if (left > 1) "s" else ""} aujourd'hui", "$left message${if (left != 1) "s" else ""} left today"),
                 color = if (left < 5) C.warm else C.muted, fontSize = 13.sp, fontWeight = if (left < 5) FontWeight.SemiBold else FontWeight.Normal)
-            Text(" · ", color = C.muted, fontSize = 13.sp)
-            Text(t("Données envoyées", "Data sent"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { sheet = "data" })
         }
         // discussion
         val last = d.msgs.lastOrNull()
@@ -216,12 +215,6 @@ fun CoachTab(onStart: () -> Unit) {
                 Text(t("Semaine du ", "Week of ") + runCatching { LocalDate.parse(k).format(DateTimeFormatter.ofPattern("d MMMM yyyy", L.loc)) }.getOrDefault(k), color = C.muted, fontSize = 12.sp)
                 Text(v, color = C.ink, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 4.dp)) } }
         }
-        "data" -> Sheet(t("Données envoyées", "Data sent"), { sheet = null }) {
-            Text(t("Voici, en clair, le dernier contexte envoyé à Anthropic avec ton message. Rien d'autre n'est transmis (ni ton e-mail, ni ton nom).",
-                "Here, in plain text, is the last context sent to Anthropic with your message. Nothing else is sent (no e-mail, no name)."), color = C.muted, fontSize = 13.sp)
-            Text(CoachData.lastSent ?: t("Aucun échange pour l'instant.", "No exchange yet."), color = C.ink, fontSize = 11.sp, fontFamily = FontFamily.Monospace, lineHeight = 15.sp,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.card1).horizontalScroll(rememberScrollState()).padding(12.dp))
-        }
     }
 
     if (addGoal) {
@@ -292,13 +285,51 @@ fun CoachSettingsPage() {
                 Switch(d.remMorning, { v -> CoachData.update { it.copy(remMorning = v) }; CoachRem.schedule(ctx) })
             }
         }
-        Cap(t("Données envoyées", "Data sent"), Modifier.padding(top = 8.dp, start = 4.dp))
+        // « Ce que le coach reçoit », en clair (Philippe, 20 novembre 5 h 59 : « Enlevons le donnés envoyées, qu'est ce que tu en penses ou alors
+        // sur un format lisible par un end user ? » ; 6 h 00 : « Ça me va ! ») : le lien du haut de l'onglet Coach est retiré, le JSON passe en « détail technique »
+        Cap(t("Ce que le coach reçoit", "What the coach receives"), Modifier.padding(top = 8.dp, start = 4.dp))
         Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
-            Text(t("Le dernier contexte envoyé à Anthropic avec ton message, en clair. Rien d'autre n'est transmis (ni ton e-mail, ni ton nom).",
-                "The last context sent to Anthropic with your message, in plain text. Nothing else is sent (no e-mail, no name)."), color = C.muted, fontSize = 13.sp)
-            Text(if (data) t("Masquer", "Hide") else t("Afficher", "Show"), color = C.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).clickable { data = !data }.padding(2.dp))
+            val o = remember { runCatching { CoachData.lastSent?.let { kotlinx.serialization.json.Json.parseToJsonElement(it).jsonObject } }.getOrNull() ?: runCatching { CoachApi.context() }.getOrNull() }
+            Text(t("Avec chacun de tes messages, le coach reçoit ces informations pour adapter ses réponses :", "With each of your messages, the coach receives this information to tailor its answers:"), color = C.muted, fontSize = 13.sp)
+            o?.let { SentReadable(it) }
+            Text(t("Jamais envoyé : ton nom, ton e-mail, ta position, tes contacts.", "Never sent: your name, e-mail, location, contacts."), color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+            Text(t("Les échanges passent par Anthropic (Claude), qui ne s'en sert pas pour entraîner ses modèles.", "Messages go through Anthropic (Claude), which does not use them to train its models."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(if (data) t("Masquer le détail technique", "Hide technical details") else t("Voir le détail technique", "See technical details"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp).clip(RoundedCornerShape(8.dp)).clickable { data = !data }.padding(2.dp))
             if (data) Text(CoachData.lastSent ?: t("Aucun échange pour l'instant.", "No exchange yet."), color = C.ink, fontSize = 11.sp, fontFamily = FontFamily.Monospace, lineHeight = 15.sp,
                 modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.bg).horizontalScroll(rememberScrollState()).padding(12.dp))
+        }
+    }
+}
+
+/** Contexte envoyé au coach, en phrases simples (une ligne par rubrique). */
+@Composable
+private fun SentReadable(o: kotlinx.serialization.json.JsonObject) {
+    fun ob(k: String) = o[k] as? kotlinx.serialization.json.JsonObject
+    fun ar(k: String, src: kotlinx.serialization.json.JsonObject? = o) = (src?.get(k) as? kotlinx.serialization.json.JsonArray) ?: kotlinx.serialization.json.JsonArray(emptyList())
+    fun st(src: kotlinx.serialization.json.JsonObject?, k: String) = (src?.get(k) as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString || it.toString() != "null" }?.content
+    fun dm(d: String?) = d?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d/MM")) }.getOrNull() } ?: ""
+    val pr = ob("profil"); val pg = ob("programme"); val wk = ob("semaine_du_programme_en_cours")
+    val rest = ar("restrictions_sante", pr).size
+    val lines = buildList {
+        add(t("Ton profil", "Your profile") to listOfNotNull(st(pr, "objectif")?.let { t("objectif ", "goal ") + it }, st(pr, "niveau")?.let { t("niveau ", "level ") + it },
+            if (rest == 0) t("aucune restriction de santé", "no health restriction") else t("$rest restriction(s) de santé", "$rest health restriction(s)")).joinToString(" · "))
+        add(t("Ton matériel", "Your equipment") to t("${ar("materiel").size} élément(s) coché(s)", "${ar("materiel").size} item(s) selected"))
+        if (pg != null) add(t("Ton programme", "Your program") to listOfNotNull(t("cycle ${st(pg, "cycle")}, semaine ${st(pg, "semaine")}/8", "cycle ${st(pg, "cycle")}, week ${st(pg, "semaine")}/8"),
+            st(o, "seance_proposee")?.let { t("prochaine séance $it", "next workout $it") }, st(pg, "duree_max_habituelle")?.let { t("$it min au maximum", "$it min max") }).joinToString(" · "))
+        if (wk != null) add(t("Ta semaine", "Your week") to (t("faites : ", "done: ") + ar("seances_faites", wk).joinToString(", ") { val e = it as kotlinx.serialization.json.JsonObject; "${st(e, "seance")} (${dm(st(e, "date"))})" }.ifBlank { "—" }
+            + t(" · restantes : ", " · left: ") + ar("seances_restantes", wk).joinToString(", ") { (it as kotlinx.serialization.json.JsonPrimitive).content }.ifBlank { "—" }))
+        ar("dernieres_seances").let { add(t("Tes dernières séances", "Your last workouts") to t("${it.size} séance(s) : exercices, charges, répétitions, ressenti", "${it.size} workout(s): exercises, loads, reps, how it felt")) }
+        add(t("Ton corps", "Your body") to t("récupération de chaque muscle, équilibre des 4 dernières semaines", "recovery of each muscle, balance over the last 4 weeks"))
+        ar("activite_3_jours").takeIf { it.isNotEmpty() }?.let { add(t("Ton activité", "Your activity") to t("pas des ${it.size} derniers jours", "steps over the last ${it.size} days")) }
+        add(t("Vos échanges", "Your conversations") to t("${ar("echanges_30_derniers_jours").size} message(s) et ${ar("decisions_30_derniers_jours").size} décision(s) des 30 derniers jours",
+            "${ar("echanges_30_derniers_jours").size} message(s) and ${ar("decisions_30_derniers_jours").size} decision(s) from the last 30 days"))
+        add(t("Ce que tu lui as confié", "What you told it") to t("${ar("objectifs").size} objectif(s), ${ar("ce_que_tu_sais_de_l_utilisateur").size} préférence(s) retenue(s)",
+            "${ar("objectifs").size} goal(s), ${ar("ce_que_tu_sais_de_l_utilisateur").size} remembered preference(s)"))
+    }
+    lines.forEach { (k, v) ->
+        Column(Modifier.padding(top = 10.dp)) {
+            Text(k, color = C.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(v, color = C.muted, fontSize = 13.sp, lineHeight = 18.sp)
         }
     }
 }

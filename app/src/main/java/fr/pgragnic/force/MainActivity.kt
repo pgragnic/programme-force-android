@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
         Demo.setupStep = intent.getIntExtra("setupstep", 0)
         Demo.muscle = intent.getStringExtra("muscle")
         Demo.sub = intent.getStringExtra("sub")
+        intent.getStringExtra("reg")?.let { fr.pgragnic.force.ui.regSub.value = it }
         Demo.sub?.takeIf { it.toIntOrNull() == null }?.let { fr.pgragnic.force.ui.regSub.value = it }
         if (intent.getBooleanExtra("opensetup", false)) fr.pgragnic.force.ui.setupOpen.value = true
         if (intent.hasExtra("seed") || intent.hasExtra("gear") || intent.hasExtra("demo")) getSharedPreferences("force", MODE_PRIVATE).edit().putBoolean("avert", true).putBoolean("tour", !intent.getBooleanExtra("tour", false)).apply()
