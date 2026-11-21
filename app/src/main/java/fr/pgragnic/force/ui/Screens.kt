@@ -244,8 +244,13 @@ fun SeanceScreen(onStart: () -> Unit) {
                     Text(t("Adaptée à ta récupération :", "Adjusted to your recovery:"), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     recupCh.forEach { Text("· " + Recup.text(it), color = C.muted, fontSize = 12.sp, lineHeight = 16.sp) }
                 }
-                Text(if (Recup.off) t("Adapter à ma récupération", "Adjust to my recovery") else t("Séance d'origine", "Original workout"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable { Recup.setOff(!Recup.off) }.padding(vertical = 2.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(if (Recup.off) t("Adapter à ma récupération", "Adjust to my recovery") else t("Séance d'origine", "Original workout"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable { Recup.setOff(!Recup.off) }.padding(vertical = 2.dp))
+                    // l'IA affine par-dessus les règles de l'appli (Philippe, 21 novembre 20 h 35 : « On part là-dessus »)
+                    if (!Recup.off && Store.coachOk(Store.user.collectAsState().value)) Text(t("Affiner avec le coach", "Fine-tune with the coach"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable { coach = "affiner" }.padding(vertical = 2.dp))
+                }
             }
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }

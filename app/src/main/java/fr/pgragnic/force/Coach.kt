@@ -101,6 +101,8 @@ object Adapt {
     val notes: List<String> get() = if (on) cur?.notes.orEmpty() else emptyList()
     fun swap(id: String) = if (on) cur?.swaps?.get(id) ?: id else id
     /** raison donnée par le coach pour l'exercice qui en remplace un autre aujourd'hui */
+    /** exercices mis par le coach aujourd'hui (non retouchés par Recup) */
+    fun targets(): Set<String> = if (on) cur?.swaps?.values?.toSet().orEmpty() else emptySet()
     fun whyOf(id: String): String? = if (on) cur?.let { c -> c.swaps.entries.firstOrNull { it.value == id }?.let { c.why[it.key] } } else null
     /** Calcule [block] comme si le coach n'avait rien changé. */
     fun <T> without(block: () -> T): T {
@@ -117,7 +119,7 @@ object Adapt {
     private fun planned(p: CoachPlan, s: String): Saved? {
         val st = Store.st.value
         val inSess = Prog.orderEx(st.c, s, st.w, st)
-        val ok = p.remplacements.filter { r -> r.de in Prog.EX && r.vers in Prog.EX && r.vers in Prog.alternatives(r.de, inSess) }.associate { it.de to it.vers }
+        val ok = p.remplacements.filter { r -> r.de in Prog.EX && r.vers in Prog.EX && (r.vers in Prog.alternatives(r.de, inSess) || Recup.ready(r.vers)) }.associate { it.de to it.vers }
         return if (p.seance != null || p.duree_max != null || (p.series_moins ?: 0) > 0 || ok.isNotEmpty())
             Saved(today(), p.duree_max?.coerceIn(15, 90), (p.series_moins ?: 0).coerceIn(0, 2), ok, p.explications.take(6),
                 p.remplacements.filter { it.de in ok && !it.raison.isNullOrBlank() }.associate { it.de to it.raison!! }) else saved
@@ -149,7 +151,12 @@ object CoachApi {
     fun context(): JsonObject {
         val st = Store.st.value; val g = GearStore.g.value; val log = Store.log.value; val days = Store.days.value
         val MU = Recovery.muscles(log, days)
-        val order = Prog.orderEx(st.c, st.s, st.w, st)
+        // séance d'origine (sans ajustement de récupération) : le coach part d'elle, et reçoit à part ce que l'appli ajuste (Philippe,
+        // 21 novembre 20 h 35 : « Est-ce qu'on n'aurait pas intérêt à déléguer ça à l'IA ? » ; « On part là-dessus » : règles de l'appli
+        // en base, le coach affine)
+        val order = Recup.without { Prog.orderEx(st.c, st.s, st.w, st) }
+        val rec = Recup.plan(st.c, order.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) })
+        val readyEx = Recup.readyList(st.c, 8)
         return buildJsonObject {
             put("aujourdhui", java.time.LocalDate.now().toString())
             putJsonObject("profil") {
@@ -172,8 +179,12 @@ object CoachApi {
             putJsonArray("exercices") { order.forEach { id -> addJsonObject {
                 put("id", id); put("nom", tr(Prog.EX[id]?.n ?: id)); put("charge", tr(Prog.load(id, st.w, st)))
                 putJsonArray("muscles") { (Prog.MAP[id] ?: emptyMap()).filter { it.value >= .7 }.keys.forEach { add(tr(it)) } }
-                putJsonArray("alternatives") { Prog.alternatives(id, order).take(6).forEach { a -> addJsonObject { put("id", a); put("nom", tr(Prog.EX[a]?.n ?: a)) } } }
+                putJsonArray("alternatives") { (Prog.alternatives(id, order).take(6) + readyEx.filter { it !in order }).distinct().forEach { a -> addJsonObject { put("id", a); put("nom", tr(Prog.EX[a]?.n ?: a)) } } }
             } } }
+            // ce que l'appli fait d'office selon la récupération (seuil 80 %) ; un remplacement décidé par le coach passe avant
+            putJsonArray("ajustements_recuperation_par_l_appli") { rec.forEach { ch -> addJsonObject {
+                put("exercice", ch.id); put("action", when (ch.kind) { "swap" -> "remplace"; "drop" -> "retire"; else -> "une_serie_de_moins" })
+                ch.to?.let { put("par", it) }; put("muscle", tr(ch.muscle)); put("recuperation_pct", ch.pct) } } }
             putJsonObject("recuperation") { Recovery.MUS.forEach { put(tr(it), MU.R[it]) } }
             putJsonArray("surcharges") { Recovery.MUS.filter { MU.over(it) }.forEach { add(tr(it)) } }
             putJsonArray("dernieres_seances") { log.sortedByDescending { it.d }.take(5).forEach { e -> addJsonObject {

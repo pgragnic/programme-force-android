@@ -44,6 +44,7 @@ private fun scripted(mode: String) = when (mode) {
 private fun opener(mode: String) = when (mode) {
     "avant" -> t("Je fais le point avant ma séance.", "Quick check-in before my workout.")
     "apres" -> t("Je viens de finir ma séance.", "I just finished my workout.")
+    "affiner" -> t("Affine ma séance du jour selon ma récupération.", "Fine-tune today's workout to my recovery.")
     else -> null
 }
 private val QUESTIONS get() = listOf(
@@ -75,7 +76,7 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
     // fil récent (24 h) renvoyé tel quel ; les 30 derniers jours partent résumés dans le contexte (echanges_30_derniers_jours)
     val prior = remember { val lim = System.currentTimeMillis() - 864e5.toLong()
         CoachData.d.msgs.filter { it.t >= lim && it.text.isNotBlank() }.takeLast(8).map { (if (it.coach) "assistant" else "user") to it.text } }
-    val hist = remember { mutableStateListOf<Pair<String, String>>().also { h -> h.addAll(prior); opener(mode)?.let { h += "user" to it; h += "assistant" to Q[0].first } } }
+    val hist = remember { mutableStateListOf<Pair<String, String>>().also { h -> h.addAll(prior); opener(mode)?.takeIf { Q.isNotEmpty() }?.let { h += "user" to it; h += "assistant" to Q[0].first } } }
     /** alternance user / assistant en commençant par user (messages consécutifs du même côté réunis) */
     fun norm(l: List<Pair<String, String>>): List<Pair<String, String>> {
         val o = ArrayList<Pair<String, String>>()
@@ -96,13 +97,15 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
     fun ask() {
         busy = true
         scope.launch {
-            val r = CoachApi.ask(norm(hist.toList()), mode)
+            val r = CoachApi.ask(norm(hist.toList()), if (mode == "affiner") "avant" else mode)
             busy = false
             if (r.erreur != null) { msgs += Msg(true, CoachApi.errText(r.erreur)); hist.removeAt(hist.size - 1); return@launch }
             hist += "assistant" to (r.texte + (r.plan?.explications?.takeIf { it.isNotEmpty() }?.let { "\n" + t("Plan proposé : ", "Proposed plan: ") + it.joinToString(" ; ") } ?: ""))
             val m = Msg(true, r.texte, r.choix, r.plan); msgs += m; log(m, r.plan)
         }
     }
+    // « Affiner avec le coach » (carte Prochaine séance) : la demande part toute seule, une fois l'accord donné
+    var affSent by remember { mutableStateOf(false) }
     fun send(txt: String) {
         val s = txt.trim(); if (s.isEmpty() || busy) return
         opened?.let { log(it); opened = null }
@@ -112,6 +115,7 @@ fun CoachScreen(mode: String = "avant", onClose: () -> Unit, onStart: () -> Unit
             step++; val (q, c) = Q[step]; val qm = Msg(true, q, c); msgs += qm; log(qm); hist += "assistant" to q
         } else { step = Q.size; ask() }
     }
+    LaunchedEffect(consent) { if (mode == "affiner" && consent && !affSent) { affSent = true; kotlinx.coroutines.delay(300); send(opener("affiner")!!) } }
 
     // la fenêtre gère elle-même barres système et clavier : sur certains téléphones (Xiaomi) les marges calculées par Compose
     // valaient 0 et la zone de saisie passait sous la barre de navigation (Philippe, 15 novembre 9 h 52 : « je ne peux pas taper un texte libre... »)

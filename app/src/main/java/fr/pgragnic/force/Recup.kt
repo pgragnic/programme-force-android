@@ -57,7 +57,10 @@ object Recup {
                 .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second > READY }
                 .sortedWith(compareBy({ if (it.first in cyc) 0 else 1 }, { -it.second })).map { it.first }
         }
+        // exercices choisis aujourd'hui par le coach : sa décision passe avant les règles
+        val coach = Adapt.targets()
         for (id in ex) {
+            if (id in coach) continue
             val (mus, pct) = worst(id, m) ?: continue
             if (pct > READY) continue
             // de préférence un muscle pas encore pris par un autre remplacement (pas deux curls pour les biceps)
@@ -72,6 +75,14 @@ object Recup {
         return out
     }
 
+    /** exercice faisable dont tous les muscles principaux sont prêts (le coach peut le proposer en remplacement) */
+    fun ready(id: String): Boolean = Prog.ok(id) && (worst(id, mu())?.second ?: 0) > READY
+    /** exercices prêts, pour le contexte du coach (les plus récupérés d'abord) */
+    fun readyList(c: Int, n: Int): List<String> {
+        val m = mu(); val cyc = Prog.sess(c).keys.flatMap { Prog.sessEx(c, it) }.distinct()
+        return (cyc + Prog.EX.keys.filter { it !in cyc }).filter { Prog.ok(it) && Prog.EX[it]?.m != "time" }
+            .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second > READY }.sortedByDescending { it.second }.map { it.first }.take(n)
+    }
     /** ordre de la séance après remplacements et retraits */
     fun apply(c: Int, ex: List<String>): List<String> {
         val p = plan(c, ex); if (p.isEmpty()) return ex
