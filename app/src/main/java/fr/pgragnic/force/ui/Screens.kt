@@ -133,8 +133,12 @@ fun SeanceScreen(onStart: () -> Unit) {
     var weeks by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(log) { Store.rollWeek() }
     val av = Adapt.v
-    val order = remember(st.c, st.w, st.s, log, gear, av) { Prog.orderEx(st.c, st.s, st.w, st) }
-    val P = remember(st.c, st.w, st.s, st.rest, log, gear, av) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+    val rv = Store.ver.collectAsState().value
+    val order = remember(st.c, st.w, st.s, log, gear, av, rv) { Prog.orderEx(st.c, st.s, st.w, st) }
+    val P = remember(st.c, st.w, st.s, st.rest, log, gear, av, rv) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
+    // ajustements du jour selon la récupération (Recup) : liste affichée dans la carte, « Séance d'origine » pour les annuler
+    val rawOrder = remember(st.c, st.w, st.s, log, gear, av, rv) { Recup.without { Prog.orderEx(st.c, st.s, st.w, st) } }
+    val recupCh = remember(rawOrder, rv) { Recup.plan(st.c, rawOrder.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) }) }
     // séance sans aucune décision du coach : ce qui diffère porte le badge « Coach » et sa raison (Philippe, 15 novembre 10 h 26 :
     // « il faut que chaque décision prise par l'IA soit compréhensible par l'utilisateur »)
     val baseOrder = remember(st.c, st.w, st.s, log, gear, av) { if (Adapt.on || CoachState.genes.isNotEmpty() || CoachState.noGear != null) Adapt.without { Prog.orderEx(st.c, st.s, st.w, st) } else order }
@@ -147,14 +151,15 @@ fun SeanceScreen(onStart: () -> Unit) {
     val (share, sore) = remember(order, MU) { tired(order) }
     // muscles surchargés (au-delà de 0 %) travaillés en principal par cette séance : alerte franche
     val over = remember(order, MU) { order.flatMap { id -> Prog.MAP[id]?.filter { it.value >= .7 }?.keys.orEmpty() }.distinct().filter { MU.over(it) } }
-    val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Prog.orderEx(st.c, it, st.w, st)).first }.minByOrNull { it.second }?.takeIf { it.second < share - .2 }?.first }
+    val rawShare = remember(rawOrder, MU) { tired(rawOrder).first }
+    val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Recup.without { Prog.orderEx(st.c, it, st.w, st) }).first }.minByOrNull { it.second }?.takeIf { it.second < rawShare - .2 }?.first }
     var warn by remember { mutableStateOf(false) }
     // séance pas encore faite mais dont les muscles récupèrent : remplacée d'office par celle qui ménage le mieux (sauf « Faire quand même »)
     val cctx0 = LocalContext.current
     val keep = remember(st.s) { cctx0.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).getString("keep_s", null) }
     val doneWk = remember(log, st.c, st.w) { log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet() }
-    LaunchedEffect(st.s, share, alt) {
-        if (st.s !in doneWk && share >= .4 && alt != null && keep != "${java.time.LocalDate.now()}|${st.s}") Store.setSettings { it.s = alt }
+    LaunchedEffect(st.s, rawShare, alt) {
+        if (st.s !in doneWk && rawShare >= .4 && alt != null && keep != "${java.time.LocalDate.now()}|${st.s}") Store.setSettings { it.s = alt }
     }
     val postponed = remember(st, log, MU) { Prog.postponed(st, log, MU.R) }
     if (warn) AlertDialog(onDismissRequest = { warn = false }, containerColor = C.surface,
@@ -231,6 +236,15 @@ fun SeanceScreen(onStart: () -> Unit) {
                     modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable {
                         cctx0.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).edit().putString("keep_s", "${java.time.LocalDate.now()}|$pp").apply()
                         Store.setSettings { it.s = pp } }.padding(vertical = 2.dp))
+            }
+            if (recupCh.isNotEmpty() || Recup.off) Column(Modifier.padding(top = 8.dp)) {
+                if (Recup.off) Text(t("Séance d'origine, sans ajustement à ta récupération.", "Original workout, not adjusted to your recovery."), color = C.muted, fontSize = 12.sp)
+                else {
+                    Text(t("Adaptée à ta récupération :", "Adjusted to your recovery:"), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    recupCh.forEach { Text("· " + Recup.text(it), color = C.muted, fontSize = 12.sp, lineHeight = 16.sp) }
+                }
+                Text(if (Recup.off) t("Adapter à ma récupération", "Adjust to my recovery") else t("Séance d'origine", "Original workout"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable { Recup.setOff(!Recup.off) }.padding(vertical = 2.dp))
             }
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }

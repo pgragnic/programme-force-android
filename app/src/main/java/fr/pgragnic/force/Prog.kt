@@ -73,7 +73,8 @@ object Prog {
     }
 
     /** Prochaine séance : celle qui ménage le mieux les muscles en récupération ; à égalité, celle faite il y a le plus longtemps. */
-    fun nextSess(st: Settings, log: List<Entry>, days: List<DayRec>): String {
+    fun nextSess(st: Settings, log: List<Entry>, days: List<DayRec>): String = Recup.without { nextSess0(st, log, days) }
+    private fun nextSess0(st: Settings, log: List<Entry>, days: List<DayRec>): String {
         val R = Recovery.muscles(log, days).R
         val last = sess(st.c).keys.associateWith { s -> log.filter { it.s == s }.maxOfOrNull { it.d } ?: 0L }
         // d'abord une séance pas encore faite cette semaine du programme (avec E et F, chacune a son tour), puis celle qui ménage le mieux les muscles
@@ -91,7 +92,8 @@ object Prog {
         return sh.filterKeys { it != s }.entries.minWithOrNull(compareBy({ (it.value * 10).roundToInt() }, { last[it.key] ?: 0L }))?.takeIf { it.value <= cur - .2 }?.key
     }
     /** séance de la semaine pas encore faite, reportée parce que ses muscles récupèrent (null sinon) */
-    fun postponed(st: Settings, log: List<Entry>, R: Map<String, Int>): String? {
+    fun postponed(st: Settings, log: List<Entry>, R: Map<String, Int>): String? = Recup.without { postponed0(st, log, R) }
+    private fun postponed0(st: Settings, log: List<Entry>, R: Map<String, Int>): String? {
         val doneW = log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet()
         if (st.s !in doneW) return null
         return sess(st.c).keys.filter { it !in doneW }.map { it to tired(orderEx(st.c, it, st.w, st), R).first }.filter { it.second >= .4 }.minByOrNull { it.second }?.first
@@ -462,7 +464,8 @@ object Prog {
         }
         perm(rest, emptyList())
         // remplacements du jour décidés avec le coach (Adapt)
-        val base = (best ?: ex).map { Adapt.swap(it) }.distinct()
+        // puis ajustements selon la récupération des muscles (Recup : remplacé, retiré ou une série de moins)
+        val base = Recup.apply(c, (best ?: ex).map { Adapt.swap(it) }.distinct())
         // muscle peu travaillé les 2 semaines passées : petit exercice ajouté en fin de séance (Balance.extras)
         return base + Balance.extras(base).filter { it !in base }
     }
@@ -497,6 +500,7 @@ object Prog {
         val S = sess(c)[s] ?: sess(c).values.first(); val W = WEEKS[w]; val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
+        val pre = Recup.without { orderEx(c, s, w, st) }.filter { it !in Balance.extraIds || it in sessEx(c, s) }
         val first = exo.firstOrNull { kgOf(it, w, st) > 0 && toolOf(it) == "db" }
         val adj = gear.dbMode != "fixed"
         val need = exo.mapNotNull { EX[it]?.eq }.flatten().flatMap { it.split("|").take(1) }.toSet()
@@ -527,7 +531,7 @@ object Prog {
                 }
             }
             val invOn = e.inv && e.m != "time" && e.m != "alt"
-            val ns = nsOver[id] ?: if (id in Balance.extraIds && id !in sessEx(c, s)) 2 else adaptSets(W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0)
+            val ns = nsOver[id] ?: if (id in Balance.extraIds && id !in sessEx(c, s)) 2 else max(1, adaptSets(W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0) - Recup.less(c, pre, id))
             for (i in 1..ns) {
                 P += Phase("work", ei = ei, set = i, inv = invOn, blk = t("Exercice ${ei + 1}/${exo.size} · Série $i/${ns}", "Exercise ${ei + 1}/${exo.size} · Set $i/${ns}"), n = e.n,
                     det = t("Série $i/${ns} · ${wk.label} · ${load(id, w, st)}", "Set $i/${ns} · ${wk.label} · ${tr(load(id, w, st))}"), tip = e.tip, dur = wk.dur, pose = e.pose, ex = id, nodb = e.tool != "db" && e.tool != "kb",
