@@ -2,7 +2,7 @@ name: Vidéo service au premier plan (Google Play)
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   video:
     runs-on: ubuntu-latest
@@ -31,3 +31,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: video-fgs, path: out }
+      - name: Publier la vidéo sur la branche video-fgs
+        if: always()
+        run: |
+          cd out && rm -f ui.xml && git init -q && git checkout -q -b video-fgs && git add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm "video ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" video-fgs
