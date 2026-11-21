@@ -6,14 +6,16 @@ import android.content.Context
  * Séance adaptée à la récupération des muscles (Philippe, 21 novembre 19 h 00 : « Mais globalement toutes les séances devraient s'adapter
  * par rapport aux muscles déjà travaillés ou à travailler, comment peut-on faire ça ? » ; 19 h 02 : « Ok pour combiner 1 et 2 »).
  * Niveau 1 : la séance qui ménage le mieux les muscles est proposée (Prog.nextSess / postponeAlt).
- * Niveau 2 (ici) : avant de démarrer, chaque exercice est ajusté selon ses muscles principaux (poids ≥ 0,7 dans Prog.MAP) :
- *   - tous à 75 % ou plus : comme prévu ;
- *   - le moins récupéré entre 50 et 75 % : une série de moins ;
- *   - sous 50 % ou surchargé : remplacé par un exercice du cycle dont les muscles sont prêts, sinon retiré
- *     (jamais moins de 3 exercices : à défaut, une série de moins).
+ * Niveau 2 (ici) : avant de démarrer, chaque exercice est ajusté selon ses muscles principaux (poids ≥ 0,7 dans Prog.MAP).
+ * Règle de Philippe (21 novembre 19 h 04 : « Tout muscle <= 80% doit être remplacé sur un muscle prêt ») :
+ *   - tous au-dessus de 80 % : comme prévu ;
+ *   - un muscle principal à 80 % ou moins (ou surchargé) : remplacé par un exercice du cycle dont tous les muscles principaux sont
+ *     au-dessus de 80 % ; s'il n'y en a plus, retiré (s'il ne restait plus rien, le dernier est gardé avec une série de moins).
  * « Séance d'origine » (pour la journée) remet la séance prévue.
  */
 object Recup {
+    /** au-dessus : muscle prêt */
+    const val READY = 80
     class Change(val id: String, val kind: String, val to: String? = null, val muscle: String, val pct: Int)
 
     /** calcul sans adaptation (choix de la séance, comparaisons) */
@@ -49,21 +51,16 @@ object Recup {
         // candidats de remplacement : exercices du cycle (toutes séances) dont tous les muscles principaux sont prêts
         val pool by lazy {
             Prog.sess(c).keys.flatMap { Prog.sessEx(c, it) }.distinct().filter { Prog.ok(it) && Prog.EX[it]?.m != "time" }
-                .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second >= 75 }.sortedByDescending { it.second }.map { it.first }
+                .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second > READY }.sortedByDescending { it.second }.map { it.first }
         }
         for (id in ex) {
             val (mus, pct) = worst(id, m) ?: continue
+            if (pct > READY) continue
+            val to = pool.firstOrNull { it !in used }
             when {
-                pct >= 75 -> {}
-                pct >= 50 -> out += Change(id, "less", muscle = mus, pct = pct)
-                else -> {
-                    val to = pool.firstOrNull { it !in used && prim(it).none { p -> p in prim(id) } }
-                    when {
-                        to != null -> { used += to; out += Change(id, "swap", to, mus, pct) }
-                        kept > 3 -> { kept--; out += Change(id, "drop", muscle = mus, pct = pct) }
-                        else -> out += Change(id, "less", muscle = mus, pct = pct)
-                    }
-                }
+                to != null -> { used += to; out += Change(id, "swap", to, mus, pct) }
+                kept > 1 -> { kept--; out += Change(id, "drop", muscle = mus, pct = pct) }
+                else -> out += Change(id, "less", muscle = mus, pct = pct)
             }
         }
         return out
