@@ -14,6 +14,8 @@ ui() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui
 tapt() { ui; b=$(python3 -c "import re,sys;x=open('out/ui.xml',encoding='utf-8').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; }
 # referme les messages « … isn't responding » de l'émulateur
 anr() { for k in 1 2 3; do ui; grep -q "isn&apos;t responding\|isn't responding" out/ui.xml || return 0; tapt "Wait"; sleep 3; done; }
+# touche le premier élément dont la description vaut $1 (icônes sans texte)
+tapd() { ui; b=$(python3 -c "import re,sys;x=open('out/ui.xml',encoding='utf-8').read();m=re.search(r'content-desc=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; }
 rec() { adb shell screenrecord --time-limit $2 --bit-rate 8000000 /sdcard/$1.mp4 & }
 pull() { wait; adb pull /sdcard/$1.mp4 out/$1.mp4 >/dev/null; adb shell rm /sdcard/$1.mp4; }
 
@@ -34,7 +36,7 @@ adb shell input keyevent 223; sleep 3
 rec b 26; sleep 1
 adb shell input keyevent 224; sleep 5
 adb exec-out screencap -p > out/s2.png
-W=720; adb shell input swipe 360 700 360 1000 400; sleep 3   # déplie la notification
+tapd "Expand"; sleep 3   # déplie la notification de séance (la première)
 adb exec-out screencap -p > out/s3.png
 tapt "Pause"; sleep 5
 tapt "Resume"; sleep 5
