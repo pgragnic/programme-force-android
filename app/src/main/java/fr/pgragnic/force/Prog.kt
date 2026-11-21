@@ -78,7 +78,23 @@ object Prog {
         val last = sess(st.c).keys.associateWith { s -> log.filter { it.s == s }.maxOfOrNull { it.d } ?: 0L }
         // d'abord une séance pas encore faite cette semaine du programme (avec E et F, chacune a son tour), puis celle qui ménage le mieux les muscles
         val doneW = log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet()
-        return sess(st.c).keys.minWith(compareBy<String>({ if (it in doneW) 1 else 0 }, { (tired(orderEx(st.c, it, st.w, st), R).first * 10).roundToInt() }, { last[it] }))
+        val sh = sess(st.c).keys.associateWith { tired(orderEx(st.c, it, st.w, st), R).first }
+        val pick = sess(st.c).keys.minWith(compareBy<String>({ if (it in doneW) 1 else 0 }, { (sh[it]!! * 10).roundToInt() }, { last[it] }))
+        // séance prévue sur des muscles encore en récupération : on propose à la place celle qui ménage le mieux le corps, même déjà faite
+        // cette semaine ; la séance prévue reste proposée (« Faire la séance E quand même ») (Philippe, 21 novembre 18 h 56 : « Actuellement
+        // j'ai une séance E en S3 qui travaille les jambes alors que les muscles des jambes ont déjà bien travaillés » ; choix « Proposer une autre séance »)
+        return postponeAlt(st, sh, last, pick) ?: pick
+    }
+    /** séance de remplacement si « s » sollicite surtout des muscles pas encore récupérés (part ≥ 40 %) et qu'une autre les ménage nettement */
+    fun postponeAlt(st: Settings, sh: Map<String, Double>, last: Map<String, Long>, s: String): String? {
+        val cur = sh[s] ?: return null; if (cur < .4) return null
+        return sh.filterKeys { it != s }.entries.minWithOrNull(compareBy({ (it.value * 10).roundToInt() }, { last[it.key] ?: 0L }))?.takeIf { it.value <= cur - .2 }?.key
+    }
+    /** séance de la semaine pas encore faite, reportée parce que ses muscles récupèrent (null sinon) */
+    fun postponed(st: Settings, log: List<Entry>, R: Map<String, Int>): String? {
+        val doneW = log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet()
+        if (st.s !in doneW) return null
+        return sess(st.c).keys.filter { it !in doneW }.map { it to tired(orderEx(st.c, it, st.w, st), R).first }.filter { it.second >= .4 }.minByOrNull { it.second }?.first
     }
 
     /** pose d'un exercice alterné ou d'un seul côté (bird dog, dead bug, fentes…) : à faire des deux côtés */

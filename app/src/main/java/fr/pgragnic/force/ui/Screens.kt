@@ -149,6 +149,14 @@ fun SeanceScreen(onStart: () -> Unit) {
     val over = remember(order, MU) { order.flatMap { id -> Prog.MAP[id]?.filter { it.value >= .7 }?.keys.orEmpty() }.distinct().filter { MU.over(it) } }
     val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Prog.orderEx(st.c, it, st.w, st)).first }.minByOrNull { it.second }?.takeIf { it.second < share - .2 }?.first }
     var warn by remember { mutableStateOf(false) }
+    // séance pas encore faite mais dont les muscles récupèrent : remplacée d'office par celle qui ménage le mieux (sauf « Faire quand même »)
+    val cctx0 = LocalContext.current
+    val keep = remember(st.s) { cctx0.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).getString("keep_s", null) }
+    val doneWk = remember(log, st.c, st.w) { log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet() }
+    LaunchedEffect(st.s, share, alt) {
+        if (st.s !in doneWk && share >= .4 && alt != null && keep != "${java.time.LocalDate.now()}|${st.s}") Store.setSettings { it.s = alt }
+    }
+    val postponed = remember(st, log, MU) { Prog.postponed(st, log, MU.R) }
     if (warn) AlertDialog(onDismissRequest = { warn = false }, containerColor = C.surface,
         title = { Text(t("Muscles pas encore récupérés", "Muscles not recovered yet"), color = C.ink, fontWeight = FontWeight.Bold) },
         text = { Text((if (over.isNotEmpty()) t("Surchargés : ", "Overloaded: ") + over.joinToString(", ") { mus(it) } + t(". Les retravailler maintenant freine leur récupération ; mieux vaut une autre séance ou du repos. ", ". Working them now slows their recovery; better pick another workout or rest. ") else "") +
@@ -215,6 +223,15 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 6.dp))
             Text(t("Séance ${st.s} · ${order.size} exercices · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", "Workout ${st.s} · ${order.size} exercises · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min"),
                 color = C.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+            postponed?.let { pp ->
+                val pm = remember(pp, MU) { tired(Prog.orderEx(st.c, pp, st.w, st)).second.take(2) }
+                Text(t("Séance $pp reportée : ", "Workout $pp postponed: ") + pm.joinToString(", ") { "${mus(it).lowercase()} ${MU.R[it]} %" } + t(" encore en récupération.", " still recovering."),
+                    color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(t("Faire la séance $pp quand même", "Do workout $pp anyway"), color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable {
+                        cctx0.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).edit().putString("keep_s", "${java.time.LocalDate.now()}|$pp").apply()
+                        Store.setSettings { it.s = pp } }.padding(vertical = 2.dp))
+            }
             gear.maxMin?.let { m -> if (nSets < order.sumOf { id -> W.s + if (gear.focus(id) || Balance.boost(id)) 1 else 0 })
                 Text(t("Raccourcie pour tenir en $m min.", "Shortened to fit in $m min."), color = C.muted, fontSize = 12.sp) }
             // une seule ligne d'alerte, rouge pour les muscles surchargés ; le détail s'ouvre en la touchant
@@ -241,7 +258,7 @@ fun SeanceScreen(onStart: () -> Unit) {
                 }
                 // le ✓ marque une séance déjà faite cette semaine
                 val keys = S.keys.toList()
-                Seg(keys.map { s -> (s + if ("${st.c}-${st.w}-$s" in done) (if (S.size > 4) "✓" else " ✓") else "") to (st.s == s) }, Modifier.weight(1f), check = false, small = S.size > 4) { i -> Store.setSettings { it.s = keys[i] } }
+                Seg(keys.map { s -> (s + if ("${st.c}-${st.w}-$s" in done) (if (S.size > 4) "✓" else " ✓") else "") to (st.s == s) }, Modifier.weight(1f), check = false, small = S.size > 4) { i -> cctx0.getSharedPreferences("force", android.content.Context.MODE_PRIVATE).edit().putString("keep_s", "${java.time.LocalDate.now()}|${keys[i]}").apply(); Store.setSettings { it.s = keys[i] } }
             }
             if (gear.perWeek != S.size) Text(if (gear.perWeek > S.size)
                 t("${gear.perWeek} séances par semaine : après A, B, C et D, l'appli te repropose la séance qui ménage le mieux tes muscles.", "${gear.perWeek} workouts a week: after A, B, C and D, the app suggests again the workout that best spares your muscles.")
