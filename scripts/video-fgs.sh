@@ -17,6 +17,9 @@ pull() { wait; adb pull /sdcard/$1.mp4 out/$1.mp4 >/dev/null; adb shell rm /sdca
 
 # 1) l'utilisateur lance une séance (« Let's go ») : minuteur, consignes, notification
 adb shell locksettings set-disabled false || true
+adb shell settings put secure lock_screen_show_notifications 1
+adb shell settings put secure lock_screen_show_silent_notifications 1
+adb shell settings put secure lock_screen_allow_private_notifications 1
 adb shell am force-stop $P; sleep 2
 adb shell am start -W -n $P/.MainActivity --es lang en --es theme light --ez seed true --ei tab 0 >/dev/null; sleep 9
 rec a 16; sleep 2
