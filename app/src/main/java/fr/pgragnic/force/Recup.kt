@@ -56,7 +56,9 @@ object Recup {
         for (id in ex) {
             val (mus, pct) = worst(id, m) ?: continue
             if (pct > READY) continue
-            val to = pool.firstOrNull { it !in used }
+            // de préférence un muscle pas encore pris par un autre remplacement (pas deux curls pour les biceps)
+            val taken = out.filter { it.kind == "swap" }.flatMap { prim(it.to!!) }.toSet()
+            val to = pool.firstOrNull { it !in used && prim(it).none { p -> p in taken } } ?: pool.firstOrNull { it !in used }
             when {
                 to != null -> { used += to; out += Change(id, "swap", to, mus, pct) }
                 kept > 1 -> { kept--; out += Change(id, "drop", muscle = mus, pct = pct) }
