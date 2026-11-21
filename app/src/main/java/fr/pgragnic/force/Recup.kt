@@ -69,15 +69,17 @@ object Recup {
     /** ordre de la séance après remplacements et retraits */
     fun apply(c: Int, ex: List<String>): List<String> {
         val p = plan(c, ex); if (p.isEmpty()) return ex
-        return ex.mapNotNull { id -> p.firstOrNull { it.id == id }?.let { ch -> when (ch.kind) { "swap" -> ch.to; "drop" -> null; else -> id } } ?: id }.distinct()
+        return ex.mapNotNull { id -> val ch = p.firstOrNull { it.id == id }; when (ch?.kind) { "swap" -> ch.to; "drop" -> null; else -> id } }.distinct()
     }
     /** séries en moins pour l'exercice (dans la séance [ex] d'origine) */
     fun less(c: Int, ex: List<String>, id: String) = if (plan(c, ex).any { it.id == id && it.kind == "less" }) 1 else 0
 
+    /** raison courte (muscle et pourcentage) */
+    fun why(ch: Change) = if (ch.pct <= 0) t("${mus(ch.muscle).lowercase()} surchargés", "${mus(ch.muscle).lowercase()} overloaded") else "${mus(ch.muscle).lowercase()} ${ch.pct} %"
     /** phrase courte pour la carte « Prochaine séance » */
     fun text(ch: Change): String {
         val n = { id: String -> tr(Prog.EX[id]?.n ?: id) }
-        val why = "${mus(ch.muscle).lowercase()} ${ch.pct} %"
+        val why = if (ch.pct <= 0) t("${mus(ch.muscle).lowercase()} surchargés", "${mus(ch.muscle).lowercase()} overloaded") else "${mus(ch.muscle).lowercase()} ${ch.pct} %"
         return when (ch.kind) {
             "swap" -> t("${n(ch.id)} → ${n(ch.to!!)} ($why)", "${n(ch.id)} → ${n(ch.to!!)} ($why)")
             "drop" -> t("${n(ch.id)} retiré ($why)", "${n(ch.id)} removed ($why)")

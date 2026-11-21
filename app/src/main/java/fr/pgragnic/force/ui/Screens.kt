@@ -138,6 +138,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val P = remember(st.c, st.w, st.s, st.rest, log, gear, av, rv) { Prog.phases(st.c, st.w, st.s, st.rest, st, log) }
     // ajustements du jour selon la récupération (Recup) : liste affichée dans la carte, « Séance d'origine » pour les annuler
     val rawOrder = remember(st.c, st.w, st.s, log, gear, av, rv) { Recup.without { Prog.orderEx(st.c, st.s, st.w, st) } }
+    val baseRaw = remember(st.c, st.w, st.s, log, gear, av, rv) { if (Adapt.on || CoachState.genes.isNotEmpty() || CoachState.noGear != null) Adapt.without { Recup.without { Prog.orderEx(st.c, st.s, st.w, st) } } else rawOrder }
     val recupCh = remember(rawOrder, rv) { Recup.plan(st.c, rawOrder.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) }) }
     // séance sans aucune décision du coach : ce qui diffère porte le badge « Coach » et sa raison (Philippe, 15 novembre 10 h 26 :
     // « il faut que chaque décision prise par l'IA soit compréhensible par l'utilisateur »)
@@ -321,7 +322,16 @@ fun SeanceScreen(onStart: () -> Unit) {
                     Column(Modifier.weight(1f).padding(start = 14.dp)) {
                         Text(e.n, color = C.ink, fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 22.sp)
                         Text(line, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 3.dp))
-                        val was = baseOrder.getOrNull(i)
+                        // exercice mis à la place d'un autre à cause de la récupération des muscles (Recup)
+                        recupCh.firstOrNull { it.kind == "swap" && it.to == id }?.let { ch ->
+                            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(t("Récup", "Recovery"), color = C.onBrand, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF16A34A)).padding(horizontal = 6.dp, vertical = 1.dp))
+                                Text(t(" remplace ${tr(Prog.EX[ch.id]?.n ?: ch.id)} · ${Recup.why(ch)}", " replaces ${tr(Prog.EX[ch.id]?.n ?: ch.id)} · ${Recup.why(ch)}"), color = Color(0xFF16A34A), fontSize = 12.sp, maxLines = 2)
+                            }
+                        }
+                        // décision du coach : comparée sur les séances sans ajustement de récupération
+                        val ri = rawOrder.indexOf(id)
+                        val was = if (ri >= 0) baseRaw.getOrNull(ri) else null
                         if (was != null && was != id) {
                             val gz = CoachState.genes.keys.firstOrNull { it in (Prog.EX[was]?.stress ?: emptyList()) }
                             val why = Adapt.whyOf(id) ?: gz?.let { PlanText.zoneOff(it) }
