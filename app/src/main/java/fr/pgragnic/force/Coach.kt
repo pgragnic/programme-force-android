@@ -155,7 +155,7 @@ object CoachApi {
         // 21 novembre 20 h 35 : « Est-ce qu'on n'aurait pas intérêt à déléguer ça à l'IA ? » ; « On part là-dessus » : règles de l'appli
         // en base, le coach affine)
         val order = Recup.without { Prog.orderEx(st.c, st.s, st.w, st) }
-        val rec = Recup.plan(st.c, order.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) })
+        val rec = if (Prog.doneIn(st.c, st.w, st.s)) emptyList() else Recup.plan(st.c, order.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) })
         val readyEx = Recup.readyList(st.c, 8)
         return buildJsonObject {
             put("aujourdhui", java.time.LocalDate.now().toString())

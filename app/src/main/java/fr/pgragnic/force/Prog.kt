@@ -84,7 +84,9 @@ object Prog {
         // séance prévue sur des muscles encore en récupération : on propose à la place celle qui ménage le mieux le corps, même déjà faite
         // cette semaine ; la séance prévue reste proposée (« Faire la séance E quand même ») (Philippe, 21 novembre 18 h 56 : « Actuellement
         // j'ai une séance E en S3 qui travaille les jambes alors que les muscles des jambes ont déjà bien travaillés » ; choix « Proposer une autre séance »)
-        return postponeAlt(st, sh, last, pick) ?: pick
+        // une séance faite est figée (Philippe, 21 novembre 21 h 22 : « Une fois qu'une séance est faite, elle est figée ») : le
+        // remplacement se choisit parmi les séances pas encore faites ; sinon la séance prévue reste, adaptée exercice par exercice (Recup)
+        return postponeAlt(st, sh.filterKeys { it == pick || it !in doneW }, last, pick) ?: pick
     }
     /** séance de remplacement si « s » sollicite surtout des muscles pas encore récupérés (part ≥ 40 %) et qu'une autre les ménage nettement */
     fun postponeAlt(st: Settings, sh: Map<String, Double>, last: Map<String, Long>, s: String): String? {
@@ -95,8 +97,10 @@ object Prog {
     fun postponed(st: Settings, log: List<Entry>, R: Map<String, Int>): String? = Recup.without { postponed0(st, log, R) }
     private fun postponed0(st: Settings, log: List<Entry>, R: Map<String, Int>): String? {
         val doneW = log.filter { it.c == st.c && it.w == st.w }.map { it.s }.toSet()
-        if (st.s !in doneW) return null
-        return sess(st.c).keys.filter { it !in doneW }.map { it to tired(orderEx(st.c, it, st.w, st), R).first }.filter { it.second >= .4 }.minByOrNull { it.second }?.first
+        // séance proposée pas encore faite, une autre séance restante écartée parce que ses muscles récupèrent
+        if (st.s in doneW) return null
+        val cur = tired(orderEx(st.c, st.s, st.w, st), R).first
+        return sess(st.c).keys.filter { it !in doneW && it != st.s }.map { it to tired(orderEx(st.c, it, st.w, st), R).first }.filter { it.second >= .4 && it.second >= cur + .2 }.minByOrNull { it.second }?.first
     }
 
     /** pose d'un exercice alterné ou d'un seul côté (bird dog, dead bug, fentes…) : à faire des deux côtés */
@@ -444,6 +448,8 @@ object Prog {
 
     private fun prim(id: String) = (MAP[id] ?: emptyMap()).filter { it.value >= .7 }.keys
 
+    /** séance déjà faite cette semaine du programme : figée, sans ajustement de récupération */
+    fun doneIn(c: Int, w: Int, s: String) = Store.log.value.any { it.c == c && it.w == w && it.s == s }
     fun orderEx(c: Int, s: String, w: Int, st: Settings): List<String> {
         val ex = sessEx(c, s)
         val core = ex.filter { it in CORE }; val rest = ex.filter { it !in CORE }
@@ -465,7 +471,8 @@ object Prog {
         perm(rest, emptyList())
         // remplacements du jour décidés avec le coach (Adapt)
         // puis ajustements selon la récupération des muscles (Recup : remplacé, retiré ou une série de moins)
-        val base = Recup.apply(c, (best ?: ex).map { Adapt.swap(it) }.distinct())
+        val base0 = (best ?: ex).map { Adapt.swap(it) }.distinct()
+        val base = if (doneIn(c, w, s)) base0 else Recup.apply(c, base0)
         // muscle peu travaillé les 2 semaines passées : petit exercice ajouté en fin de séance (Balance.extras)
         return base + Balance.extras(base).filter { it !in base }
     }
@@ -500,7 +507,7 @@ object Prog {
         val S = sess(c)[s] ?: sess(c).values.first(); val W = WEEKS[w]; val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
-        val pre = Recup.without { orderEx(c, s, w, st) }.filter { it !in Balance.extraIds || it in sessEx(c, s) }
+        val pre = if (doneIn(c, w, s)) emptyList() else Recup.without { orderEx(c, s, w, st) }.filter { it !in Balance.extraIds || it in sessEx(c, s) }
         val first = exo.firstOrNull { kgOf(it, w, st) > 0 && toolOf(it) == "db" }
         val adj = gear.dbMode != "fixed"
         val need = exo.mapNotNull { EX[it]?.eq }.flatten().flatMap { it.split("|").take(1) }.toSet()

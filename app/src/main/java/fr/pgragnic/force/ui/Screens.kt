@@ -139,7 +139,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     // ajustements du jour selon la récupération (Recup) : liste affichée dans la carte, « Séance d'origine » pour les annuler
     val rawOrder = remember(st.c, st.w, st.s, log, gear, av, rv) { Recup.without { Prog.orderEx(st.c, st.s, st.w, st) } }
     val baseRaw = remember(st.c, st.w, st.s, log, gear, av, rv) { if (Adapt.on || CoachState.genes.isNotEmpty() || CoachState.noGear != null) Adapt.without { Recup.without { Prog.orderEx(st.c, st.s, st.w, st) } } else rawOrder }
-    val recupCh = remember(rawOrder, rv) { Recup.plan(st.c, rawOrder.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) }) }
+    val recupCh = remember(rawOrder, rv, log) { if (Prog.doneIn(st.c, st.w, st.s)) emptyList() else Recup.plan(st.c, rawOrder.filter { it !in Balance.extraIds || it in Prog.sessEx(st.c, st.s) }) }
     // séance sans aucune décision du coach : ce qui diffère porte le badge « Coach » et sa raison (Philippe, 15 novembre 10 h 26 :
     // « il faut que chaque décision prise par l'IA soit compréhensible par l'utilisateur »)
     val baseOrder = remember(st.c, st.w, st.s, log, gear, av) { if (Adapt.on || CoachState.genes.isNotEmpty() || CoachState.noGear != null) Adapt.without { Prog.orderEx(st.c, st.s, st.w, st) } else order }
@@ -153,7 +153,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     // muscles surchargés (au-delà de 0 %) travaillés en principal par cette séance : alerte franche
     val over = remember(order, MU) { order.flatMap { id -> Prog.MAP[id]?.filter { it.value >= .7 }?.keys.orEmpty() }.distinct().filter { MU.over(it) } }
     val rawShare = remember(rawOrder, MU) { tired(rawOrder).first }
-    val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s }.map { it to tired(Recup.without { Prog.orderEx(st.c, it, st.w, st) }).first }.minByOrNull { it.second }?.takeIf { it.second < rawShare - .2 }?.first }
+    val alt = remember(st.c, st.w, MU, gear) { S.keys.filter { it != st.s && !Prog.doneIn(st.c, st.w, it) }.map { it to tired(Recup.without { Prog.orderEx(st.c, it, st.w, st) }).first }.minByOrNull { it.second }?.takeIf { it.second < rawShare - .2 }?.first }
     var warn by remember { mutableStateOf(false) }
     // séance pas encore faite mais dont les muscles récupèrent : remplacée d'office par celle qui ménage le mieux (sauf « Faire quand même »)
     val cctx0 = LocalContext.current
