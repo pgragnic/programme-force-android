@@ -49,9 +49,13 @@ object Recup {
         val m = mu(); val out = ArrayList<Change>()
         val used = ex.toMutableSet(); var kept = ex.size
         // candidats de remplacement : exercices du cycle (toutes séances) dont tous les muscles principaux sont prêts
+        // d'abord les exercices du cycle, puis tout exercice faisable avec le matériel (Philippe, 21 novembre 20 h 09, quand presque tout est
+        // fatigué : « l'appli la complète avec des exercices pour les muscles prêts » plutôt qu'une séance raccourcie)
         val pool by lazy {
-            Prog.sess(c).keys.flatMap { Prog.sessEx(c, it) }.distinct().filter { Prog.ok(it) && Prog.EX[it]?.m != "time" }
-                .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second > READY }.sortedByDescending { it.second }.map { it.first }
+            val cyc = Prog.sess(c).keys.flatMap { Prog.sessEx(c, it) }.distinct()
+            (cyc + Prog.EX.keys.filter { it !in cyc }).filter { Prog.ok(it) && Prog.EX[it]?.m != "time" }
+                .mapNotNull { id -> worst(id, m)?.let { id to it.second } }.filter { it.second > READY }
+                .sortedWith(compareBy({ if (it.first in cyc) 0 else 1 }, { -it.second })).map { it.first }
         }
         for (id in ex) {
             val (mus, pct) = worst(id, m) ?: continue
