@@ -15,27 +15,32 @@ tapt() { ui; b=$(python3 -c "import re,sys;x=open('out/ui.xml',encoding='utf-8')
 rec() { adb shell screenrecord --time-limit $2 --bit-rate 8000000 /sdcard/$1.mp4 & }
 pull() { wait; adb pull /sdcard/$1.mp4 out/$1.mp4 >/dev/null; adb shell rm /sdcard/$1.mp4; }
 
-# 1) l'utilisateur lance une séance : minuteur, consignes, notification
+# 1) l'utilisateur lance une séance (« Let's go ») : minuteur, consignes, notification
+adb shell locksettings set-disabled false || true
 adb shell am force-stop $P; sleep 2
 adb shell am start -W -n $P/.MainActivity --es lang en --es theme light --ez seed true --ei tab 0 >/dev/null; sleep 9
-rec a 14; sleep 2
-adb shell am start -n $P/.MainActivity --es lang en --es theme light --ez seed true --ei play 5 >/dev/null
-sleep 12; pull a
+rec a 16; sleep 2
+tapt "Let's go"; sleep 3; tapt "Start anyway"; sleep 9; pull a
+adb exec-out screencap -p > out/s1.png
 
 # 2) écran verrouillé : la séance continue (service au premier plan), boutons sur l'écran de verrouillage
-adb shell input keyevent 26; sleep 3; adb shell input keyevent 26; sleep 3
-rec b 24; sleep 6
+adb shell input keyevent 223; sleep 3
+rec b 26; sleep 1
+adb shell input keyevent 224; sleep 5
+adb exec-out screencap -p > out/s2.png
+W=720; adb shell input swipe 360 700 360 1000 400; sleep 3   # déplie la notification
+adb exec-out screencap -p > out/s3.png
 tapt "Pause"; sleep 5
 tapt "Resume"; sleep 5
-tapt "Next"; sleep 6; pull b
-adb exec-out screencap -p > out/lock.png
+tapt "Next"; sleep 5; pull b
+adb exec-out screencap -p > out/s4.png
 
 # 3) retour dans l'appli, fin de séance : le service s'arrête, la notification disparaît
 adb shell wm dismiss-keyguard; sleep 3
-adb shell am start -n $P/.MainActivity >/dev/null; sleep 3
 rec c 16; sleep 3
 adb shell input keyevent 4; sleep 4
 adb shell cmd statusbar expand-notifications; sleep 6; adb shell cmd statusbar collapse; sleep 2; pull c
+adb exec-out screencap -p > out/s5.png
 
 adb shell wm size reset; adb shell wm density reset
 
@@ -44,7 +49,7 @@ F=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
 cap() { in=$1; out=$2; t1=$3; t2=$4
   ffmpeg -y -loglevel error -i out/$in.mp4 -vf "fps=30,scale=720:1520,drawbox=y=0:w=iw:h=170:color=black@0.72:t=fill,drawtext=fontfile=$F:text='$t1':x=(w-tw)/2:y=40:fontsize=30:fontcolor=white,drawtext=fontfile=$F:text='$t2':x=(w-tw)/2:y=100:fontsize=24:fontcolor=white" -an -c:v libx264 -pix_fmt yuv420p out/$out.mp4; }
 cap a 1 "1. The user starts a workout" "Timer, voice cues and beeps guide each rep"
-cap b 2 "2. Screen locked - workout keeps running" "Foreground service: timer, voice, Pause / Next"
+cap b 2 "2. Screen locked - workout keeps running" "Foreground service keeps timer and voice going"
 cap c 3 "3. Workout ended by the user" "The service stops, the notification is removed"
 printf "file '1.mp4'\nfile '2.mp4'\nfile '3.mp4'\n" > out/list.txt
 (cd out && ffmpeg -y -loglevel error -f concat -safe 0 -i list.txt -c copy uprep-fgs.mp4)
