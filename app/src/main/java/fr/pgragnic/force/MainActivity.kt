@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("theme")?.let { C.mode = it }
         if (intent.hasExtra("dyn")) C.dyn = intent.getBooleanExtra("dyn", false)
         intent.getStringExtra("lang")?.let { L.mode = it; L.en = it == "en" }
-        Demo.tired = intent.getBooleanExtra("tired", false); Demo.over = intent.getBooleanExtra("over", false)
+        Demo.tired = intent.getBooleanExtra("tired", false); Demo.over = intent.getBooleanExtra("over", false); Demo.legs = intent.getBooleanExtra("legs", false)
         if (intent.getBooleanExtra("seed", false) && Store.log.value.isEmpty()) Demo.seed()
         if (intent.getBooleanExtra("seed", false) && CoachData.d.msgs.isEmpty()) Demo.seedCoach(this)
         intent.getStringExtra("gear")?.let { Demo.gear(it) }

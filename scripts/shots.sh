@@ -75,6 +75,13 @@ case " $POSES " in *" coach "*)
   tapt "OBJECTIFS (1)"; tapt "BILAN DE LA SEMAINE"; tapt "CE QUE LE COACH A CHANGÉ"
   shot ctab-sait --es lang fr --es theme light --ez seed true --ei tab 3 --es sub coach
   shot reg-main --es lang fr --es theme light --ez seed true --ei tab 3
+  # séance adaptée à la récupération : jambes travaillées hier soir (21 novembre)
+  adb shell pm clear fr.pgragnic.force; adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
+  shot recup --es lang fr --es theme light --ez seed true --ez legs true --ei tab 0
+  for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap recup-$i; done
+  tapt "Faire la séance D quand même" || true; sleep 2; cap recup-d
+  for i in 1; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 400; sleep 1.5; cap recup-d-$i; done
+  adb shell pm clear fr.pgragnic.force; adb shell pm grant fr.pgragnic.force android.permission.POST_NOTIFICATIONS || true
   # Réglages → Coach, « Ce que le coach reçoit » en clair (20 novembre)
   shot reg-coach --es lang fr --es theme light --ez seed true --ei tab 3 --es reg coach
   for i in 1 2; do adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*25/100)) 400; sleep 1.5; cap reg-coach-$i; done

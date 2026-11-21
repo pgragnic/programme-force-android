@@ -26,6 +26,8 @@ object Demo {
     var tired = false
     /** captures : deux séances A de suite, pour voir l'état « surchargé » */
     var over = false
+    /** captures : jambes fatiguées (séance B de jambes, difficile, faite hier soir), pour montrer la séance adaptée à la récupération */
+    var legs = false
 
     /** Données de démonstration de l'onglet Coach (captures) : une discussion, deux décisions, un objectif, une préférence, un bilan. */
     fun seedCoach(ctx: android.content.Context) {
@@ -60,7 +62,9 @@ object Demo {
                 ex = ids.map { id -> val kg = if (Prog.hasDb(id)) 5.0 + w else 0.0
                     ExRec(id, Prog.EX[id]!!.n, kg, 10, "reps", List(3) { SetRec(10, 2) }, 10, if (i % 5 == 4) "Difficile" else "Juste bien") })
         }
-        Store.log.value = log
+        Store.log.value = if (!legs) log else log + Entry(d = now - (0.8 * day).toLong(), c = 1, w = 2, s = "B", f = "Difficile", rest = 30, bw = 76.0,
+            ex = Prog.sess(1)["B"]!!.ex.map { id -> ExRec(id, Prog.EX[id]!!.n, if (Prog.hasDb(id)) 8.0 else 0.0, 12, "reps", List(4) { SetRec(12, 0) }, 12, "Difficile") })
+        if (legs) Store.setSettings { it.c = 1; it.w = 2; it.s = "D" }
         val t = LocalDate.now()
         Store.days.value = (13 downTo 0).map { i ->
             val d = t.minusDays(i.toLong())
