@@ -538,6 +538,38 @@ object Prog {
         return P
     }
 
+    /** Temps de pose pour une avancée « visible » f (0 → 1). Certaines poses ont déjà des images clés resserrées en fin de mouvement
+     *  (goblet squat, soulevé de terre jambes tendues), et l'accélération / décélération du lecteur s'y ajoutait : le personnage semblait
+     *  arrivé en bas près d'une seconde avant « Tiens » (Philippe, 21 novembre 18 h 43 : « Est-ce que tu pourrais vérifier le timing de
+     *  l'étape tiens dans les exercices de soulevé de terre jambes tendues et gobelet squat ? »). On répartit donc f selon le déplacement
+     *  réel des articulations entre les images clés : le personnage arrive en bas au moment de « Tiens ». */
+    private val warpCache = HashMap<String, Pair<DoubleArray, DoubleArray>>()
+    fun warp(id: String?, f: Double): Double {
+        if (id == null) return f
+        val (ts, cum) = warpCache.getOrPut(id) {
+            runCatching {
+                val ks = raw["POSES3"]!!.jsonObject[id]!!.jsonObject["k"]!!.jsonArray.map { it.jsonObject }
+                val ts = DoubleArray(ks.size) { ks[it]["t"]!!.jsonPrimitive.double }; val cum = DoubleArray(ks.size)
+                for (i in 1 until ks.size) {
+                    var d = 0.0
+                    for ((k, av) in ks[i - 1]) { val a = av as? JsonArray ?: continue; val b = ks[i][k] as? JsonArray ?: continue
+                        if (a.size != 3 || b.size != 3) continue
+                        d += sqrt((0..2).sumOf { j -> (a[j].jsonPrimitive.double - b[j].jsonPrimitive.double).pow(2) }) }
+                    cum[i] = cum[i - 1] + d
+                }
+                ts to cum
+            }.getOrDefault(DoubleArray(0) to DoubleArray(0))
+        }
+        if (ts.size < 2 || ts.first() != 0.0 || ts.last() != 1.0) return f
+        val tot = cum.last(); if (tot < 1e-3) return f
+        val target = f.coerceIn(0.0, 1.0) * tot
+        for (i in 1 until ts.size) if (cum[i] >= target) {
+            val seg = cum[i] - cum[i - 1]; val u = if (seg < 1e-9) 1.0 else (target - cum[i - 1]) / seg
+            return ts[i - 1] + (ts[i] - ts[i - 1]) * u
+        }
+        return 1.0
+    }
+
     fun ease(x: Double) = if (x < .5) 2 * x * x else 1 - (-2 * x + 2).pow(2) / 2
     fun cycleK(t: Double, tp: List<Double>): Double {
         val T = tp.sum(); if (T <= 0) return 0.0
