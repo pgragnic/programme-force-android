@@ -12,16 +12,19 @@ sz() { adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1; }
 ui() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml out/ui.xml >/dev/null; }
 # touche le premier élément dont le texte vaut $1
 tapt() { ui; b=$(python3 -c "import re,sys;x=open('out/ui.xml',encoding='utf-8').read();m=re.search(r'text=\"'+sys.argv[1]+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')" "$1"); [ -n "$b" ] && adb shell input tap $b; }
+# referme les messages « … isn't responding » de l'émulateur
+anr() { for k in 1 2 3; do ui; grep -q "isn&apos;t responding\|isn't responding" out/ui.xml || return 0; tapt "Wait"; sleep 3; done; }
 rec() { adb shell screenrecord --time-limit $2 --bit-rate 8000000 /sdcard/$1.mp4 & }
 pull() { wait; adb pull /sdcard/$1.mp4 out/$1.mp4 >/dev/null; adb shell rm /sdcard/$1.mp4; }
 
 # 1) l'utilisateur lance une séance (« Let's go ») : minuteur, consignes, notification
+sleep 40; anr
 adb shell locksettings set-disabled false || true
 adb shell settings put secure lock_screen_show_notifications 1
 adb shell settings put secure lock_screen_show_silent_notifications 1
 adb shell settings put secure lock_screen_allow_private_notifications 1
 adb shell am force-stop $P; sleep 2
-adb shell am start -W -n $P/.MainActivity --es lang en --es theme light --ez seed true --ei tab 0 >/dev/null; sleep 9
+adb shell am start -W -n $P/.MainActivity --es lang en --es theme light --ez seed true --ei tab 0 >/dev/null; sleep 9; anr
 rec a 16; sleep 2
 tapt "Let's go"; sleep 3; tapt "Start anyway"; sleep 9; pull a
 adb exec-out screencap -p > out/s1.png
@@ -39,7 +42,7 @@ tapt "Next"; sleep 5; pull b
 adb exec-out screencap -p > out/s4.png
 
 # 3) retour dans l'appli, fin de séance : le service s'arrête, la notification disparaît
-adb shell wm dismiss-keyguard; sleep 3
+adb shell wm dismiss-keyguard; sleep 3; anr
 rec c 16; sleep 3
 adb shell input keyevent 4; sleep 4
 adb shell cmd statusbar expand-notifications; sleep 6; adb shell cmd statusbar collapse; sleep 2; pull c
