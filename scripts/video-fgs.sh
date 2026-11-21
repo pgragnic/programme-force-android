@@ -35,10 +35,10 @@ adb exec-out screencap -p > out/s1.png
 
 # 2) écran verrouillé : la séance continue (service au premier plan), boutons sur l'écran de verrouillage
 adb shell input keyevent 223; sleep 3
-rec b 26; sleep 1
-adb shell input keyevent 224; sleep 5
+adb shell input keyevent 224; sleep 3
+rec b 24; sleep 4
 adb exec-out screencap -p > out/s2.png
-anr; tapd "Expand"; sleep 3   # déplie la notification de séance (la première)
+anr; ui; b=$(python3 -c "import re;x=open('out/ui.xml',encoding='utf-8').read();m=re.search(r'resource-id=\"android:id/expand_button[^\"]*\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]',x);print((int(m[1])+int(m[3]))//2,(int(m[2])+int(m[4]))//2) if m else print('')"); [ -n "$b" ] && adb shell input tap $b; sleep 3; cp out/ui.xml out/ui-lock.xml   # déplie la notification de séance (la première)
 adb exec-out screencap -p > out/s3.png
 tapt "Pause"; sleep 5
 tapt "Resume"; sleep 5
