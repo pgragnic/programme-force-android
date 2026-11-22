@@ -88,7 +88,8 @@ fun ActiviteScreen(inProgres: Boolean = false) {
     var dur by remember(sel, cur) { mutableStateOf(cur?.dur?.toString() ?: "") }
     var rsteps by remember(sel, cur) { mutableStateOf(cur?.rsteps?.toString() ?: "") }
     var dplus by remember(sel, cur) { mutableStateOf(cur?.dplus?.toString() ?: "") }
-    var msg by remember { mutableStateOf("Au-delà de 8 000 pas, la marche compte dans la récupération des jambes. Le sac et le dénivelé augmentent la fatigue.") }
+    // le message de bilan ne vaut que pour le jour affiché : il revient au conseil par défaut quand on change de jour
+    var msg by remember(sel) { mutableStateOf("Au-delà de 8 000 pas, la marche compte dans la récupération des jambes. Le sac et le dénivelé augmentent la fatigue.") }
 
     val last14 = (13 downTo 0).map { today.minusDays(it.toLong()) }
     val last7 = last14.drop(7).mapNotNull { byD[it.toString()]?.steps?.takeIf { s -> s > 0 } }
