@@ -32,6 +32,13 @@ object Crash {
         }
     }
 
+    // Données personnelles masquées avant l'envoi (audit de sécurité du 22 novembre 2026, point 10) : un message d'exception
+    // peut contenir une adresse e-mail, un jeton de connexion ou un identifiant de compte. La trace du programme reste intacte.
+    private val EMAIL = Regex("""[\w.+-]+@[\w-]+(\.[\w-]+)+""")
+    private val JETON = Regex("""eyJ[\w-]+\.[\w-]+\.[\w-]*""")
+    private val UUID = Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b""")
+    fun masquer(t: String) = t.replace(JETON, "[jeton]").replace(EMAIL, "[e-mail]").replace(UUID, "[id]")
+
     /** Envoie les rapports en attente (possible sans compte), puis les efface. */
     fun sendPending(ctx: Context) {
         val dir = File(ctx.filesDir, DIR)
@@ -43,7 +50,7 @@ object Crash {
                 runCatching {
                     c.from("plantages").insert(CrashRow("UpRep ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})", "${Build.MANUFACTURER} ${Build.MODEL}".take(100),
-                        f.name.removeSuffix(".txt").toLongOrNull() ?: 0L, f.readText()))
+                        f.name.removeSuffix(".txt").toLongOrNull() ?: 0L, masquer(f.readText())))
                     f.delete()
                 }
             }
