@@ -21,11 +21,18 @@ Anthropic (coach) et Supabase (hébergement) traitent les données pour le compt
 | Santé et remise en forme | Infos sur la remise en forme (séances, charges, pas via Health Connect) | Fonctionnalité, personnalisation | Oui |
 | Messages | Autres messages dans l'appli (discussion avec le coach) | Fonctionnalité | Oui (coach réservé aux comptes) |
 | Activité dans l'appli | Autres contenus générés par l'utilisateur (avis et idées envoyés depuis l'appli, objectifs du coach) | Fonctionnalité, assistance | Oui |
-| Infos sur les applis et performances | Journaux de plantage | Analyse, correction des plantages | **Non** (envoyés automatiquement, sans lien avec l'identité) |
+| Infos sur les applis et performances | Journaux de plantage | Analyse, correction des plantages | **Non** (envoyés automatiquement, sans lien avec l'identité ; e-mails, jetons et identifiants masqués avant l'envoi depuis la 1.2.4, audit de sécurité du 22 novembre) |
 
 Pour chaque type : « Traitées de façon éphémère » = **Non** (sauf rien) ; pas de publicité, pas de marketing.
 
-## 3. Autres formulaires à vérifier
+## 3. Comptes (questions de la même section)
+- L'appli permet-elle de créer un compte ? **Oui** — adresse e-mail et mot de passe, ou connexion Google (OAuth) ; compte facultatif.
+- Lien de suppression du compte et des données : https://pgragnic.github.io/programme-force-android/suppression.html
+- Suppression de certaines données sans supprimer le compte : **Oui** — « Ce que sait le coach » (souvenirs supprimables) et effacement des séances dans l'appli.
+
+Relu le 22 novembre 2026 après l'audit de sécurité (Philippe : « Formulaire sécurité des données ») : aucun nouveau type de données depuis la 1.2 ; seuls changements, le masquage dans les journaux de plantage et cette section Comptes.
+
+## 4. Autres formulaires à vérifier
 - Accès à l'appli : « Certaines fonctionnalités sont limitées » → compte de test (e-mail + mot de passe) avec la consigne « Coach : onglet Coach → Parler au coach ».
 - Health Connect : lecture des pas seulement, pour l'onglet Progrès → Activité, facultatif.
 - Politique de confidentialité : https://pgragnic.github.io/programme-force-android/confidentialite.html (mentionne Anthropic et Google).
