@@ -177,10 +177,7 @@ fun ActiviteScreen(inProgres: Boolean = false) {
                     src = if (cur?.src == "hc" && (steps.toIntOrNull() ?: 0) == cur.steps) "hc" else "main",
                     rsteps = if (a == "Marche lestée") rsteps.toIntOrNull()?.takeIf { it > 0 } else null)
                 Store.saveDay(d)
-                val L = Recovery.dayLoad(d)
-                msg = "Journée du " + sel.format(DateTimeFormatter.ofPattern("EEEE d MMMM", fr.pgragnic.force.L.loc)) + " enregistrée." +
-                    (if (L > 0) t(" Elle compte pour environ ${Prog.fk(Prog.r1(L))} séries dans la fatigue des quadriceps.", " It counts for about ${Prog.fk(Prog.r1(L))} sets of quad fatigue.") else " Pas assez de pas pour fatiguer les jambes.") +
-                    t(" Dépense estimée : ${Kcal.kr(Kcal.day(d, log).toDouble())}.", " Estimated burn: ${Kcal.kr(Kcal.day(d, log).toDouble())}.")
+                msg = t("Journée enregistrée.", "Day saved.")
             }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Enregistrer la journée") }
             // suppression d'une journée saisie à la main (les pas importés de Health Connect reviendraient à l'import suivant)
             if (cur != null && cur.src != "hc") {
@@ -189,7 +186,13 @@ fun ActiviteScreen(inProgres: Boolean = false) {
                     Text(if (arm) t("Confirmer la suppression", "Confirm deletion") else t("Supprimer cette journée", "Delete this day"), color = C.danger)
                 }
             }
-            Text(msg, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            // bilan du jour affiché (fatigue des jambes, dépense estimée) ; à défaut, le conseil ou l'avis de suppression
+            val bilan = cur?.let { dr ->
+                val L = Recovery.dayLoad(dr)
+                (if (L > 0) t("Cette journée compte pour environ ${Prog.fk(Prog.r1(L))} séries dans la fatigue des quadriceps.", "This day counts for about ${Prog.fk(Prog.r1(L))} sets of quad fatigue.") else t("Pas assez de pas pour fatiguer les jambes.", "Not enough steps to tire the legs.")) +
+                    t(" Dépense estimée : ${Kcal.kr(Kcal.day(dr, log).toDouble())}.", " Estimated burn: ${Kcal.kr(Kcal.day(dr, log).toDouble())}.")
+            }
+            Text(bilan ?: msg, color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
         // Dépense
