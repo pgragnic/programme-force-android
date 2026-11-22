@@ -32,6 +32,8 @@ Pour chaque type : « Traitées de façon éphémère » = **Non** (sauf rien) ;
 
 Relu le 22 novembre 2026 après l'audit de sécurité (Philippe : « Formulaire sécurité des données ») : aucun nouveau type de données depuis la 1.2 ; seuls changements, le masquage dans les journaux de plantage et cette section Comptes.
 
+Sauvegarde chiffrée de nuit (22 novembre 2026, plan de reprise) : copie de la base gardée 7 jours chez Anthropic, prestataire ; rien à changer dans le formulaire (pas de nouveau type de données, pas de partage, suppression toujours possible). Politique de confidentialité et pages de suppression mises à jour (Philippe : « Ok pour les textes »).
+
 ## 4. Autres formulaires à vérifier
 - Accès à l'appli : « Certaines fonctionnalités sont limitées » → compte de test (e-mail + mot de passe) avec la consigne « Coach : onglet Coach → Parler au coach ».
 - Health Connect : lecture des pas seulement, pour l'onglet Progrès → Activité, facultatif.
