@@ -5,6 +5,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const MODEL = "claude-haiku-5-5";
 const PER_DAY = 40; // messages par jour et par compte
+const MAX_CONTEXTE = 64_000; // caractères du contexte JSON envoyé par l'appli
+const MAX_REQUETE = 120_000; // caractères de la requête entière (contexte + 20 messages de 2 000 au plus)
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type" };
 const out = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
@@ -98,14 +100,22 @@ Deno.serve(async (req) => {
     { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } });
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return out({ erreur: "compte" }, 401);
+
+  // Taille plafonnée avant tout appel (audit de sécurité du 22 novembre 2026, Philippe : « Ok pour correction à 64000 caractères ») :
+  // contexte à 64 000 caractères (le plus gros contexte normal tourne autour de 45 000 à 50 000), requête entière à 120 000.
+  // Vérifié avant coach_tick : une requête refusée ne consomme pas le quota.
+  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string; mode?: string; ton?: string };
+  let raw: string;
+  try { raw = await req.text(); } catch { return out({ erreur: "requete" }, 400); }
+  if (raw.length > MAX_REQUETE) return out({ erreur: "trop_long" }, 413);
+  try { body = JSON.parse(raw); } catch { return out({ erreur: "requete" }, 400); }
+  if (JSON.stringify(body.context ?? {}).length > MAX_CONTEXTE) return out({ erreur: "trop_long" }, 413);
+  const messages = (body.messages ?? []).slice(-20).filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length <= 2000);
+  if (!messages.length || messages[0].role !== "user") return out({ erreur: "requete" }, 400);
+
   const { data: n, error } = await sb.rpc("coach_tick");
   if (error) return out({ erreur: "quota_indispo" }, 500);
   if ((n as number) > PER_DAY) return out({ erreur: "quota" }, 429);
-
-  let body: { messages?: { role: string; content: string }[]; context?: unknown; lang?: string; mode?: string; ton?: string };
-  try { body = await req.json(); } catch { return out({ erreur: "requete" }, 400); }
-  const messages = (body.messages ?? []).slice(-20).filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length <= 2000);
-  if (!messages.length || messages[0].role !== "user") return out({ erreur: "requete" }, 400);
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
