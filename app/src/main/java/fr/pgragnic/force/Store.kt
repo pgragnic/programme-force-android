@@ -413,11 +413,15 @@ object Store {
     suspend fun signInGoogle(activity: Context): String? {
         val c = sb ?: return "Base non configurée"
         return try {
-            val opt = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_CLIENT_ID).build()
+            // nonce (audit de sécurité du 22 novembre 2026, point 11) : Google l'inscrit haché dans le jeton, Supabase le vérifie
+            // avec la valeur d'origine ; un jeton Google intercepté ne peut donc pas être rejoué pour ouvrir une session.
+            val nonce = java.util.UUID.randomUUID().toString()
+            val hash = java.security.MessageDigest.getInstance("SHA-256").digest(nonce.toByteArray()).joinToString("") { "%02x".format(it) }
+            val opt = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_CLIENT_ID).setNonce(hash).build()
             val req = androidx.credentials.GetCredentialRequest.Builder().addCredentialOption(opt).build()
             val res = androidx.credentials.CredentialManager.create(activity).getCredential(activity, req)
             val cred = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(res.credential.data)
-            c.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.IDToken) { idToken = cred.idToken; provider = io.github.jan.supabase.auth.providers.Google }
+            c.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.IDToken) { idToken = cred.idToken; provider = io.github.jan.supabase.auth.providers.Google; this.nonce = nonce }
             user.value = c.auth.currentUserOrNull()?.email; pull(); CoachData.pull(); null
         } catch (t: androidx.credentials.exceptions.GetCredentialCancellationException) { null }
         catch (t: Throwable) { t("Connexion Google impossible : ", "Google sign-in failed: ") + (t.message ?: "") }

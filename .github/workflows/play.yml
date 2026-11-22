@@ -21,15 +21,18 @@ jobs:
     env:
       VERSION_NAME: ${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with: { distribution: temurin, java-version: '17' }
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with: { gradle-version: '8.11.1' }
       - name: Tests de la logique
         run: gradle :app:testDebugUnitTest --stacktrace
+      # Numéro de version contrôlé avant tout usage (audit de sécurité du 22 novembre 2026, point 7) : il est repris dans des noms de fichiers.
       - name: Numéro de version Google Play
-        run: echo "VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: |
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Version attendue au format 1.2.3 : $VERSION_NAME"; exit 1; }
+          echo "VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Déchiffrer la clé de publication
         env: { UPLOAD_PASS: "${{ secrets.UPLOAD_PASS }}" }
         run: |
@@ -37,8 +40,8 @@ jobs:
           gpg --batch --pinentry-mode loopback --passphrase "$UPLOAD_PASS" -d -o "$RUNNER_TEMP/upload.jks" keystore/upload.jks.gpg
       - name: Paquet Google Play (AAB)
         env: { UPLOAD_PASS: "${{ secrets.UPLOAD_PASS }}", UPLOAD_KS: "${{ runner.temp }}/upload.jks" }
-        run: gradle :app:bundleRelease --stacktrace && cp app/build/outputs/bundle/release/app-release.aab ProgrammeForce-${{ inputs.version }}.aab
-      - uses: softprops/action-gh-release@v2
+        run: gradle :app:bundleRelease --stacktrace && cp app/build/outputs/bundle/release/app-release.aab "ProgrammeForce-$VERSION_NAME.aab"
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: play-${{ inputs.version }}-${{ github.run_number }}
           name: Google Play ${{ inputs.version }} (code ${{ env.VERSION_CODE }})
@@ -51,7 +54,7 @@ jobs:
       - name: Envoi sur Google Play (test interne, test fermé ou production pour tous)
         env: { PLAY_JSON: "${{ secrets.PLAY_JSON }}" }
         if: env.PLAY_JSON != '' && (inputs.piste != 'production' || inputs.part == '1')
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
           packageName: fr.pgragnic.force
@@ -63,7 +66,7 @@ jobs:
       - name: Envoi sur Google Play (production progressive)
         env: { PLAY_JSON: "${{ secrets.PLAY_JSON }}" }
         if: env.PLAY_JSON != '' && inputs.piste == 'production' && inputs.part != '1'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_JSON }}
           packageName: fr.pgragnic.force
