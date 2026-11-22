@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!BuildConfig.DEBUG) intent = sansOptionsDeControle(intent)
         enableEdgeToEdge()
         L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
         C.load(this); Adapt.load(this); Recup.load(this); CoachState.load(this); CoachData.load(this); Health.load(this); CoachRem.schedule(this); SessionService.channels(this); Reminder.schedule(this)
@@ -68,7 +69,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); Store.handleLink(intent) }
+    override fun onNewIntent(intent: Intent) {
+        val i = if (BuildConfig.DEBUG) intent else sansOptionsDeControle(intent)
+        super.onNewIntent(i); setIntent(i); Store.handleLink(i)
+    }
+
+    // Options de contrôle (seed, demo, gear, perweek, noauth, play, theme, lang…) réservées à l'APK debug des captures automatiques
+    // (audit de sécurité du 22 novembre 2026, point 3 ; Philippe : « Correction points 1,2,3 ») : l'activité est exportée, donc
+    // en version publiée une autre appli du téléphone pourrait sinon injecter des séances fictives ou écraser les réglages.
+    // Seul « tab » reste accepté : la notification du coach l'utilise (tab = 9). Le lien de connexion (data) est conservé.
+    private fun sansOptionsDeControle(i: Intent): Intent {
+        val e = i.extras ?: return i
+        val garde = Bundle().apply { if (e.containsKey("tab")) putInt("tab", i.getIntExtra("tab", 0)) }
+        return Intent(i).replaceExtras(garde)
+    }
 
     override fun onResume() { super.onResume(); Store.autoSync(); lifecycleScope.launch { if (Health.check(this@MainActivity)) Health.importSteps(this@MainActivity) } }
 

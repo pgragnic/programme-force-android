@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -73,9 +74,13 @@ object Store {
     val progNote = MutableStateFlow("")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Flux PKCE (audit de sécurité du 22 novembre 2026, point 2 ; Philippe : « Correction points 1,2,3 ») : les liens de confirmation
+    // d'adresse et de nouveau mot de passe ne portent plus les jetons de connexion, seulement un code échangé par cette appli
+    // (le vérificateur reste sur le téléphone). Une autre appli qui déclarerait le schéma fr.pgragnic.force ne peut rien en faire.
+    // Conséquence : le lien doit être ouvert sur le téléphone qui a fait la demande.
     val sb: SupabaseClient? by lazy {
         if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_KEY.isBlank()) null
-        else createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY) { install(Auth) { scheme = "fr.pgragnic.force"; host = "login" }; install(Postgrest) }
+        else createSupabaseClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY) { install(Auth) { scheme = "fr.pgragnic.force"; host = "login"; flowType = FlowType.PKCE }; install(Postgrest) }
     }
 
     private var app: Context? = null
@@ -246,6 +251,7 @@ object Store {
     fun handleLink(intent: Intent?) {
         val c = sb ?: return; val i = intent ?: return
         if (i.data?.scheme != "fr.pgragnic.force") return
+        // en PKCE, le lien de retour n'indique plus le type : le marqueur type=recovery est mis dans redirectUrl (resetPassword)
         if (i.dataString?.contains("type=recovery") == true) recovery.value = true
         runCatching { c.handleDeeplinks(i) { sync.value = "Adresse confirmée, connecté" } }
     }
@@ -421,7 +427,7 @@ object Store {
     val recovery = MutableStateFlow(false)
     suspend fun resetPassword(email: String): String {
         val c = sb ?: return "Base non configurée"
-        return try { c.auth.resetPasswordForEmail(email, redirectUrl = "fr.pgragnic.force://login"); t("E-mail envoyé : touche le lien sur ce téléphone pour choisir un nouveau mot de passe.", "Email sent: tap the link on this phone to choose a new password.") }
+        return try { c.auth.resetPasswordForEmail(email, redirectUrl = "fr.pgragnic.force://login?type=recovery"); t("E-mail envoyé : touche le lien sur ce téléphone pour choisir un nouveau mot de passe.", "Email sent: tap the link on this phone to choose a new password.") }
         catch (t: Throwable) { t("Envoi impossible : ", "Couldn't send: ") + (t.message ?: "") }
     }
     suspend fun newPassword(pw: String): String? {
