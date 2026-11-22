@@ -44,6 +44,8 @@ jobs:
           for f in "${F[@]}"; do
             f="$(echo "$f" | xargs)"; p="supabase/$f"
             case "$f" in *..*|*/*) echo "::error::nom refusé : $f"; exit 1;; esac
+            # scripts qui affichent une clé : jamais ici (journaux publics), seulement dans SQL Editor (plan-reprise.md)
+            case "$f" in cle-claude.sql|sauvegarde.sql) echo "::error::$f affiche une clé : à passer dans SQL Editor, pas ici"; exit 1;; esac
             test -f "$p" || { echo "::error::$p introuvable"; exit 1; }
             echo "→ $f"
             body=$(jq -Rs '{query: .}' < "$p")
