@@ -297,7 +297,8 @@ object Store {
         scope.launch { lock.withLock { if (pushSessions(c)) sync.value = t("Synchronisé · ${log.value.size} séances", "Synced · ${log.value.size} sessions") else sync.value = t("Changements gardés sur le téléphone, envoi dès que possible", "Changes kept on this phone, will send when possible") } }
     }
 
-    /** Programme : la dernière version en base, lisible même sans compte. */
+    /** Programme : la dernière version en base, lisible même sans compte. Colonnes nommées (audit de sécurité, point 9) :
+     *  user_id pourra ainsi être fermé à la lecture (supabase/programme-colonnes.sql). */
     private var lastProg = 0L
     fun pullProg() {
         val c = sb ?: return
@@ -305,7 +306,7 @@ object Store {
         lastProg = System.currentTimeMillis()
         scope.launch {
             runCatching {
-                val r = c.from("programme").select { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
+                val r = c.from("programme").select(io.github.jan.supabase.postgrest.query.Columns.list("id", "data", "note")) { order("id", io.github.jan.supabase.postgrest.query.Order.DESCENDING); limit(1) }.decodeList<ProgRow>().firstOrNull()
                 if (r != null && r.id > Prog.version) {
                     val why = Prog.check(r.data)
                     if (why != null) { Log.w("UpRep", "programme ${r.id} refusé : $why"); return@launch }
