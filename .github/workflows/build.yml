@@ -3,13 +3,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      publier:
-        description: Publier une version installable
-        type: boolean
-        default: true
+# APK debug plus publiés dans les Releases GitHub (audit de sécurité du 22 novembre 2026, point 4 ; Philippe, seul à l'avoir installé
+# depuis GitHub) : ils sont signés avec keystore/debug.keystore, publique dans le dépôt, donc n'importe qui pourrait signer un faux
+# APK installable par-dessus. L'APK reste disponible dans les artefacts de chaque build (captures, essais).
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,12 +28,3 @@ jobs:
         run: cp app/build/outputs/apk/debug/app-debug.apk ProgrammeForce.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with: { name: ProgrammeForce, path: ProgrammeForce.apk }
-      - name: Publier la version
-        if: github.event_name == 'workflow_dispatch' && inputs.publier
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: UpRep 0.1.${{ github.run_number }}
-          body: APK à installer sur le téléphone (Paramètres → autoriser l'installation depuis le navigateur).
-          files: ProgrammeForce.apk
-          make_latest: true
