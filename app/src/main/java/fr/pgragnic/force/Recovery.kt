@@ -82,8 +82,8 @@ object Recovery {
             e.ex.forEach { x -> Prog.MAP[x.id]?.forEach { (m, v) -> V[m] = V[m]!! + nSets(x) * v; tot += nSets(x) * v } } }
         val ready = HashMap<String, Int>()
         MUS.forEach { m ->
-            if (R[m]!! >= 90) { ready[m] = 0; return@forEach }
-            for (h in 1..120) if (recOf(fatigueAt(now + h * 3_600_000L, log, days), m) >= 90) { ready[m] = h; break }
+            if (R[m]!! > 80) { ready[m] = 0; return@forEach }
+            for (h in 1..120) if (recOf(fatigueAt(now + h * 3_600_000L, log, days), m) > 80) { ready[m] = h; break }
         }
         return State(R, V, tot, ready, MUS.associateWith { max(0.0, F[it]!! - CAP) })
     }
@@ -101,5 +101,5 @@ object Recovery {
     }
     /** Couleur de récupération : rouge (fatigué) → orange → vert (prêt). */
     fun recCol(r: Int, danger: Int = 0xF06A6A, warm: Int = 0xE3A33E, ok: Int = 0x2EC089): Int =
-        if (r >= 90) ok else if (r >= 60) mix(warm, ok, (r - 60) / 30.0) else mix(danger, warm, r / 60.0)
+        if (r > 80) ok else if (r >= 60) mix(warm, ok, (r - 60) / 20.0) else mix(danger, warm, r / 60.0)
 }

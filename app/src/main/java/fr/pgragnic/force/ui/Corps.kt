@@ -68,7 +68,7 @@ fun CorpsScreen() {
                     Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(ox.toInt(), oy.toInt()) }.width(150.dp).clip(RoundedCornerShape(10.dp)).background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp)) {
                         Text(fr.pgragnic.force.mus(m) + " · $r %", color = Color(0xFF111111), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         if (MU.over(m)) Text(t("surchargé, +${Prog.fk(Prog.r1(MU.ex[m]!!))} séries", "overloaded, +${Prog.fk(Prog.r1(MU.ex[m]!!))} sets"), color = Color(0xFFE3141E), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text(if (r >= 90) t("prêt à travailler", "ready to train") else t("prêt dans ~", "ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = Color(0xFF555555), fontSize = 12.sp)
+                        Text(if (r > 80) t("prêt à travailler", "ready to train") else t("prêt dans ~", "ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h", color = Color(0xFF555555), fontSize = 12.sp)
                     }
                 }
             }
@@ -77,7 +77,7 @@ fun CorpsScreen() {
         Seg(listOf(t("Face", "Front") to !shownBack, t("Dos", "Back") to shownBack), Modifier.align(Alignment.CenterHorizontally).width(180.dp)) { i -> back = i == 1; viewKey++ }
         // liste complète (Philippe : « Montre tous les exercices y compris ceux à 100% ») : muscles à laisser reposer d'abord,
         // puis les muscles prêts avec la même ligne détaillée ; toucher un muscle ouvre son détail
-        val tired = Recovery.MUS.filter { MU.R[it]!! < 90 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! >= 90 }.sortedBy { MU.R[it]!! }
+        val tired = Recovery.MUS.filter { MU.R[it]!! <= 80 }.sortedBy { MU.R[it]!! }; val ready = Recovery.MUS.filter { MU.R[it]!! > 80 }.sortedBy { MU.R[it]!! }
         @Composable fun row(m: String) {
             val r = MU.R[m]!!; val ov = MU.over(m); val c = (if (ov) Recovery.overCol(C.rgb(C.danger)) else Recovery.recCol(r, C.rgb(C.danger), C.rgb(C.warm), C.rgb(C.effort))).col(); val h = MU.ready[m] ?: 0
             Column(Modifier.fillMaxWidth().glam().clickable { sel = if (sel == m) null else m }.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -87,7 +87,7 @@ fun CorpsScreen() {
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(fr.pgragnic.force.mus(m), color = C.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text((if (ov) t("Surchargé (+${Prog.fk(Prog.r1(MU.ex[m]!!))} séries) · ", "Overloaded (+${Prog.fk(Prog.r1(MU.ex[m]!!))} sets) · ") else "") +
-                            (if (r >= 90) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
+                            (if (r > 80) t("Prêt à travailler", "Ready to train") else t("Prêt dans ~", "Ready in ~") + if (h >= 24) t("${h / 24} j ${h % 24} h", "${h / 24} d ${h % 24} h") else "$h h"), color = C.muted, fontSize = 12.sp)
                     }
                     Icon(if (sel == m) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.padding(start = 6.dp))
                 }

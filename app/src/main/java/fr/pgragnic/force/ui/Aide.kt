@@ -62,7 +62,7 @@ private fun helpOf(screen: String): Pair<String, List<HelpItem>> = when (screen)
         // explication et légende retirées de l'écran Corps au passage au style épuré, reprises ici (Philippe, 14 novembre :
         // « remettre l'explication et la légende de l'écran Corps dans le « ? » »)
         HelpItem(t("Le personnage", "The character"), t("Fais tourner le personnage avec le doigt, ou touche Face ou Dos. Touche un muscle pour voir sa récupération.", "Rotate the character with your finger, or tap Front or Back. Tap a muscle to see its recovery.")),
-        HelpItem(t("Les couleurs", "The colors"), t("De rouge (0 %, fatigué) à vert (prêt dès 90 %), en passant par l'orange. Rouge vif : surchargé, la fatigue dépasse 0 %.", "From red (0%, tired) to green (ready from 90%), through orange. Bright red: overloaded, fatigue beyond 0%."), legend = true),
+        HelpItem(t("Les couleurs", "The colors"), t("De rouge (0 %, fatigué) à vert (prêt dès 80 %), en passant par l'orange. Rouge vif : surchargé, la fatigue dépasse 0 %.", "From red (0%, tired) to green (ready from 80%), through orange. Bright red: overloaded, fatigue beyond 0%."), legend = true),
         HelpItem(t("À ménager", "Go easy on"), t("Les trois muscles les moins récupérés. « Voir les 11 » ouvre la liste complète.", "The three least recovered muscles. \"See all 11\" opens the full list.")),
         HelpItem(t("Le pourcentage", "The percentage"), t("C'est la récupération du muscle depuis tes dernières séances. À 100 %, il est prêt à retravailler.", "It is the muscle's recovery since your last workouts. At 100%, it is ready to work again.")),
         HelpItem(t("« Prêt dans ~1 j 6 h »", "\"Ready in ~1 d 6 h\""), t("Le temps estimé avant que le muscle soit de nouveau prêt.", "The estimated time before the muscle is ready again.")),
@@ -98,11 +98,11 @@ fun HelpButton(screen: String, modifier: Modifier = Modifier) {
                         Text(it.t, color = C.muted, fontSize = 13.sp, lineHeight = 19.sp)
                         if (it.legend) Column(Modifier.padding(top = 6.dp)) {
                             Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                0f to C.danger, .6f to C.warm, .9f to C.effort, 1f to C.effort)))
+                                0f to C.danger, .6f to C.warm, .8f to C.effort, 1f to C.effort)))
                             Box(Modifier.fillMaxWidth().padding(top = 3.dp)) {
                                 Text(t("0 % fatigué", "0% tired"), color = C.muted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterStart))
                                 Text("60 %", color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.6f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
-                                Text(t("prêt 90 %", "ready 90%"), color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.93f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
+                                Text(t("prêt 80 %", "ready 80%"), color = C.muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(.83f).wrapContentWidth(Alignment.End).align(Alignment.CenterStart))
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                                 Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFE3141E)))
