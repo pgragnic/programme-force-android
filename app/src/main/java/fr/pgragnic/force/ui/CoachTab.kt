@@ -244,7 +244,6 @@ fun CoachSettingsPage() {
     val ctx = LocalContext.current
     @Suppress("UNUSED_VARIABLE") val dv = CoachData.v
     val d = CoachData.d
-    var data by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Cap(t("Ce que sait le coach", "What the coach knows"), Modifier.padding(start = 4.dp))
             val g = GearStore.g.value
@@ -286,7 +285,7 @@ fun CoachSettingsPage() {
             }
         }
         // « Ce que le coach reçoit », en clair (Philippe, 20 novembre 5 h 59 : « Enlevons le donnés envoyées, qu'est ce que tu en penses ou alors
-        // sur un format lisible par un end user ? » ; 6 h 00 : « Ça me va ! ») : le lien du haut de l'onglet Coach est retiré, le JSON passe en « détail technique »
+        // sur un format lisible par un end user ? » ; 6 h 00 : « Ça me va ! ») : le lien du haut de l'onglet Coach est retiré, le détail technique (JSON) est retiré le 25 novembre
         Cap(t("Ce que le coach reçoit", "What the coach receives"), Modifier.padding(top = 8.dp, start = 4.dp))
         Column(Modifier.fillMaxWidth().glam().padding(14.dp)) {
             val o = remember { runCatching { CoachData.lastSent?.let { kotlinx.serialization.json.Json.parseToJsonElement(it).jsonObject } }.getOrNull() ?: runCatching { CoachApi.context() }.getOrNull() }
@@ -294,9 +293,6 @@ fun CoachSettingsPage() {
             o?.let { SentReadable(it) }
             Text(t("Jamais envoyé : ton nom, ton e-mail, ta position, tes contacts.", "Never sent: your name, e-mail, location, contacts."), color = C.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
             Text(t("Les échanges passent par Anthropic (Claude), qui ne s'en sert pas pour entraîner ses modèles.", "Messages go through Anthropic (Claude), which does not use them to train its models."), color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-            Text(if (data) t("Masquer le détail technique", "Hide technical details") else t("Voir le détail technique", "See technical details"), color = C.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp).clip(RoundedCornerShape(8.dp)).clickable { data = !data }.padding(2.dp))
-            if (data) Text(CoachData.lastSent ?: t("Aucun échange pour l'instant.", "No exchange yet."), color = C.ink, fontSize = 11.sp, fontFamily = FontFamily.Monospace, lineHeight = 15.sp,
-                modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.bg).horizontalScroll(rememberScrollState()).padding(12.dp))
         }
     }
 }
