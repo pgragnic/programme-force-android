@@ -375,11 +375,11 @@ fun ExThumb(id: String, size: androidx.compose.ui.unit.Dp, info: Boolean = false
 class EdRow(val id: String, val n: String, val target: Int, val unit: String, val kg: Double, val sets: SnapshotStateList<SetRec>, var f: MutableState<String>)
 
 fun rowsFor(ses: Session, st: Settings): List<EdRow> {
-    val ids = ses.P.filter { it.k == "work" && it.set == 1 }.mapNotNull { it.ex }
+    val ids = ses.P.filter { it.k == "work" && it.set == 1 }.mapNotNull { it.ex }.filter { !ses.partial || !ses.sets[it].isNullOrEmpty() }
     return ids.map { id ->
         val wk = Prog.work(id, ses.w); val time = Prog.EX[id]!!.m == "time"; val tgt = if (time) wk.dur.toInt() else wk.reps
         val got = ses.sets[id] ?: mutableListOf()
-        val sets = mutableStateListOf<SetRec>().apply { (0 until ses.nsetsOf(id)).forEach { add(got.getOrNull(it) ?: SetRec(tgt, null)) } }
+        val sets = mutableStateListOf<SetRec>().apply { (0 until (if (ses.partial) got.size else ses.nsetsOf(id))).forEach { add(got.getOrNull(it) ?: SetRec(tgt, null)) } }
         EdRow(id, Prog.EX[id]!!.n, tgt, if (time) "s" else "reps", if (Prog.hasDb(id)) Prog.kgOf(id, ses.w, st) else 0.0, sets, mutableStateOf(Prog.feelOf(sets, tgt)))
     }
 }
@@ -420,8 +420,8 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
     val rows = remember { rowsFor(ses, st) }
     var bw by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().background(C.bg).verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Eyebrow(t("Séance ${ses.s} terminée", "Workout ${ses.s} complete"))
-        H1("Bravo !")
+        Eyebrow(if (ses.partial) t("Séance ${ses.s} interrompue", "Workout ${ses.s} stopped early") else t("Séance ${ses.s} terminée", "Workout ${ses.s} complete"))
+        H1(if (ses.partial) t("Ce qui a été fait", "What you did") else "Bravo !")
         Text("Chaque série telle que notée pendant les pauses : répétitions et réserve (R, touche pour changer). Corrige si besoin.", color = C.muted, modifier = Modifier.padding(vertical = 8.dp))
         SetsEditor(rows)
         OutlinedTextField(bw, { bw = it }, label = { Text("Poids du jour (facultatif, kg)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))

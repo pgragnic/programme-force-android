@@ -35,6 +35,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     var pt by mutableDoubleStateOf(0.0)
     var run by mutableStateOf(true)
     var done by mutableStateOf(false)
+    // séance interrompue, enregistrée avec ce qui a été fait (Philippe, 25 novembre 13 h 55)
+    var partial = false
     val sets = HashMap<String, MutableList<SetRec>>()
     val nsets = Prog.WEEKS[w].s
     /** nombre de séries prévues pour un exercice (une de plus pour les zones à travailler) */

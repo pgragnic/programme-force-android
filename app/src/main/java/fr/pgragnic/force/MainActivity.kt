@@ -159,9 +159,11 @@ class MainActivity : ComponentActivity() {
                     if (confirmQuit) AlertDialog(
                         onDismissRequest = { keepOn() },
                         title = { Text(t("Quitter la séance ?", "Quit the workout?")) },
-                        text = { Text(t("La séance en cours ne sera pas enregistrée.", "The workout in progress will not be saved.")) },
+                        text = { Text(t("Sans enregistrement, la séance en cours est perdue.", "Unless you save it, the workout in progress is lost.")) },
                         confirmButton = { TextButton(onClick = { confirmQuit = false; Live.end(this@MainActivity) }) { Text(t("Quitter", "Quit")) } },
-                        dismissButton = { TextButton(onClick = { keepOn() }) { Text(t("Continuer la séance", "Keep going")) } })
+                        dismissButton = { Row {
+                            if (cur.sets.values.any { it.isNotEmpty() }) TextButton(onClick = { confirmQuit = false; cur.partial = true; ending = true }) { Text(t("Enregistrer ce qui est fait", "Save what I did")) }
+                            TextButton(onClick = { keepOn() }) { Text(t("Continuer la séance", "Keep going")) } } })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
                     // barre d'onglets flottante en capsule blanche (style épuré, Philippe 14 novembre : « Partons sur le bleu vif »)
