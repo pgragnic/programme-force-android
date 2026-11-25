@@ -149,8 +149,19 @@ class MainActivity : ComponentActivity() {
                 cur == null && (!gear.done || setup) -> SetupScreen { setupOpen.value = false }
                 cur != null && (ending || cur.done) -> EndScreen(cur) { Live.end(this@MainActivity); ending = false }
                 cur != null -> {
-                    BackHandler { Live.end(this@MainActivity) }
-                    PlayerScreen(cur, onClose = { Live.end(this@MainActivity) }, onEnd = { ending = true })
+                    // quitter une séance en cours : confirmation (Philippe, 25 novembre 13 h 52 : « si l'utilisateur quite la séance, il faut faire confirmer par l'utilisateur pour éviter que ce soit une erreur »)
+                    var confirmQuit by remember(cur) { mutableStateOf(false) }
+                    var wasRun by remember(cur) { mutableStateOf(true) }
+                    val askQuit = { wasRun = cur.run; if (cur.run) cur.toggle(); confirmQuit = true }
+                    val keepOn = { confirmQuit = false; if (wasRun && !cur.run) cur.toggle() }
+                    BackHandler { if (confirmQuit) keepOn() else askQuit() }
+                    PlayerScreen(cur, onClose = { askQuit() }, onEnd = { ending = true })
+                    if (confirmQuit) AlertDialog(
+                        onDismissRequest = { keepOn() },
+                        title = { Text(t("Quitter la séance ?", "Quit the workout?")) },
+                        text = { Text(t("La séance en cours ne sera pas enregistrée.", "The workout in progress will not be saved.")) },
+                        confirmButton = { TextButton(onClick = { confirmQuit = false; Live.end(this@MainActivity) }) { Text(t("Quitter", "Quit")) } },
+                        dismissButton = { TextButton(onClick = { keepOn() }) { Text(t("Continuer la séance", "Keep going")) } })
                 }
                 else -> Scaffold(containerColor = C.bg, bottomBar = {
                     // barre d'onglets flottante en capsule blanche (style épuré, Philippe 14 novembre : « Partons sur le bleu vif »)
