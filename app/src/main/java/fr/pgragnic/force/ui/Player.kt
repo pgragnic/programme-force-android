@@ -43,6 +43,8 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     private var last = SystemClock.elapsedRealtime()
     private var lastCue: String? = null
     var elapsed by mutableDoubleStateOf(0.0)
+    /** temps réellement passé en séance (lecteur en marche), pour l'Historique (Philippe, 25 novembre 13 h 47 : « Temps de chaque séance ? ») */
+    var runSec = 0.0; private set
     val totalDur = P.sumOf { it.dur }
 
     var started = false; private set
@@ -84,6 +86,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
         val now = SystemClock.elapsedRealtime()
         var dt = (now - last) / 1000.0; last = now
         if (!run || done) return
+        runSec += dt
         if (dt > 2.5) { // rattrapage après mise en veille
             while (dt > 0 && !done) { val p = P[pi]; val rem = p.dur - pt; if (dt < rem) { pt += dt; dt = 0.0 } else { dt -= rem; elapsed += rem; quietEnter(pi + 1) } }
             return

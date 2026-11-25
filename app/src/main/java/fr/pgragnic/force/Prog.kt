@@ -46,7 +46,9 @@ data class ExRec(val id: String, val n: String, val kg: Double = 0.0, val target
 @kotlinx.serialization.Serializable
 data class Entry(val d: Long, val c: Int = 1, val w: Int, val s: String, val f: String = "Juste bien",
                  val rest: Int? = null, val ex: List<ExRec> = emptyList(), val bw: Double? = null,
-                 val kcal: Double? = null, val _id: String? = null)
+                 val kcal: Double? = null, val _id: String? = null,
+                 /** durée réelle de la séance en secondes (temps en marche du lecteur, pauses de l'utilisateur exclues) */
+                 val dur: Int? = null)
 
 object Prog {
     lateinit var raw: JsonObject

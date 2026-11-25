@@ -427,7 +427,7 @@ fun EndScreen(ses: Session, onDone: () -> Unit) {
         OutlinedTextField(bw, { bw = it }, label = { Text("Poids du jour (facultatif, kg)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         Button(onClick = {
             val ex = recsOf(rows); val b = bw.replace(',', '.').toDoubleOrNull()
-            val e = Entry(d = System.currentTimeMillis(), c = ses.c, w = ses.w, s = ses.s, f = overall(ex), rest = st.rest, ex = ex, bw = b, kcal = Prog.sessKcal(ses.P, b ?: 80.0))
+            val e = Entry(d = System.currentTimeMillis(), c = ses.c, w = ses.w, s = ses.s, f = overall(ex), rest = st.rest, ex = ex, bw = b, kcal = Prog.sessKcal(ses.P, b ?: 80.0), dur = ses.runSec.toInt().takeIf { it >= 120 })
             Store.add(e)
             // prochaine séance : celle qui ménage le mieux les muscles qui viennent de travailler ; la semaine avance au calendrier (Store.rollWeek)
             val nx = Prog.nextSess(Store.st.value, Store.log.value, Store.days.value)
@@ -466,7 +466,7 @@ fun SuiviScreen(inProgres: Boolean = false) {
                         // changement de charge décidé après cette séance (Philippe, 14 novembre 22 h 31 : « Pour C1 S2 séance 2 on voit indiqué Développé militaire debout » → « Oui » à « Prochaine fois : … »)
                         Prog.ups[e.d]?.forEach { u -> Text(t("Prochaine fois : ", "Next time: ") + u.drop(1), color = if (u.startsWith("↓")) C.warm else C.effort, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
                     }
-                    Text(df.format(Date(e.d)), color = C.muted, fontSize = 13.sp)
+                    Text(df.format(Date(e.d)) + (e.dur?.let { " · ${(it + 30) / 60} min" } ?: ""), color = C.muted, fontSize = 13.sp)
                 }
                 if (open == e.d) {
                     if (edit == e.d) {
