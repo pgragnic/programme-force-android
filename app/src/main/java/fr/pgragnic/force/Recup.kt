@@ -16,6 +16,8 @@ import android.content.Context
 object Recup {
     /** au-dessus : muscle prêt */
     const val READY = 80
+    /** nombre maximum d'exercices sur le même muscle principal dans une séance adaptée */
+    const val MAX_PAR_MUSCLE = 2
     class Change(val id: String, val kind: String, val to: String? = null, val muscle: String, val pct: Int)
 
     /** calcul sans adaptation (choix de la séance, comparaisons) */
@@ -59,13 +61,20 @@ object Recup {
         }
         // exercices choisis aujourd'hui par le coach : sa décision passe avant les règles
         val coach = Adapt.targets()
+        // exercices de la séance qui seront ajustés (muscle principal pas prêt) : ils ne comptent pas dans les muscles déjà pris
+        val changed = ex.filter { it !in coach && (worst(it, m)?.second ?: 100) <= READY }.toSet()
         for (id in ex) {
             if (id in coach) continue
             val (mus, pct) = worst(id, m) ?: continue
             if (pct > READY) continue
             // de préférence un muscle pas encore pris par un autre remplacement (pas deux curls pour les biceps)
             val taken = out.filter { it.kind == "swap" }.flatMap { prim(it.to!!) }.toSet()
-            val to = pool.firstOrNull { it !in used && prim(it).none { p -> p in taken } } ?: pool.firstOrNull { it !in used }
+            // jamais plus de MAX_PAR_MUSCLE exercices sur le même muscle principal dans la séance (Philippe, 25 novembre 13 h 45 :
+            // « pourquoi proposer 2 fois les mollets debouts dans une même séance » ; 13 h 46 : « Option 1 »)
+            val nb = HashMap<String, Int>()
+            (ex.filter { it != id && it !in changed } + out.filter { it.kind == "swap" }.map { it.to!! }).forEach { e -> prim(e).forEach { m2 -> nb[m2] = (nb[m2] ?: 0) + 1 } }
+            val to = pool.firstOrNull { it !in used && prim(it).none { p -> p in taken } && prim(it).all { p -> (nb[p] ?: 0) < MAX_PAR_MUSCLE } }
+                ?: pool.firstOrNull { it !in used && prim(it).all { p -> (nb[p] ?: 0) < MAX_PAR_MUSCLE } }
             when {
                 to != null -> { used += to; out += Change(id, "swap", to, mus, pct) }
                 kept > 1 -> { kept--; out += Change(id, "drop", muscle = mus, pct = pct) }
