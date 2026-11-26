@@ -35,7 +35,7 @@ Tired, short on time, travelling without equipment, a nagging pain? Talk to the 
 Starting loads are estimated, then adjusted from your reps and how it felt. Weekly increases are capped, more so for beginners and over-50s.
 
 ★ YOUR BODY AT A GLANCE
-Recovery for every muscle, muscle balance with catch-up the following week, load and volume charts, steps imported from Health Connect (optional).
+Recovery for every muscle, muscle balance with catch-up the following week, load and volume charts.
 
 ★ SIMPLE AND RESPECTFUL
 • Free, no ads

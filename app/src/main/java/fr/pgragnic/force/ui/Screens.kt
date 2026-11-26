@@ -551,7 +551,6 @@ fun ReglagesScreen() {
                 "prog" -> ProgrammePage()
                 "rappels" -> RappelPanel()
                 "coach" -> CoachSettingsPage()
-                "hc" -> Panel { HealthToggle() }
                 "compte" -> { AccountPanel(); ExportPanel() }
                 "affichage" -> ThemePanel()
                 "avis" -> FeedbackPanel()
@@ -575,7 +574,6 @@ fun ReglagesScreen() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val user by Store.user.collectAsState(); val g by GearStore.g.collectAsState(); val sync by Store.sync.collectAsState()
     val rem = remember(sub) { Reminder.get(ctx) }
-    val hcOn by Health.on.collectAsState()
     fun subOf(k: String): String = when (k) {
         "prog" -> t("Matériel, charges, santé, profil, durée", "Equipment, loads, health, profile, length")
         "rappels" -> if (rem.on) t("LMMJVSD", "MTWTFSS").filterIndexed { i, _ -> (rem.days shr i) and 1 == 1 } + " · ${rem.h} h ${rem.m.toString().padStart(2, '0')}" else t("Désactivés", "Off")
@@ -584,7 +582,6 @@ fun ReglagesScreen() {
             when (fr.pgragnic.force.L.mode) { "fr" -> "Français"; "en" -> "English"; else -> t("Langue du téléphone", "Phone language") }
         "avis" -> t("Une idée, un souci ?", "An idea, a problem?")
         "coach" -> t("Ce que sait le coach, ton, rappels, données envoyées", "What the coach knows, tone, reminders, data sent")
-        "hc" -> if (hcOn) t("Pas importés automatiquement", "Steps imported automatically") else t("Désactivé · pas saisis à la main", "Off · steps entered by hand")
         else -> t("Nouveautés, version, confidentialité", "What's new, version, privacy")
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -614,8 +611,6 @@ class RegItem(val k: String, val fr: String, val en: String, val ic: androidx.co
 val REG = listOf(
     RegItem("prog", "Mon programme", "My program", Icons.Default.FitnessCenter),
     RegItem("coach", "Coach", "Coach", Icons.Default.AutoAwesome),
-    // entrée à part, plus facile à trouver qu'au fond de « Affichage » (Philippe, 15 novembre 17 h 42 : « Je ne vois pas l'option pour désactiver health connect ? »)
-    RegItem("hc", "Health Connect", "Health Connect", Icons.Default.FavoriteBorder),
     RegItem("rappels", "Rappels", "Reminders", Icons.Default.NotificationsNone, 0xFFFF453A),
     RegItem("compte", "Compte et sauvegarde", "Account and backup", Icons.Default.CloudDone, 0xFF0A84FF),
     RegItem("affichage", "Affichage", "Display", Icons.Default.DarkMode, 0xFF8E8E93),
@@ -861,7 +856,7 @@ val NEWS = listOf(
     "7 novembre 2026, soir" to listOf(
         "Personnage 3D réaliste pendant la séance, avec les muscles travaillés en rouge ; fais-le tourner du doigt.",
         "Onglet Corps : récupération de chaque muscle, de face et de dos, et le détail par muscle.",
-        "Onglet Activité : pas importés automatiquement via Health Connect, saisie des marches lestées, randos et trails, graphique sur 14 jours et dépense estimée.",
+        "Onglet Activité : saisie des pas, des marches lestées, randos et trails, graphique sur 14 jours et dépense estimée.",
         "Notification de séance avec le minuteur et les boutons Précédent, Pause, Suivant, aussi sur l'écran verrouillé ; la séance continue écran éteint.",
         "Rappel de séance les jours et à l'heure de ton choix.",
         "Suivi : bilan de la semaine, courbes de poids et de charges, volume par semaine.",

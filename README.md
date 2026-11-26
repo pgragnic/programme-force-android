@@ -10,7 +10,7 @@ Page **Releases** du dépôt → dernière version → télécharger `ProgrammeF
 ## Étapes
 1. Séance guidée, voix, saisie série par série, historique, Supabase ← en cours
 2. Personnage 3D natif (Filament) et carte des muscles
-3. Pas via Health Connect, notifications, commandes sur l'écran verrouillé
+3. Notifications, commandes sur l'écran verrouillé
 4. Reprise de l'historique de la version web
 
 ## Configuration Supabase

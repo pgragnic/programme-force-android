@@ -35,7 +35,7 @@ Fatigué, pressé, en vacances sans matériel, une douleur qui dure ? Parle au c
 Charges de départ estimées, puis ajustées selon tes répétitions et ton ressenti. Les hausses sont plafonnées chaque semaine, plus encore pour les débutants et après 50 ans.
 
 ★ TON CORPS EN UN COUP D'ŒIL
-Récupération de chaque muscle, équilibre entre les groupes musculaires avec rattrapage la semaine suivante, courbes de charges et de volume, pas importés depuis Health Connect (facultatif).
+Récupération de chaque muscle, équilibre entre les groupes musculaires avec rattrapage la semaine suivante, courbes de charges et de volume.
 
 ★ SIMPLE ET RESPECTUEUSE
 • Gratuite, sans publicité

@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         if (!BuildConfig.DEBUG) intent = sansOptionsDeControle(intent)
         enableEdgeToEdge()
         L.load(this); Prog.load(this); GearStore.load(this); Store.init(this)
-        C.load(this); Adapt.load(this); Recup.load(this); CoachState.load(this); CoachData.load(this); Health.load(this); CoachRem.schedule(this); SessionService.channels(this); Reminder.schedule(this)
+        C.load(this); Adapt.load(this); Recup.load(this); CoachState.load(this); CoachData.load(this); CoachRem.schedule(this); SessionService.channels(this); Reminder.schedule(this)
         Store.handleLink(intent)
         Crash.sendPending(this)
         // Options de contrôle utilisées par les captures automatiques (sans effet en usage normal)
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
         return Intent(i).replaceExtras(garde)
     }
 
-    override fun onResume() { super.onResume(); Store.autoSync(); lifecycleScope.launch { if (Health.check(this@MainActivity)) Health.importSteps(this@MainActivity) } }
+    override fun onResume() { super.onResume(); Store.autoSync() }
 
 
     private fun keepOn(on: Boolean) {

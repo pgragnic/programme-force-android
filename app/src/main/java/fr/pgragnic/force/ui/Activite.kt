@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.health.connect.client.PermissionController
 import fr.pgragnic.force.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -70,13 +69,6 @@ private val ACTS = listOf("Aucune", "Marche lestée", "Randonnée", "Trail")
 fun ActiviteScreen(inProgres: Boolean = false) {
     val ctx = LocalContext.current; val scope = rememberCoroutineScope()
     val days by Store.days.collectAsState(); val log by Store.log.collectAsState()
-    val hcStatus by Health.status.collectAsState(); val granted by Health.granted.collectAsState()
-    val avail = remember { Health.available(ctx) }
-    val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { g ->
-        if (g.containsAll(Health.PERMS)) scope.launch { Health.importSteps(ctx) } else Health.status.value = "Accès aux pas refusé : tu peux saisir tes pas à la main."
-    }
-    val hcOn by Health.on.collectAsState()
-    LaunchedEffect(hcOn) { if (avail && hcOn) Health.importSteps(ctx) }
 
     val today = LocalDate.now()
     var sel by remember { mutableStateOf(today) }
@@ -98,27 +90,6 @@ fun ActiviteScreen(inProgres: Boolean = false) {
         Column {
             if (!inProgres) H1("Pas & activités")
             Text(if (last7.isNotEmpty()) t("Moyenne sur 7 jours : ", "7-day average: ") + String.format(fr.pgragnic.force.L.loc, "%,d", last7.average().roundToInt()) + t(" pas par jour", " steps per day") else "Aucune journée saisie", color = C.muted, fontSize = 13.sp)
-        }
-
-        // Health Connect : panneau masqué quand l'option est coupée (Philippe, 15 novembre 19 h 10 : « Je veux que le panneau "pas automatiques"
-        // disparaisse quand l'option health connect est désactivé ») ; on la réactive dans Réglages → Health Connect
-        if (hcOn) Panel {
-            Text("Pas automatiques", color = C.ink, fontWeight = FontWeight.Bold)
-            when {
-                !avail -> {
-                    Text("Installe ou mets à jour l'appli Health Connect pour importer tes pas (téléphone, montre, Google Fit, Samsung Santé…).", color = C.muted, fontSize = 13.sp)
-                    TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }) { Text("Ouvrir le Play Store") }
-                }
-                !granted -> {
-                    Text("Autorise la lecture de tes pas dans Health Connect : ils arriveront tout seuls ici chaque jour.", color = C.muted, fontSize = 13.sp)
-                    Button(onClick = { launcher.launch(Health.PERMS) }, modifier = Modifier.padding(top = 6.dp)) { Text("Autoriser l'accès aux pas") }
-                }
-                else -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(hcStatus.ifBlank { "Connecté à Health Connect" }, color = C.muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { scope.launch { Health.importSteps(ctx) } }) { Text("Actualiser") }
-                }
-            }
-            if (!granted && hcStatus.isNotBlank()) Text(hcStatus, color = C.warm, fontSize = 12.sp)
         }
 
         // 14 jours
@@ -155,7 +126,6 @@ fun ActiviteScreen(inProgres: Boolean = false) {
                     color = C.ink, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 IconButton(onClick = { if (sel < today) sel = sel.plusDays(1) }, enabled = sel < today) { Icon(Icons.Default.ChevronRight, fr.pgragnic.force.tr("Jour suivant"), tint = if (sel < today) C.ink else C.line) }
             }
-            if (cur?.src == "hc") Text(t("${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} pas importés depuis Health Connect", "${String.format(fr.pgragnic.force.L.loc, "%,d", cur.steps ?: 0)} steps imported from Health Connect"), color = C.muted, fontSize = 12.sp)
             val num = KeyboardOptions(keyboardType = KeyboardType.Number); val dec = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             OutlinedTextField(steps, { steps = it.filter { c -> c.isDigit() } }, label = { Text("Pas") }, placeholder = { Text("ex. 7000") }, singleLine = true, keyboardOptions = num, modifier = Modifier.fillMaxWidth())
             Text("Activité", color = C.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
@@ -174,13 +144,13 @@ fun ActiviteScreen(inProgres: Boolean = false) {
                 val a = act.takeIf { it != "Aucune" }
                 val d = DayRec(sel.toString(), steps.toIntOrNull() ?: 0, a, if (a != null) pack.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 } else null,
                     if (a != null) dplus.toIntOrNull()?.takeIf { it > 0 } else null, if (a != null && a != "Marche lestée") dur.toIntOrNull()?.takeIf { it > 0 } else null,
-                    src = if (cur?.src == "hc" && (steps.toIntOrNull() ?: 0) == cur.steps) "hc" else "main",
+                    src = "main",
                     rsteps = if (a == "Marche lestée") rsteps.toIntOrNull()?.takeIf { it > 0 } else null)
                 Store.saveDay(d)
                 msg = t("Journée enregistrée.", "Day saved.")
             }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Enregistrer la journée") }
-            // suppression d'une journée saisie à la main (les pas importés de Health Connect reviendraient à l'import suivant)
-            if (cur != null && cur.src != "hc") {
+            // suppression d'une journée
+            if (cur != null) {
                 var arm by remember(sel) { mutableStateOf(false) }
                 TextButton(onClick = { if (!arm) arm = true else { Store.deleteDay(sel.toString()); arm = false; msg = t("Journée supprimée.", "Day deleted.") } }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (arm) t("Confirmer la suppression", "Confirm deletion") else t("Supprimer cette journée", "Delete this day"), color = C.danger)
@@ -240,29 +210,3 @@ private fun ActChip(t: String, on: Boolean, onClick: () -> Unit) {
 }
 
 
-/** Interrupteur Health Connect (Réglages et premier lancement). */
-@Composable
-fun HealthToggle(modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current; val scope = rememberCoroutineScope()
-    val on by Health.on.collectAsState(); val granted by Health.granted.collectAsState()
-    val avail = remember { Health.available(ctx) }
-    val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { g ->
-        if (g.containsAll(Health.PERMS)) scope.launch { Health.importSteps(ctx) } else Health.setOn(ctx, false)
-    }
-    LaunchedEffect(Unit) { Health.check(ctx) }
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(t("Pas depuis Health Connect", "Steps from Health Connect"), color = C.ink, fontWeight = FontWeight.Bold)
-            Text(when {
-                !avail -> t("Facultatif. Demande l'appli Health Connect (Play Store).", "Optional. Requires the Health Connect app (Play Store).")
-                on && granted -> t("Tes pas (téléphone, montre…) arrivent tout seuls chaque jour.", "Your steps (phone, watch…) arrive on their own every day.")
-                else -> t("Facultatif. Sinon, tu saisis tes pas à la main dans Activité.", "Optional. Otherwise, enter your steps by hand in Activity.")
-            }, color = C.muted, fontSize = 12.sp)
-        }
-        Switch(checked = on && (granted || !avail), onCheckedChange = { v ->
-            Health.setOn(ctx, v)
-            if (v) { if (avail) { if (!granted) launcher.launch(Health.PERMS) else scope.launch { Health.importSteps(ctx) } }
-                     else runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) } }
-        })
-    }
-}
