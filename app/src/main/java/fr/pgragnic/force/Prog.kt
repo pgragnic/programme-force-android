@@ -54,6 +54,18 @@ object Prog {
     lateinit var raw: JsonObject
     val EX = LinkedHashMap<String, Ex>()
     val WEEKS = ArrayList<Week>()
+    /** Semaines 0 à 7 : cycle de 8 semaines des versions précédentes. À partir de 8 : programme sans fin, boucle de 4 semaines
+     *  (prise en main, volume, tempo lent, consolidation ; Philippe, 26 novembre 2026 : « Option A »). */
+    const val LEGACY = 8
+    fun idx(w: Int) = if (w < LEGACY) w else (w - LEGACY) % 4
+    /** Semaine de décharge : celle de l'ancien cycle (semaine 8) ou une semaine déclenchée par la fatigue (Reeval.deloadDue). */
+    fun isDl(w: Int) = w == 7 || w in gear.dlWeeks
+    fun W(w: Int): Week = if (isDl(w)) WEEKS[7] else WEEKS[idx(w)]
+    /** Position dans le bloc de 4 semaines (1 à 4), ou numéro de semaine dans l'ancien cycle de 8. */
+    fun weekNo(w: Int) = if (w < LEGACY) w + 1 else idx(w) + 1
+    fun blockLen(w: Int) = if (w < LEGACY) 8 else 4
+    /** Semaines avant le prochain bilan (0 = bilan à la prochaine semaine). */
+    fun weeksToReview(w: Int) = if (w < LEGACY) 0 else 3 - idx(w)
     val SESS1 = LinkedHashMap<String, Sess>()
     val SESS2 = LinkedHashMap<String, Sess>()
     val WU = HashMap<String, List<JsonElement>>()
@@ -323,6 +335,16 @@ object Prog {
         return st.lastOrNull { it <= target + 1e-6 } ?: st.first()
     }
 
+    /** Charge de départ d'un exercice qui en remplace un autre : charge de l'ancien ajustée de la difficulté relative des deux
+     *  (Philippe, 26 novembre 13 h 48 : « 2. A » ; 13 h 56 : « 2. Ok »), jamais au-dessus de 1,5 fois la charge de départ habituelle. */
+    fun startFrom(old: String, to: String, kgOld: Double): Double? {
+        if (!hasDb(to)) return null
+        val st = gear.steps(toolOf(to)); if (st.isEmpty()) return null
+        val sn = startLoad(to); val so = if (hasDb(old)) startLoad(old) else 0.0
+        val target = min(if (so > 0 && kgOld > 0) kgOld * sn / so else sn, sn * 1.5)
+        return st.lastOrNull { it <= target + 1e-6 } ?: st.first()
+    }
+
     fun unitOf(id: String) = if (EX[id]?.lt == "band") "" else " kg"
     fun loadTxt(id: String, v: Double) = if (EX[id]?.lt == "band") t("niveau ${v.toInt()}/${gear.bands}", "level ${v.toInt()}/${gear.bands}") else "${fk(v)} kg"
 
@@ -348,11 +370,11 @@ object Prog {
 
     fun computeLoads(log: List<Entry>, st: Settings) {
         val L = HashMap<String, DoubleArray>()
-        EX.values.forEach { if (hasDb(it.id)) L[it.id] = doubleArrayOf(startLoad(it.id), 0.0, 0.0) }
+        EX.values.forEach { if (hasDb(it.id)) L[it.id] = doubleArrayOf(gear.seeds[it.id] ?: startLoad(it.id), 0.0, 0.0) }
         ups.clear()
         val hist = HashMap<String, MutableList<Pair<Long, Double>>>(); val last = HashMap<String, Long>()
         log.sortedBy { it.d }.forEach { e ->
-            if (e.w == 7) return@forEach
+            if (isDl(e.w)) return@forEach
             e.ex.forEach { x ->
                 val q = L[x.id] ?: return@forEach
                 if (x.kg <= 0) return@forEach
@@ -386,7 +408,7 @@ object Prog {
         loads = L
     }
 
-    fun kgOf(id: String, w: Int, st: Settings): Double { val q = loads[id] ?: return 0.0; return if (w == 7) nextStep(id, q[0], -1) else q[0] }
+    fun kgOf(id: String, w: Int, st: Settings): Double { val q = loads[id] ?: return 0.0; return if (isDl(w)) nextStep(id, q[0], -1) else q[0] }
 
     /** Disques à mettre de chaque côté d'un haltère réglable pour obtenir kg. */
     fun platesFor(kg: Double, st: Settings): String {
@@ -423,7 +445,7 @@ object Prog {
     }
 
     fun work(id: String, w: Int): Work {
-        val e = EX[id]!!; val W = WEEKS[w]
+        val e = EX[id]!!; val W = W(w)
         if (e.m == "time") return Work(W.pl.toDouble(), 0, 0.0, listOf(1.5, 1.5, 1.5, 1.5), "${W.pl} s")
         val reps = max(5, W.r + e.dr + if (e.lt == "bw" || e.lt == "band") Gear.repsFor(gear.obj) else Gear.repsFor(gear.obj) / 2)
         if (e.m == "alt") return Work(reps * 2 * 3.0, reps, 3.0, listOf(1.0, 1.0, 1.0, 0.0), t("$reps / côté", "$reps / side"))
@@ -506,7 +528,7 @@ object Prog {
     }
 
     private fun build(c: Int, w: Int, s: String, restS: Int, st: Settings, log: List<Entry>, nsOver: Map<String, Int>): ArrayList<Phase> {
-        val S = sess(c)[s] ?: sess(c).values.first(); val W = WEEKS[w]; val P = ArrayList<Phase>()
+        val S = sess(c)[s] ?: sess(c).values.first(); val W = W(w); val P = ArrayList<Phase>()
         computeLoads(log, st)
         val exo = orderEx(c, s, w, st); val sim = simDb(exo, w, st)
         val pre = if (doneIn(c, w, s)) emptyList() else Recup.without { orderEx(c, s, w, st) }.filter { it !in Balance.extraIds || it in sessEx(c, s) }

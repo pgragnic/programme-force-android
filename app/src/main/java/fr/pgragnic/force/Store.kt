@@ -141,7 +141,19 @@ object Store {
         if (start == null) { GearStore.save(a, g.copy(wkStart = m)); return }
         if (start >= m) return
         val s = st.value
-        if (log.value.any { it.c == s.c && it.w == s.w && it.d >= start }) setSettings { if (it.w < 7) it.w++ else { it.c++; it.w = 0 } }
+        // programme sans fin (Philippe, 26 novembre 2026, « Option A ») : plus de cycle de 8 semaines ; les semaines avancent en boucle de 4,
+        // un bilan de période toutes les 4 semaines. Un ancien cycle (semaine 0 à 7) passe au programme sans fin à la première semaine suivante.
+        var review = false
+        val rolled = log.value.any { it.c == s.c && it.w == s.w && it.d >= start }
+        if (rolled) {
+            val migrating = s.w < Prog.LEGACY; val nw = if (migrating) Prog.LEGACY + (s.w + 1) % 4 else s.w + 1
+            setSettings { it.w = nw }
+            review = migrating || Prog.idx(nw) == 0
+        }
+        if (review) Reeval.run(a)
+        if (rolled && Reeval.deloadDue(log.value, days.value, System.currentTimeMillis(), s.w)) {
+            val dw = st.value.w; GearStore.save(a, GearStore.g.value.let { it.copy(dlWeeks = (it.dlWeeks + dw).toList().takeLast(12).toSet()) })
+        }
         setSettings { it.s = Prog.nextSess(st.value, log.value, days.value) }
         GearStore.save(a, GearStore.g.value.copy(wkStart = m))
     }

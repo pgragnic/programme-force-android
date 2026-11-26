@@ -127,7 +127,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val gear by GearStore.g.collectAsState()
     remember(log, gear, st) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
-    val S = Prog.sess(st.c); val W = Prog.WEEKS[st.w]
+    val S = Prog.sess(st.c); val W = Prog.W(st.w)
     // séance E ou F sélectionnée puis moins de séances par semaine : on revient à une séance existante
     if (st.s !in S) { LaunchedEffect(st.s, gear.perWeek) { Store.setSettings { it.s = Prog.nextSess(Store.st.value, Store.log.value, Store.days.value) } }; return }
     var weeks by remember { mutableStateOf(false) }; var sel by remember { mutableStateOf<String?>(null) }
@@ -229,6 +229,17 @@ fun SeanceScreen(onStart: () -> Unit) {
             Text(tr(S[st.s]!!.t), color = C.ink, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, modifier = Modifier.padding(top = 6.dp))
             Text(t("Séance ${st.s} · ${order.size} exercices · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min", "Workout ${st.s} · ${order.size} exercises · ≈ ${((P.sumOf { it.dur } + 59) / 60).toInt()} min"),
                 color = C.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+            if (Prog.isDl(st.w)) Text(t("Semaine de décharge : tes muscles étaient très fatigués ces deux dernières semaines, 2 séries et une charge un cran plus bas.", "Deload week: your muscles were very tired over the last two weeks, 2 sets and one step lighter."),
+                color = C.muted, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 4.dp))
+            gear.bilans.lastOrNull()?.takeIf { !it.seen }?.let { b ->
+                Column(Modifier.padding(top = 8.dp)) {
+                    Text(t("Bilan de période", "Period review"), color = C.ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    if (b.changes.isEmpty()) Text(t("Rien à changer : tes exercices restent les mêmes.", "Nothing to change: your exercises stay the same."), color = C.muted, fontSize = 12.sp)
+                    else b.changes.forEach { Text("· " + Reeval.line(it), color = C.muted, fontSize = 12.sp, lineHeight = 16.sp) }
+                    Text("OK", color = C.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 2.dp).clip(RoundedCornerShape(8.dp)).clickable { Reeval.markSeen(cctx0) }.padding(vertical = 2.dp))
+                }
+            }
             postponed?.let { pp ->
                 val pm = remember(pp, MU) { tired(Prog.orderEx(st.c, pp, st.w, st)).second.take(2) }
                 Text(t("Séance $pp reportée : ", "Workout $pp postponed: ") + pm.joinToString(", ") { "${mus(it).lowercase()} ${MU.R[it]} %" } + t(" encore en récupération.", " still recovering."),
@@ -272,7 +283,7 @@ fun SeanceScreen(onStart: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.height(38.dp).clip(RoundedCornerShape(19.dp)).background(C.chip).clickable { weeks = !weeks }.padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(t("Semaine ${st.w + 1}", "Week ${st.w + 1}"), color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(t("Semaine ${Prog.weekNo(st.w)}", "Week ${Prog.weekNo(st.w)}"), color = C.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Icon(if (weeks) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = C.muted, modifier = Modifier.size(18.dp))
                 }
                 // le ✓ marque une séance déjà faite cette semaine
@@ -289,9 +300,12 @@ fun SeanceScreen(onStart: () -> Unit) {
                     Text(if (st.c % 2 == 0) "variantes" else "exercices de base", color = C.muted, fontSize = 13.sp)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    (0 until 8).forEach { w ->
+                    // programme sans fin : les 4 semaines du bloc en cours ; ancien cycle : les 8 semaines
+                    val first = if (st.w < Prog.LEGACY) 0 else st.w - Prog.idx(st.w)
+                    (0 until Prog.blockLen(st.w)).forEach { k ->
+                        val w = first + k
                         val n = log.count { it.c == st.c && it.w == w }.coerceAtMost(gear.perWeek)
-                        WeekChip(w, n, st.w == w, Modifier.weight(1f), gear.perWeek) { Store.setSettings { it.w = w } }
+                        WeekChip(k, n, st.w == w, Modifier.weight(1f), gear.perWeek) { Store.setSettings { it.w = w } }
                     }
                 }
                 Text(tr(W.t) + " · " + t("${W.s} séries × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}", "${W.s} sets × ${W.r} reps · tempo ${W.tp.take(3).joinToString("-") { Prog.fk(it) }}"),
@@ -308,7 +322,7 @@ fun SeanceScreen(onStart: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Stat(t("Muscles prêts", "Muscles ready"), "$ready", Modifier.weight(1f), unit = "/${Recovery.MUS.size}")
-            Stat(t("Programme", "Program"), "S${st.w + 1}", Modifier.weight(1f), unit = "/8", sub = t("cycle ${st.c}", "cycle ${st.c}"))
+            Stat(t("Programme", "Program"), "S${Prog.weekNo(st.w)}", Modifier.weight(1f), unit = "/${Prog.blockLen(st.w)}", sub = if (st.w >= Prog.LEGACY) (if (Prog.weeksToReview(st.w) == 0) t("bilan la semaine prochaine", "review next week") else t("bilan dans ${Prog.weeksToReview(st.w) + 1} sem.", "review in ${Prog.weeksToReview(st.w) + 1} wk")) else t("cycle ${st.c}", "cycle ${st.c}"))
         }
         // tous les exercices, chacun avec sa vignette du personnage (muscles travaillés en couleur) — inspiré de la capture de Philippe :
         // « Peux-tu t'inspirer de la première image pour la présentation des séances et on montre tous les exercices ? »
@@ -462,7 +476,7 @@ fun SuiviScreen(inProgres: Boolean = false) {
             Panel {
                 Row(Modifier.fillMaxWidth().clickable { open = if (open == e.d) null else e.d; edit = null }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(t("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", "C${e.c} · W${e.w + 1} · Workout ${e.s} · ${tr(e.f ?: "")}"), color = C.ink, fontWeight = FontWeight.Bold)
+                        Text(if (e.w < Prog.LEGACY) t("C${e.c} · S${e.w + 1} · Séance ${e.s} · ${e.f}", "C${e.c} · W${e.w + 1} · Workout ${e.s} · ${tr(e.f ?: "")}") else t("Sem. ${e.w - Prog.LEGACY + 1} · Séance ${e.s} · ${e.f}", "Wk ${e.w - Prog.LEGACY + 1} · Workout ${e.s} · ${tr(e.f ?: "")}"), color = C.ink, fontWeight = FontWeight.Bold)
                         // changement de charge décidé après cette séance (Philippe, 14 novembre 22 h 31 : « Pour C1 S2 séance 2 on voit indiqué Développé militaire debout » → « Oui » à « Prochaine fois : … »)
                         Prog.ups[e.d]?.forEach { u -> Text(t("Prochaine fois : ", "Next time: ") + u.drop(1), color = if (u.startsWith("↓")) C.warm else C.effort, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
                     }
@@ -470,7 +484,7 @@ fun SuiviScreen(inProgres: Boolean = false) {
                 }
                 if (open == e.d) {
                     if (edit == e.d) {
-                        val rows = remember(e.d) { e.ex.map { x -> val ss = mutableStateListOf<SetRec>().apply { addAll(if (x.sets.isNotEmpty()) x.sets else List(Prog.WEEKS[e.w].s) { SetRec(x.done) }) }; EdRow(x.id, x.n, x.target, x.unit, x.kg, ss, mutableStateOf(x.f)) } }
+                        val rows = remember(e.d) { e.ex.map { x -> val ss = mutableStateListOf<SetRec>().apply { addAll(if (x.sets.isNotEmpty()) x.sets else List(Prog.W(e.w).s) { SetRec(x.done) }) }; EdRow(x.id, x.n, x.target, x.unit, x.kg, ss, mutableStateOf(x.f)) } }
                         SetsEditor(rows)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { val ex = recsOf(rows); Store.update(e.copy(ex = ex, f = overall(ex))); edit = null }) { Text("Enregistrer") }
@@ -563,7 +577,7 @@ fun ReglagesScreen() {
                     NewsPanel(); LegalPanel()
                     Panel {
                         Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
-                        Text("8 semaines, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
+                        Text("Un programme sans fin, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
                         Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0). Muscles : atlas BodyParts3D, © The Database Center for Life Science (CC BY-SA 2.1 JP).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0). Muscles: BodyParts3D atlas, © The Database Center for Life Science (CC BY-SA 2.1 JP)."), color = C.muted, fontSize = 12.sp)
                     }
                 }

@@ -100,7 +100,7 @@ class SessionService : Service() {
         val p = s.P[s.pi]
         val rem = max(0.0, p.dur - s.pt)
         b.setContentTitle(tr(PLAB[p.k] ?: "") + " · " + tr(p.n)).setContentText(if (s.run) tr(p.blk) else tr("En pause · ") + tr(p.blk))
-        b.setSubText(t("Séance ${s.s} · S${s.w + 1}", "Workout ${s.s} · W${s.w + 1}"))
+        b.setSubText(t("Séance ${s.s} · S${Prog.weekNo(s.w)}", "Workout ${s.s} · W${Prog.weekNo(s.w)}"))
         if (s.run && p.dur > 0) b.setUsesChronometer(true).setChronometerCountDown(true).setWhen(System.currentTimeMillis() + (rem * 1000).toLong()).setShowWhen(true)
         else b.setShowWhen(false).setContentText(t("En pause · ${ceil(rem).toInt()} s restantes", "Paused · ${ceil(rem).toInt()} s left"))
         b.addAction(0, tr("Précédent"), pi("fr.pgragnic.force.PREV"))

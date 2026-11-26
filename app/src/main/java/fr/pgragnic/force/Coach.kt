@@ -165,8 +165,8 @@ object CoachApi {
                 putJsonArray("restrictions_sante") { g.limits.forEach { add(it) } }
             }
             putJsonArray("materiel") { g.items.forEach { add(it) } }
-            putJsonObject("programme") { put("cycle", st.c); put("semaine", st.w + 1); put("semaines", 8); put("seances_par_semaine", g.perWeek); put("duree_max_habituelle", g.maxMin)
-                put("series", Prog.WEEKS[st.w].s); put("repetitions", Prog.WEEKS[st.w].r) }
+            putJsonObject("programme") { put("cycle", st.c); put("semaine", Prog.weekNo(st.w)); put("semaines", Prog.blockLen(st.w)); put("programme_sans_fin", st.w >= Prog.LEGACY); put("semaine_de_decharge", Prog.isDl(st.w)); put("seances_par_semaine", g.perWeek); put("duree_max_habituelle", g.maxMin)
+                put("series", Prog.W(st.w).s); put("repetitions", Prog.W(st.w).r) }
             putJsonArray("seances") { Prog.sess(st.c).forEach { (k, s) -> addJsonObject { put("lettre", k); put("titre", tr(s.t)) } } }
             put("seance_proposee", st.s)
             // séances de la semaine du programme en cours (Philippe, 19 novembre 18 h 57 : « Ce qui est indiqué sur la première image n'est
@@ -188,7 +188,7 @@ object CoachApi {
             putJsonObject("recuperation") { Recovery.MUS.forEach { put(tr(it), MU.R[it]) } }
             putJsonArray("surcharges") { Recovery.MUS.filter { MU.over(it) }.forEach { add(tr(it)) } }
             putJsonArray("dernieres_seances") { log.sortedByDescending { it.d }.take(5).forEach { e -> addJsonObject {
-                put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()); put("seance", e.s); put("cycle", e.c); put("semaine", e.w + 1); put("ressenti", e.f)
+                put("date", java.time.Instant.ofEpochMilli(e.d).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()); put("seance", e.s); put("cycle", e.c); put("semaine", Prog.weekNo(e.w)); put("ressenti", e.f)
                 putJsonArray("exercices") { e.ex.forEach { x -> addJsonObject { put("id", x.id); put("nom", tr(x.n)); put("kg", x.kg); put("objectif", x.target); put("fait", x.done)
                     x.sets.mapNotNull { it.res }.takeIf { it.isNotEmpty() }?.let { r -> put("reserve_moyenne", r.average()) } } } }
             } } }

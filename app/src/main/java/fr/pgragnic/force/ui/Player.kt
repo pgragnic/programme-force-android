@@ -38,7 +38,7 @@ class Session(val c: Int, val w: Int, val s: String, val P: List<Phase>, val voi
     // séance interrompue, enregistrée avec ce qui a été fait (Philippe, 25 novembre 13 h 55)
     var partial = false
     val sets = HashMap<String, MutableList<SetRec>>()
-    val nsets = Prog.WEEKS[w].s
+    val nsets = Prog.W(w).s
     /** nombre de séries prévues pour un exercice (une de plus pour les zones à travailler) */
     fun nsetsOf(id: String) = P.count { it.k == "work" && it.ex == id }.takeIf { it > 0 } ?: nsets
     val nex = P.count { it.k == "work" && it.set == 1 }

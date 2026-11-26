@@ -187,4 +187,39 @@ class LogiqueTest {
         assertTrue(Export.json().contains("\"seances\""))
         Store.log.value = emptyList()
     }
+
+    @Test fun semainesEnBoucleDeQuatre() {
+        assertEquals(0, Prog.idx(8)); assertEquals(3, Prog.idx(11)); assertEquals(0, Prog.idx(12))
+        assertEquals(Prog.WEEKS[1].t, Prog.W(9).t); assertEquals(Prog.WEEKS[7].t, Prog.W(7).t)
+        assertFalse(Prog.isDl(9)); assertEquals(2, Prog.weekNo(9)); assertEquals(4, Prog.blockLen(9)); assertEquals(8, Prog.blockLen(3))
+        assertEquals(3, Prog.weeksToReview(8)); assertEquals(0, Prog.weeksToReview(11))
+    }
+
+    @Test fun decharge() {
+        GearStore.g.value = base.copy(dlWeeks = setOf(9))
+        assertTrue(Prog.isDl(9)); assertEquals(2, Prog.W(9).s); assertEquals(3, Prog.W(10).s)
+        assertFalse(Reeval.deloadDue(emptyList(), emptyList(), System.currentTimeMillis(), 9))
+    }
+
+    @Test fun bilanSansDonneesNeChangeRien() {
+        assertTrue(Reeval.evaluate(emptyList(), emptyList(), st, System.currentTimeMillis()).isEmpty())
+    }
+
+    @Test fun exerciceRateTroisFoisChange() {
+        val now = System.currentTimeMillis(); val id = Prog.sessEx(1, "A").first()
+        val log = (1..3).map { seance(now - it * Prog.DAY, id, 4.8, 10, 5) } + (4..7).map { seance(now - it * Prog.DAY, "pushup", 0.0, 10, 10) }
+        assertTrue(Reeval.failed(log, id))
+        val ch = Reeval.evaluate(log, emptyList(), st, now)
+        val c = ch.firstOrNull { it.from == id && it.sig == "rate" }
+        assertNotNull(c); assertNotNull(c!!.to); assertNotEquals(id, c.to)
+        assertTrue(ch.size <= Reeval.MAX)
+    }
+
+    @Test fun bilanAppliqueLeRemplacementEtLaChargeDeDepart() {
+        val g = Reeval.apply(base, listOf(Change("a", "b", "rate", "x", 6.0)), 1L)
+        assertEquals("b", g.swaps["a"]); assertEquals(6.0, g.seeds["b"]!!, 1e-6); assertEquals(1, g.bilans.size)
+        // un second bilan sur l'exercice déjà remplacé garde l'exercice d'origine comme base
+        val g2 = Reeval.apply(g, listOf(Change("b", "c", "plateau", "y", null)), 2L)
+        assertEquals("c", g2.swaps["a"]); assertNull(g2.swaps["b"]); assertEquals(2, g2.bilans.size)
+    }
 }

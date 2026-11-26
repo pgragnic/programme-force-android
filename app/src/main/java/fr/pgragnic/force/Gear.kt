@@ -50,6 +50,12 @@ data class Gear(
     val done: Boolean = false,
     /** remplacements choisis à la main dans la fiche d'un exercice : exercice proposé → exercice préféré (Philippe : « ok pour le raccourci "Remplacer" ») */
     val swaps: Map<String, String> = emptyMap(),
+    /** charge de départ d'un exercice arrivé par un bilan de période (calculée d'après l'exercice remplacé) */
+    val seeds: Map<String, Double> = emptyMap(),
+    /** bilans de période du programme sans fin (les 8 derniers) */
+    val bilans: List<Bilan> = emptyList(),
+    /** semaines de décharge du programme sans fin (numéros de semaine) : déclenchées par la fatigue seulement */
+    val dlWeeks: Set<Int> = emptySet(),
 ) {
     fun has(e: String) = e in items || e.isEmpty()
 
