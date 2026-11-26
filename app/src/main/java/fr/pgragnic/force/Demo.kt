@@ -64,7 +64,7 @@ object Demo {
         }
         Store.log.value = if (!legs) log else log + Entry(d = now - (0.8 * day).toLong(), c = 1, w = 2, s = "B", f = "Difficile", rest = 30, bw = 76.0,
             ex = Prog.sess(1)["B"]!!.ex.map { id -> ExRec(id, Prog.EX[id]!!.n, if (Prog.hasDb(id)) 8.0 else 0.0, 12, "reps", List(4) { SetRec(12, 0) }, 12, "Difficile") })
-        if (legs) Store.setSettings { it.c = 1; it.w = 2; it.s = "D" }
+        Store.setSettings { it.c = 1; it.w = Prog.LEGACY + 2; if (legs) it.s = "D" }
         val t = LocalDate.now()
         Store.days.value = (13 downTo 0).map { i ->
             val d = t.minusDays(i.toLong())

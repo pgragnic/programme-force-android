@@ -577,7 +577,7 @@ fun ReglagesScreen() {
                     NewsPanel(); LegalPanel()
                     Panel {
                         Text("Comment ça marche", color = C.ink, fontWeight = FontWeight.Bold)
-                        Text("Un programme sans fin, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", color = C.muted)
+                        Text(t("Un programme sans fin, 4 séances (A, B, C, D) à répartir dans la semaine, adaptées à ton matériel. Toutes les 4 semaines, un bilan change les exercices seulement si besoin. Pendant chaque pause, note les répétitions faites et combien tu aurais encore pu en faire : la charge monte quand c'est réussi plusieurs fois, et baisse après deux échecs.", "A program that never ends, 4 sessions (A, B, C, D) spread over the week, adapted to your equipment. Every 4 weeks, a review changes exercises only if needed. During each rest, log the reps you did and how many more you could have done: the load goes up after several successes and down after two misses."), color = C.muted)
                         Text(t("Version ${BuildConfig.VERSION_NAME}. Personnage : MakeHuman (domaine public, CC0). Muscles : atlas BodyParts3D, © The Database Center for Life Science (CC BY-SA 2.1 JP).", "Version ${BuildConfig.VERSION_NAME}. Character: MakeHuman (public domain, CC0). Muscles: BodyParts3D atlas, © The Database Center for Life Science (CC BY-SA 2.1 JP)."), color = C.muted, fontSize = 12.sp)
                     }
                 }

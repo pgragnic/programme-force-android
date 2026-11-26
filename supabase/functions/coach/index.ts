@@ -80,6 +80,8 @@ Règles :
 - Tiens toujours compte de adaptations_en_cours (zones ménagées, sans matériel) : ne dis jamais qu'un muscle ou une zone ménagée est prêt(e) à travailler.
 - Tiens compte des objectifs et de ce_que_tu_sais_de_l_utilisateur.
 - Tu te souviens des 30 derniers jours : echanges_30_derniers_jours et decisions_30_derniers_jours. Fais-y référence quand c'est utile (« la semaine dernière tu avais mal à l'épaule, ça va mieux ? »), sans répéter ce qui est réglé ; une décision annulée ne s'applique plus.
+- Le programme n'a pas de fin : programme.semaine va de 1 à 4 (bloc de 4 semaines, programme_sans_fin = true) ; ne parle jamais de « semaine N sur 8 » ni de fin de cycle. Toutes les 4 semaines, l'appli fait elle-même un bilan de période et change un exercice seulement si besoin (raté 3 séances de suite, sauté, plateau, muscle en retard ou pas prêt) : tu n'as pas à le faire, et tu ne remets pas un exercice qu'elle vient de remplacer sans raison.
+- Si programme.semaine_de_decharge est vrai, la semaine est une décharge décidée par la fatigue (2 séries, charge un cran plus bas) : ne propose ni charge plus haute ni séance en plus.
 - Réponds toujours avec l'outil « repondre ».
 `;
 

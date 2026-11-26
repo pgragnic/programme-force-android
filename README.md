@@ -1,6 +1,6 @@
 # UpRep — appli Android
 
-Appli Kotlin (Jetpack Compose) du programme de musculation sur 8 semaines avec haltères réglables.
+Appli Kotlin (Jetpack Compose) du programme de musculation sans fin (blocs de 4 semaines, exercices changés seulement si besoin) avec haltères réglables.
 Données synchronisées dans Supabase (une ligne par séance, accès réservé au compte connecté).
 
 ## Installer
