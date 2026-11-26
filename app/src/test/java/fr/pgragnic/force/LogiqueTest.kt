@@ -207,7 +207,7 @@ class LogiqueTest {
 
     @Test fun exerciceRateTroisFoisChange() {
         val now = System.currentTimeMillis(); val id = Prog.sessEx(1, "A").first()
-        val log = (1..3).map { seance(now - it * Prog.DAY, id, 4.8, 10, 5) } + (4..7).map { seance(now - it * Prog.DAY, "pushup", 0.0, 10, 10) }
+        val log = (1..3).map { seance(now - it * Prog.DAY, id, 4.8, 5, 10) } + (4..7).map { seance(now - it * Prog.DAY, "pushup", 0.0, 10, 10) }
         assertTrue(Reeval.failed(log, id))
         val ch = Reeval.evaluate(log, emptyList(), st, now)
         val c = ch.firstOrNull { it.from == id && it.sig == "rate" }
