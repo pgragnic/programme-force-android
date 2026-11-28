@@ -316,6 +316,12 @@ object Prog {
     fun hasDb(id: String) = EX[id]?.lt.let { it == "kg" || it == "band" }
     fun toolOf(id: String) = EX[id]?.tool ?: ""
 
+    /** Charge disponible la plus proche de kg (matériel de l'utilisateur). */
+    fun snap(id: String, kg: Double): Double {
+        val st = gear.steps(toolOf(id)); if (st.isEmpty()) return kg
+        return st.minByOrNull { kotlin.math.abs(it - kg) } ?: kg
+    }
+
     private fun nextStep(id: String, cur: Double, dir: Int): Double {
         val st = gear.steps(toolOf(id)); if (st.isEmpty()) return cur
         return if (dir > 0) st.firstOrNull { it > cur + 1e-6 } ?: cur else st.lastOrNull { it < cur - 1e-6 } ?: cur
@@ -397,10 +403,12 @@ object Prog {
                 } else { q[1] = 0.0; q[2] = 0.0 }
             }
         }
-        // cran décidé avec le coach après une séance : appliqué tant que l'exercice n'a pas été refait depuis
+        // cran décidé avec le coach après une séance, ou charge précise demandée au coach : appliqué tant que l'exercice n'a pas été refait depuis
         CoachState.bias.forEach { (id, b) ->
             val q = L[id] ?: return@forEach
             if (log.any { e -> e.d > b.t && e.ex.any { it.id == id } }) return@forEach
+            // charge demandée par l'utilisateur : appliquée telle quelle (arrondie à la charge disponible la plus proche), sans plafond hebdomadaire
+            if (b.kg != null) { q[0] = snap(id, b.kg); return@forEach }
             val nk = nextStep(id, q[0], b.dir)
             if (b.dir > 0 && !capOk(id, nk, System.currentTimeMillis(), hist[id] ?: emptyList(), last[id] ?: 0L)) return@forEach
             q[0] = nk

@@ -31,8 +31,9 @@ const TOOL = {
           series_moins: { type: "integer", minimum: 0, maximum: 2, description: "Séries retirées à chaque exercice (jamais sous 1 série)." },
           remplacements: { type: "array", items: { type: "object", properties: { de: { type: "string" }, vers: { type: "string" }, raison: { type: "string", description: "Pourquoi, en quelques mots (affiché sous l'exercice)." } }, required: ["de", "vers", "raison"] },
             description: "Uniquement parmi contexte.exercices[].alternatives (identifiants)." },
-          charges: { type: "array", items: { type: "object", properties: { id: { type: "string" }, sens: { type: "integer", enum: [-1, 1] }, raison: { type: "string", description: "Pourquoi, en quelques mots." } }, required: ["id", "sens", "raison"] },
-            description: "Après une séance : un cran de charge en plus (1) ou en moins (-1) pour la prochaine fois, par identifiant d'exercice de dernieres_seances[0]." },
+          charges: { type: "array", items: { type: "object", properties: { id: { type: "string" }, sens: { type: "integer", enum: [-1, 1] },
+              kg: { type: "number", description: "Charge précise demandée par l'utilisateur pour la prochaine fois (à la place de sens)." }, raison: { type: "string", description: "Pourquoi, en quelques mots." } }, required: ["id", "raison"] },
+            description: "Charge de la prochaine fois, par identifiant d'exercice (contexte.exercices ou dernieres_seances). Après une séance : sens = un cran en plus (1) ou en moins (-1). À tout moment, quand l'utilisateur demande une charge précise : kg." },
           gene: { type: "object", properties: { zone: { type: "string", enum: ["genou", "cheville", "hanche", "epaule", "coude", "dos"] }, jours: { type: "integer", minimum: 1, maximum: 14 } },
             required: ["zone", "jours"], description: "Gêne qui dure : l'appli ménage cette zone pendant ce nombre de jours (exercices remplacés automatiquement)." },
           sans_materiel_jours: { type: "integer", minimum: 1, maximum: 21, description: "Vacances ou déplacement : séances au poids du corps pendant ce nombre de jours." },
@@ -75,7 +76,8 @@ Règles :
 - Peu de temps : duree_max.
 - Quand tu proposes un plan, l'appli l'affiche avec tes explications et l'utilisateur l'accepte ou non : ne dis pas que c'est déjà fait.
 - Gêne qui dure plusieurs jours : plan.gene. Vacances ou déplacement sans matériel : plan.sans_materiel_jours (les séances sont recomposées au poids du corps). Séance express : duree_max.
-- Les changements de charge (plan.charges) se font seulement après une séance, d'un cran, en t'appuyant sur le ressenti et la réserve (répétitions encore possibles).
+- Les changements de charge d'un cran (plan.charges avec sens) se font seulement après une séance, en t'appuyant sur le ressenti et la réserve (répétitions encore possibles).
+- Si l'utilisateur demande une charge précise pour un exercice (« mets l'oiseau à 3,8 kg »), propose plan.charges avec id et kg, à tout moment : l'appli l'applique à la prochaine fois que l'exercice est fait, quand il accepte la carte. Ne dis pas que c'est déjà fait et n'invente pas de raison (« tu l'as déjà choisi ») : reprends simplement sa demande.
 - Chaque décision doit être compréhensible : dis sur quoi tu t'appuies (ex. « d'après tes 3 dernières séances », « tes pectoraux sont à 40 % »), donne une raison pour chaque remplacement et chaque cran de charge.
 - Tiens toujours compte de adaptations_en_cours (zones ménagées, sans matériel) : ne dis jamais qu'un muscle ou une zone ménagée est prêt(e) à travailler.
 - Tiens compte des objectifs et de ce_que_tu_sais_de_l_utilisateur.

@@ -19,7 +19,11 @@ import kotlin.math.max
 // L'appli parle à la fonction Supabase « coach » (supabase/functions/coach), qui garde la clé de l'API Claude.
 
 @Serializable data class CoachRep(val de: String, val vers: String, val raison: String? = null)
-@Serializable data class CoachLoad(val id: String, val sens: Int, val raison: String? = null)
+// kg : charge précise demandée par l'utilisateur (Philippe, 28 novembre 2026 7 h 50, après « Mets la prochaine séance de l'oiseau à 3,8lg » :
+// « Je préfère que le coach puisse réellement fixer la charge du prochain exercice »)
+@Serializable data class CoachLoad(val id: String, val sens: Int = 0, val raison: String? = null, val kg: Double? = null) {
+    val ok get() = id in Prog.EX && (kg != null && kg > 0 || sens == 1 || sens == -1)
+}
 @Serializable data class CoachGene(val zone: String, val jours: Int)
 @Serializable data class CoachPlan(val seance: String? = null, val repos: Boolean? = null, val duree_max: Int? = null, val series_moins: Int? = null,
                                    val remplacements: List<CoachRep> = emptyList(), val explications: List<String> = emptyList(),
@@ -33,7 +37,7 @@ import kotlin.math.max
  * cran de charge pour la prochaine fois, zone à ménager quelques jours, séances au poids du corps (vacances).
  */
 object CoachState {
-    @Serializable data class Bias(val dir: Int, val t: Long)
+    @Serializable data class Bias(val dir: Int, val t: Long, val kg: Double? = null)
     @Serializable private data class Saved(val bias: Map<String, Bias> = emptyMap(), val genes: Map<String, String> = emptyMap(), val noGear: String? = null)
     private var s = Saved()
     var v by mutableIntStateOf(0)
@@ -64,7 +68,7 @@ object CoachState {
     private fun save(ctx: Context) { ctx.getSharedPreferences("force", Context.MODE_PRIVATE).edit().putString("coachst", Json.encodeToString(Saved.serializer(), s)).apply(); v++; Adapt.v++ }
     fun apply(ctx: Context, p: CoachPlan) {
         val now = System.currentTimeMillis()
-        var b = s.bias; p.charges.filter { it.id in Prog.EX && (it.sens == 1 || it.sens == -1) }.forEach { b = b + (it.id to Bias(it.sens, now)) }
+        var b = s.bias; p.charges.filter { it.ok }.forEach { b = b + (it.id to Bias(if (it.kg != null) 0 else it.sens, now, it.kg)) }
         var gz = s.genes; p.gene?.takeIf { it.zone in Gear.LIMITS.map { l -> l.first } }?.let { gz = gz + (it.zone to today().plusDays(it.jours.coerceIn(1, 14).toLong() - 1).toString()) }
         val ng = p.sans_materiel_jours?.let { today().plusDays(it.coerceIn(1, 21).toLong() - 1).toString() } ?: s.noGear
         s = Saved(b, gz, ng); save(ctx)
@@ -195,7 +199,7 @@ object CoachApi {
             putJsonObject("adaptations_en_cours") {
                 putJsonObject("zones_menagees_jusqu_au") { CoachState.genes.forEach { (z, d) -> put(z, d) } }
                 put("sans_materiel_jusqu_au", CoachState.noGear)
-                putJsonArray("charges_a_ajuster") { CoachState.bias.forEach { (id, b) -> addJsonObject { put("id", id); put("sens", b.dir) } } }
+                putJsonArray("charges_a_ajuster") { CoachState.bias.forEach { (id, b) -> addJsonObject { put("id", id); if (b.kg != null) put("kg", b.kg) else put("sens", b.dir) } } }
             }
             Balance.compute(log).let { b -> putJsonObject("equilibre_4_semaines") {
                 putJsonObject("series_par_semaine") { b.sets.forEach { (m, v) -> put(mus(m), Math.round(v * 10) / 10.0) } }
@@ -328,7 +332,8 @@ object PlanText {
         if (dd != null && dd.beforeMin != dd.afterMin) out += t("Durée : ≈ ${dd.beforeMin} → ≈ ${dd.afterMin} min", "Duration: ≈ ${dd.beforeMin} → ≈ ${dd.afterMin} min")
         p.gene?.let { out += zoneOff(it.zone) + t(" pendant ${it.jours} jour${if (it.jours > 1) "s" else ""} : exercices qui la sollicitent remplacés", " for ${it.jours} day(s): exercises that load it replaced") }
         p.sans_materiel_jours?.let { out += t("Séances au poids du corps pendant $it jour(s)", "Bodyweight workouts for $it day(s)") }
-        p.charges.forEach { c -> out += t("Prochaine fois : ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 cran" else "−1 cran"}", "Next time: ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 step" else "−1 step"}") +
+        p.charges.filter { it.ok }.forEach { c -> out += (if (c.kg != null) t("Prochaine fois : ${tr(Prog.EX[c.id]?.n ?: c.id)} à ${Prog.loadTxt(c.id, Prog.snap(c.id, c.kg))}", "Next time: ${tr(Prog.EX[c.id]?.n ?: c.id)} at ${Prog.loadTxt(c.id, Prog.snap(c.id, c.kg))}")
+            else t("Prochaine fois : ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 cran" else "−1 cran"}", "Next time: ${tr(Prog.EX[c.id]?.n ?: c.id)} ${if (c.sens > 0) "+1 step" else "−1 step"}")) +
             (c.raison?.let { " ($it)" } ?: "") }
         if (out.isEmpty()) out += p.explications
         return out
@@ -338,6 +343,7 @@ object PlanText {
         p.gene != null -> zoneOff(p.gene.zone) + t(" ${p.gene.jours} jour${if (p.gene.jours > 1) "s" else ""}", " ${p.gene.jours} day(s)")
         p.sans_materiel_jours != null -> t("Sans matériel ${p.sans_materiel_jours} jour(s)", "No equipment ${p.sans_materiel_jours} day(s)")
         p.repos == true -> t("Jour de repos", "Rest day")
+        p.charges.size == 1 && p.charges[0].kg != null && !p.today -> p.charges[0].let { c -> t("${tr(Prog.EX[c.id]?.n ?: c.id)} à ${Prog.loadTxt(c.id, Prog.snap(c.id, c.kg!!))} la prochaine fois", "${tr(Prog.EX[c.id]?.n ?: c.id)} at ${Prog.loadTxt(c.id, Prog.snap(c.id, c.kg))} next time") }
         p.charges.isNotEmpty() && !p.today -> t("Charges ajustées pour la prochaine fois", "Loads adjusted for next time")
         p.seance != null && p.seance != Store.st.value.s -> t("Séance ${p.seance} à la place", "Workout ${p.seance} instead")
         p.duree_max != null -> t("Séance raccourcie à ${p.duree_max} min", "Workout shortened to ${p.duree_max} min")

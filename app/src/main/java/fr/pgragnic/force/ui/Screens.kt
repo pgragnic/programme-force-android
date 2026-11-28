@@ -125,7 +125,7 @@ fun SeanceScreen(onStart: () -> Unit) {
     val st by Store.st.collectAsState(); val log by Store.log.collectAsState()
     Store.ver.collectAsState().value
     val gear by GearStore.g.collectAsState()
-    remember(log, gear, st) { Prog.computeLoads(log, st); 0 }
+    remember(log, gear, st, CoachState.v) { Prog.computeLoads(log, st); 0 }
     val done = remember(log) { log.map { "${it.c}-${it.w}-${it.s}" }.toSet() }
     val S = Prog.sess(st.c); val W = Prog.W(st.w)
     // séance E ou F sélectionnée puis moins de séances par semaine : on revient à une séance existante

@@ -149,7 +149,7 @@ fun CoachTab(onStart: () -> Unit) {
                     CoachState.genes.forEach { (z, until) -> XChip(PlanText.zoneOff(z) + " → " + CoachState.fmt(until)) { CoachState.endGene(ctx, z) } }
                     CoachState.noGear?.let { XChip(t("Sans matériel → ${CoachState.fmt(it)}", "No equipment → ${CoachState.fmt(it)}")) { CoachState.endNoGear(ctx) } }
                     if (Adapt.on) XChip(t("Séance du jour adaptée", "Today's workout adapted")) { Adapt.clear(ctx) }
-                    pend.forEach { (id, b) -> XChip(tr(Prog.EX[id]?.n ?: id) + if (b.dir > 0) t(" +1 cran", " +1 step") else t(" −1 cran", " −1 step")) { CoachState.endBias(ctx, id) } }
+                    pend.forEach { (id, b) -> XChip(tr(Prog.EX[id]?.n ?: id) + if (b.kg != null) " → " + Prog.loadTxt(id, Prog.snap(id, b.kg)) else if (b.dir > 0) t(" +1 cran", " +1 step") else t(" −1 cran", " −1 step")) { CoachState.endBias(ctx, id) } }
                 }
             }
         }
